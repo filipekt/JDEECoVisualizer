@@ -1,73 +1,52 @@
 package cz.filipekt.jdcv;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.scene.shape.Line;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
 
-import cz.filipekt.jdcv.network.MyLink;
-import cz.filipekt.jdcv.network.MyNode;
-
 /**
  * Run this class to show the map visualizer.
- * @author Tom
+ * @author Tomas Filipek
  *
  */
 public class Visualizer extends Application {
-
-	/**
-	 * Maps {@link MyNode#getId()} to the {@link MyNode} object. Each {@link MyNode} represents
-	 * a node in the map. 
-	 */
-	private final Map<String,MyNode> nodes;
-	
-	/**
-	 * Maps {@link MyLink#getId()} to the {@link MyLink} object. Each {@link MyLink} represents
-	 * a link in the map.
-	 */
-	private final Map<String,MyLink> links;
-	
-	/**
-	 * Maps {@link Circle} to {@link MyNode}. Each {@link Circle} represents a view of the 
-	 * corresponding {@link MyNode}.
-	 */
-	private final Map<Node,MyNode> circles = new HashMap<>();
-	
-	/**
-	 * Maps {@link Line} to {@link MyLink}. Each {@link Line} represents a view of the 
-	 * corresponding {@link MyLink}.
-	 */
-	private final Map<Node,MyLink> lines = new HashMap<>();
-	
-	private final double minx;
-	private final double miny;
-	private final double maxx;
-	private final double maxy;
-	private final double widthFactor;
-	private final double heightFactor;
 	
 	/**
 	 * Preferred width of the map view, in pixels.
@@ -80,132 +59,261 @@ public class Visualizer extends Application {
 	private final double mapHeight = 600.0;
 	
 	/**
-	 * Margin size (in pixels) that shall be placed on the map view borders.
+	 * The map that is being visualized, coupled with some view parameters.
 	 */
-	private final double margin = 20.0;
-	
-	/**
-	 * Radius (in pixels) of the {@link Circle} objects representing map nodes.
-	 */
-	private final double radius = 5.0;
-	
-	/**
-	 * Zoom factor used to view the map.
-	 */
-	private double zoom = 1.0;
-	
-	/**
-	 * Determines the minimal and maximal x,y coordinates across all of the map nodes.
-	 * @return Array consisting of (minimal x, minimal y, maximal x, maximal y) coordinates of map nodes.
-	 */
-	private double[] getMapBorders(){
-		double minx = Double.MAX_VALUE;
-		double miny = Double.MAX_VALUE;
-		double maxx = 0.0;
-		double maxy = 0.0;
-		for (MyNode node : nodes.values()){
-			if (node.getX() < minx){
-				minx = node.getX();
-			}
-			if (node.getX() > maxx){
-				maxx = node.getX();
-			}
-			if (node.getY() < miny){
-				miny = node.getY();
-			}
-			if (node.getY() > maxy){
-				maxy = node.getY();
-			}
-		}
-		return new double[]{minx, miny, maxx, maxy};
-	}
-	
-	/**
-	 * After some changes have been made to {@link Visualizer#nodes}, {@link Visualizer#zoom} or
-	 * other fields that have influence on the map view, call this method to get an updated
-	 * collection of the {@link Circle} objects. These represent the {@link cz.filipekt.jdcv.network.MyNode}
-	 * objects for purposes of visualization.
-	 * @return Updated collection of {@link Circle} objects, representing the 
-	 * {@link cz.filipekt.jdcv.network.MyNode} objects for purposes of visualization. 
-	 */
-	private Map<Node,MyNode> generateCircles(){
-		Map<Node,MyNode> res = new HashMap<>();
-		for (MyNode node : nodes.values()){
-			double x = node.getX();
-			x -= minx;
-			x *= (widthFactor * zoom);
-			x += margin;
-			double y = node.getY();
-			y -= miny;
-			y *= (heightFactor * zoom);
-			y += margin;
-			Circle circle = new Circle(x, y, radius, Color.RED);
-			res.put(circle, node);
-		}
-		return res;
-	}
-	
-	/**
-	 * After some changes have been made to {@link Visualizer#links}, {@link Visualizer#zoom} or
-	 * other fields that have influence on the map view, call this method to get an updated
-	 * collection of the {@link Line} objects. These represent the {@link cz.filipekt.jdcv.network.MyLink}
-	 * objects for purposes of visualization.
-	 * @return Updated collection of {@link Line} objects, representing the 
-	 * {@link cz.filipekt.jdcv.network.MyLink} objects for purposes of visualization. 
-	 */
-	private Map<Node,MyLink> generateLines(){
-		Map<Node,MyLink> res = new HashMap<>();
-		for (MyLink link : links.values()){
-			double fromx = link.getFrom().getX();
-			fromx -= minx;
-			fromx *= widthFactor * zoom;
-			fromx += margin;
-			double fromy = link.getFrom().getY();
-			fromy -= miny;
-			fromy *= heightFactor * zoom;
-			fromy += margin;
-			double tox = link.getTo().getX();
-			tox -= minx;
-			tox *= widthFactor * zoom;
-			tox += margin;
-			double toy = link.getTo().getY();
-			toy -= miny;
-			toy *= heightFactor * zoom;
-			toy += margin;
-			Line line = new Line(fromx, fromy, tox, toy);
-			line.setStroke(Color.BLACK);
-			line.setStrokeWidth(3);		
-			res.put(line, link);
-		}
-		return res;
-	}
+	private MapScene scene;
 	
 	public static void main(String[] args){
 		launch(args);
 	}
 	
 	/**
-	 * Contains the GUI representation of the map. Contains various {@link Circle} and {@link Line} instances, 
-	 * which correspond to the map elements. 
+	 * Constructs the main menu bar of the application.
+	 * @return  
+	 * @throws IOException 
 	 */
-	private final Group mapGroup = new Group();
+	private MenuBar getMenuBar() throws IOException {
+		MenuBar menuBar = new MenuBar();
+		Menu fileMenu = new Menu("File");
+		final MenuItem importSceneItem = new MenuItem("Import Scene"); 
+		importSceneItem.setDisable(false);
+		final MenuItem closeThisSceneItem = new MenuItem("Close This Scene");
+		closeThisSceneItem.setDisable(true);
+		importSceneItem.setOnAction(new EventHandler<ActionEvent>() {
+			
+			@Override
+			public void handle(ActionEvent arg0) {					
+				mapPane.getChildren().clear();
+				mapPane.getChildren().add(importSceneGrid);				
+				scene = null;
+	            closeThisSceneItem.setDisable(false);
+	            importSceneItem.setDisable(true);					           
+			}
+		});
+		closeThisSceneItem.setOnAction(new EventHandler<ActionEvent>() {
 
+			@Override
+			public void handle(ActionEvent arg0) {
+				mapPane.getChildren().clear();
+				mapPane.getChildren().add(noMapNode);
+				scene = null;
+				closeThisSceneItem.setDisable(true);
+				importSceneItem.setDisable(false);	
+				zoomBar.setDisable(true);
+			}
+		});
+		fileMenu.getItems().addAll(importSceneItem, closeThisSceneItem);
+		Menu editMenu = new Menu("Edit");
+		Menu viewMenu = new Menu("View");
+		final MenuItem zoomPanel = new MenuItem("Zoom Panel");
+		final ImageView checkBoxImage = new ImageView(new Image(Files.newInputStream(Paths.get("checkmark01.png")), 20, 20, true, true));
+		zoomPanel.setGraphic(checkBoxImage);
+		zoomPanel.setOnAction(new EventHandler<ActionEvent>() {
+			
+			@Override
+			public void handle(ActionEvent arg0) {
+				if (barIsShown){
+					if (vbox.getChildren().contains(zoomBar)){
+						vbox.getChildren().remove(zoomBar);
+						barIsShown = false;
+						zoomPanel.setGraphic(null);
+					}
+				} else {
+					if (!vbox.getChildren().contains(zoomBar)){
+						vbox.getChildren().add(zoomBar);
+						barIsShown = true;
+						zoomPanel.setGraphic(checkBoxImage);
+					}
+				}
+			}
+			
+			private boolean barIsShown = true;
+		});
+		viewMenu.getItems().addAll(zoomPanel);
+		menuBar.getMenus().addAll(fileMenu, editMenu, viewMenu);
+		return menuBar;
+	}
 	
 	/**
-	 * Builds the GUI, should only be called by the JavaFX runtime.
+	 * This {@link Node} is shown whenever no map scene is open.
 	 */
-	@Override 
-	public void start(Stage stage) {
-		reloadFxNodes();
-		ScrollPane scrollPane = new ScrollPane();
-		scrollPane.setContent(mapGroup);
-		scrollPane.setPrefSize(mapWidth + (2*margin), mapHeight + (2*margin));
+	private final Pane noMapNode = new VBox();
+	
+	/**
+	 * Contains the controls where users can specify input XML files for the visualization. 
+	 */
+	private final GridPane importSceneGrid;
+
+	/**
+	 * Container for map view, or if no map is currently view, a dialog for loading a map.
+	 */
+	private final Pane mapPane = new StackPane();
+	
+	/**
+	 * Makes sure that when the OK button is clicked (after specifying input XML files for the visualization),
+	 * that the input data is processed and the requested visualizations are shown.
+	 * @author Tom
+	 *
+	 */
+	private class OkButtonEventHandler implements EventHandler<Event>{
+		
+		/**
+		 * Field containing the path to the map XML definition file. 
+		 */
+		private final TextField mapField;
+		
+		/**
+		 * The button with which this {@link EventHandler} is associated. 
+		 */
+		private final Button okButton;
+		
+		/**
+		 * Shown when a new scene is being loaded.
+		 */
+		private final ProgressIndicator progIndicator = new ProgressIndicator(-1);
+		
+		/**
+		 * The {@link Pane} which contains {@link OkButtonEventHandler#progIndicator} and {@link OkButtonEventHandler#okButton}.
+		 */
+		final GridPane pane;
+
+		OkButtonEventHandler(TextField mapField, Button okButton,
+				GridPane pane) {
+			super();
+			this.mapField = mapField;
+			this.okButton = okButton;
+			this.pane = pane;
+		}
+				
+		/**
+		 * Adds {@link OkButtonEventHandler#progIndicator} to the {@link OkButtonEventHandler#pane} container.
+		 */
+		private void openProgressIndicator(){
+			int column = GridPane.getColumnIndex(okButton);
+			int row = GridPane.getRowIndex(okButton);				
+			pane.add(progIndicator, column, row);	
+			
+		}
+		
+		/**
+		 * Removes {@link OkButtonEventHandler#progIndicator} from the {@link OkButtonEventHandler#pane} container.
+		 */
+		private void closeProgressIndiciator(){
+			pane.getChildren().remove(progIndicator);
+		}
+
+		@Override
+		public void handle(Event arg0) {
+			if ((mapField.getText() == null) || (mapField.getText().isEmpty())){
+				return;
+			}	
+			final String mapFieldText = mapField.getText();
+
+			new Thread(){
+
+				@Override
+				public void run() {
+					try {
+						Platform.runLater(new Runnable() {
+							
+							@Override
+							public void run() {								
+								openProgressIndicator();
+							}
+						});
+						
+						Path mapXmlFile = Paths.get(mapFieldText);
+						XMLextractor extractor = new XMLextractor(mapXmlFile);
+						final XMLresult parsedXml = extractor.doExtraction();
+						final MapScene scene = new MapScene(parsedXml, mapWidth, mapHeight);
+						Platform.runLater(new Runnable() {
+							
+							@Override
+							public void run() {									
+								Visualizer.this.scene = scene;
+								final ScrollPane mapScrollPane = scene.getMapPane();
+								mapScrollPane.setPrefSize(scene.getTotalWidth(), scene.getTotalHeight());
+								mapPane.getChildren().clear();
+								mapPane.getChildren().add(mapScrollPane);	
+								zoomBar.setDisable(false);
+								closeProgressIndiciator();									
+							}
+						});
+						Thread.sleep(1000);							
+					} catch (InterruptedException | ParserConfigurationException | SAXException | IOException ex){
+						ex.printStackTrace();	
+						System.exit(1);
+					}
+				}											
+			}.start();
+		}		
+		
+	}
+	
+	/**
+	 * Builds the {@link Visualizer#importSceneGrid}.
+	 * @return
+	 */
+	private GridPane createImportSceneGrid(){
+		final GridPane pane = new GridPane();
+		int row = 0;
+		Label mapLabel = new Label("Location of the map definition XML:");
+		pane.add(mapLabel, 0, row);
+		final TextField mapField = new TextField();
+		mapField.setPrefWidth(inputFieldsWidth);
+		pane.add(mapField, 1, row);
+		Button fileChooserButton = new Button("Select..");
+		fileChooserButton.setOnMouseClicked(new EventHandler<Event>() {
+
+			@Override
+			public void handle(Event arg0) {
+				FileChooser fileChooser = new FileChooser();
+				fileChooser.setTitle("Open XML File");
+				File res = fileChooser.showOpenDialog(stage);
+				if (res != null){
+					mapField.setText(res.getAbsolutePath().toString());
+				}
+			}
+		});
+		pane.add(fileChooserButton, 2, row);
+		row += 1;
+		final Button okButton = new Button("OK");
+		okButton.setOnMouseClicked(new OkButtonEventHandler(mapField, okButton, pane));								
+		pane.add(okButton, 1, row);
+		pane.setAlignment(Pos.CENTER);
+		pane.setHgap(importSceneGridHGap);
+		pane.setVgap(importSceneGridVGap);
+		return pane;
+	}
+	
+	/**
+	 * Value for the HGap parameter of {@link Visualizer#importSceneGrid}
+	 */
+	private final double importSceneGridHGap = 20;
+	
+	/**
+	 * Value for the VGap parameter of {@link Visualizer#importSceneGrid}
+	 */
+	private final double importSceneGridVGap = 10;
+	
+	/**
+	 * Width of the input fields used in {@link Visualizer#importSceneGrid}
+	 */
+	private final double inputFieldsWidth = 300;
+
+	/**
+	 * Constructs the toolbar for zooming in/out the map view.
+	 * @return
+	 */
+	private HBox getZoomBar(){
 		Button zoomInButton = new Button("Zoom IN");
 		zoomInButton.setOnMouseClicked(new  EventHandler<Event>() {
 
 			@Override
 			public void handle(Event arg0) {
-				changeZoom(0.2);
+				if (scene != null){
+					scene.changeZoom(0.2);
+				}
 			}
 		});
 		Button zoomOutButton = new Button("Zoom OUT");
@@ -213,80 +321,77 @@ public class Visualizer extends Application {
 
 			@Override
 			public void handle(Event arg0) {
-				changeZoom(-0.2);
+				if (scene != null){
+					scene.changeZoom(-0.2);
+				}
 			}
 		});
 		HBox hbox = new HBox(zoomInButton, zoomOutButton); 	
-		hbox.setAlignment(Pos.TOP_RIGHT);
-		VBox vbox = new VBox(scrollPane, hbox);
-		Scene scene = new Scene(vbox, Color.WHITE);
-	    stage.setScene(scene);
-	    stage.setResizable(false);
+		hbox.setAlignment(Pos.CENTER_RIGHT);
+		return hbox;
+	}
+	
+	/**
+	 * The stage used by this application.
+	 */
+	private Stage stage;
+	
+	/**
+	 * The toolbar containing the zooming options. 
+	 */
+	private final HBox zoomBar;
+	
+	/**
+	 * The root element of the main {@link Scene} of the application.
+	 */
+	private final VBox vbox = new VBox();
+	
+	/**
+	 * Builds the GUI, should only be called by the JavaFX runtime.
+	 * @throws IOException 
+	 */
+	@Override 
+	public void start(Stage stage) throws IOException {	
+		this.stage = stage;
+		noMapNode.setPrefSize(mapWidth, mapHeight);
+		zoomBar.setDisable(true);
+		Label helpLabel = new Label("To import new simulation data, click File -> Import Scene");
+		helpLabel.setPadding(new Insets(10, 10, 10, 10));
+		noMapNode.getChildren().add(helpLabel);	
+		mapPane.getChildren().add(noMapNode);
+		MenuBar menuBar = getMenuBar();	
+		vbox.getChildren().clear();
+		vbox.getChildren().addAll(menuBar, mapPane, zoomBar);
+		Scene fxScene = new Scene(vbox, Color.WHITE);
+		fxScene.heightProperty().addListener(new ChangeListener<Number>() {
+
+			@Override
+			public void changed(ObservableValue<? extends Number> arg0,
+					Number arg1, Number arg2) {
+				double diff = arg2.doubleValue() - arg1.doubleValue();
+				mapPane.setPrefHeight(mapPane.getPrefHeight() + diff);			
+			}
+		});
+		mapPane.heightProperty().addListener(new ChangeListener<Number>() {
+
+			@Override
+			public void changed(ObservableValue<? extends Number> arg0,
+					Number arg1, Number arg2) {								
+				Node child = mapPane.getChildren().get(0);
+				if (child instanceof Region){
+					Region reg = (Region)child;
+					reg.setPrefHeight(arg2.doubleValue());
+				} 
+			}
+		});
+	    stage.setScene(fxScene);
 	    stage.setTitle("Map Visualizer");
 	    stage.show();
 	}
-	
-	/**
-	 * Zooms in or zooms out the map view. Ensures the map view reloaded with the new zoom value.
-	 * @param factor
-	 */
-	private void changeZoom(double factor){
-		zoom += factor;
-		updateCirclesAndLines();
-		reloadFxNodes();
-	}
-	
-	/**
-	 * Should be called after changing the contents of {@link Visualizer#lines} and 
-	 * {@link Visualizer#circles}. It makes sure the map view is updated and reloaded accordingly. 
-	 */
-	private void reloadFxNodes(){
-		mapGroup.getChildren().clear();
-		Collection<Node> fxNodesToShow = new HashSet<>();
-		fxNodesToShow.addAll(lines.keySet());
-		fxNodesToShow.addAll(circles.keySet());
-		mapGroup.getChildren().addAll(fxNodesToShow);
-	    moveCirclesToFront();	    
-	}
-	
-	/**
-	 * Updates the collections of {@link Circle} and {@link Line} objects to
-	 * represent the current state of the map view.
-	 */
-	private void updateCirclesAndLines(){
-		Map<Node,MyNode> newCircles = generateCircles();
-		Map<Node,MyLink> newLines = generateLines();
-		circles.clear();
-		circles.putAll(newCircles);
-		lines.clear();
-		lines.putAll(newLines);
-	}
-	
-	/**
-	 * Ensures that the circles representing "node" elements are drawn in the 
-	 * foreground with respect to the lines representing "link" elements.
-	 */
-	private void moveCirclesToFront(){
-		for (Node node : circles.keySet()){
-			((Circle)node).toFront();
-		}
-	}
 
-	public Visualizer() throws ParserConfigurationException, SAXException, IOException {
-		super();
-		Path sourceFile = Paths.get("output_network.xml");
-		XMLextractor extractor = new XMLextractor(sourceFile);
-		XMLresult result = extractor.doExtraction();
-		nodes = result.getNodes();
-		links = result.getLinks();
-		double[] borders = getMapBorders();
-		this.minx = borders[0];
-		this.miny = borders[1];
-		this.maxx = borders[2];
-		this.maxy = borders[3];
-		widthFactor = mapWidth / (maxx - minx);
-		heightFactor = mapHeight / (maxy - miny);
-		updateCirclesAndLines();
+	public Visualizer() throws ParserConfigurationException, SAXException, IOException {		
+		importSceneGrid = createImportSceneGrid();
+		zoomBar = getZoomBar();
 	}			
 	
 }

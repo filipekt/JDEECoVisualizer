@@ -154,7 +154,10 @@ class MyHandler extends DefaultHandler {
 	 * @author Tom
 	 *
 	 */
-	private static class MandatoryAttributeNotFoundException extends Exception {}
+	private static class MandatoryAttributeNotFoundException extends Exception {
+
+		private static final long serialVersionUID = -3992499046298588793L;
+	}
 	
 	/**
 	 * Thrown when the value of a mandatory attribute does not contain the required 
@@ -162,14 +165,20 @@ class MyHandler extends DefaultHandler {
 	 * @author Tom
 	 *
 	 */
-	private static class InvalidAttributeValueException extends Exception {}
+	private static class InvalidAttributeValueException extends Exception {
+
+		private static final long serialVersionUID = 750577050657060443L;
+	}
 	
 	/**
 	 * Thrown when a link element refers to a node element that has not been encountered in the XML file.
 	 * @author Tom
 	 *
 	 */
-	private static class NodeNotFoundException extends Exception {}
+	private static class NodeNotFoundException extends Exception {
+
+		private static final long serialVersionUID = -19864586710695852L;
+	}
 	
 	/**
 	 * When a "node" elements is encountered, this method creates a {@link MyNode} representation 
