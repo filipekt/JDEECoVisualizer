@@ -1,6 +1,7 @@
 package cz.filipekt.jdcv;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -109,7 +110,8 @@ public class Visualizer extends Application {
 		Menu editMenu = new Menu("Edit");
 		Menu viewMenu = new Menu("View");
 		final MenuItem zoomPanel = new MenuItem("Zoom Panel");
-		final ImageView checkBoxImage = new ImageView(new Image(Files.newInputStream(Paths.get("checkmark01.png")), 20, 20, true, true));
+		InputStream imageStream = getClass().getResourceAsStream("/resources/checkmark.png");
+		final ImageView checkBoxImage = new ImageView(new Image(imageStream, 20, 20, true, true));
 		zoomPanel.setGraphic(checkBoxImage);
 		zoomPanel.setOnAction(new EventHandler<ActionEvent>() {
 			
