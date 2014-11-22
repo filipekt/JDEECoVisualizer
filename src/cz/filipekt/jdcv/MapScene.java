@@ -16,36 +16,16 @@ import javafx.scene.shape.Line;
 
 /**
  * The scene that the {@link Visualizer} will visualize. It contains the map, view parameters, event log etc.
- * @author Tomas Filipek
- *
  */
 class MapScene {
 	
-	public MapScene(XMLresult parsedXML, double mapWidth, double mapHeight) {
-		this.nodes = parsedXML.getNodes();
-		this.links = parsedXML.getLinks();
-		this.mapWidth = mapWidth;
-		this.mapHeight = mapHeight;
-		double[] borders = getMapBorders();
-		this.minx = borders[0];
-		this.miny = borders[1];
-		this.maxx = borders[2];
-		this.maxy = borders[3];
-		widthFactor = mapWidth / (maxx - minx);
-		heightFactor = mapHeight / (maxy - miny);
-		updateCirclesAndLines();
-		reloadFxNodes();
-	}
-
 	/**
-	 * Maps {@link MyNode#getId()} to the {@link MyNode} object. Each {@link MyNode} represents
-	 * a node in the map. 
+	 * Contains the network nodes. Keys = node IDs, values = {@link MyNode} node representations.
 	 */
 	private final Map<String,MyNode> nodes;
 	
 	/**
-	 * Maps {@link MyLink#getId()} to the {@link MyLink} object. Each {@link MyLink} represents
-	 * a link in the map.
+	 * Contains the network links. Keys = link IDs, values = {@link MyLink} link representations.
 	 */
 	private final Map<String,MyLink> links;
 	
@@ -61,64 +41,107 @@ class MapScene {
 	 */
 	private final Map<Node,MyLink> lines = new HashMap<>();
 	
+	/**
+	 * Minimal value of x-coordinate among all the nodes in {@link MapScene#nodes}
+	 */
 	private final double minx;
+	
+	/**
+	 * Minimal value of y-coordinate among all the nodes in {@link MapScene#nodes}
+	 */
 	private final double miny;
+	
+	/**
+	 * Maximal value of x-coordinate among all the nodes in {@link MapScene#nodes}
+	 */
 	private final double maxx;
+	
+	/**
+	 * Maximal value of y-coordinate among all the nodes in {@link MapScene#nodes}
+	 */
 	private final double maxy;
+	
+	/**
+	 * Factor by which the x-coordinate scale should be multiplied so that the network view
+	 * fits nicely into the window of preferred width {@link MapScene#preferredMapWidth}.
+	 */
 	private final double widthFactor;
+	
+	/**
+	 * Factor by which the y-coordinate scale should be multiplied so that the network view
+	 * fits nicely into the window of preferred height {@link MapScene#preferredMapHeight}.
+	 */
 	private final double heightFactor;
 	
 	/**
-	 * Preferred width of the map view, in pixels.
+	 * Preferred width of the map view, in pixels. Does not include the margins.
 	 */
-	private final double mapWidth;
+	private final double preferredMapWidth;
 	
 	/**
-	 * Preferred height of the map view, in pixels.
+	 * Preferred height of the map view, in pixels. Does not include the margins.
 	 */
-	private final double mapHeight;
+	private final double preferredMapHeight;
 	
 	/**
-	 * Margin size (in pixels) that shall be placed on the map view borders.
+	 * Margin size (in pixels) that will be placed on the map view borders.
 	 */
 	private final double margin = 20.0;
 	
 	/**
-	 * Radius (in pixels) of the {@link Circle} objects representing map nodes.
+	 * The total preferred width of the network view, including margins both on left and right side.
+	 */
+	private final double totalWidth;
+	
+	/**
+	 * @return The total preferred width of the network view, including margins both on left and right side.
+	 * @see {@link MapScene#totalWidth}
+	 */
+	public double getTotalWidth() {
+		return totalWidth;
+	}
+	
+	/**
+	 * The total preferred height of the network view, including margins both on top and bottom.
+	 */
+	private final double totalHeight;
+
+	/**
+	 * @return The total preferred height of the network view, including margins both on top and bottom.
+	 * @see {@link MapScene#totalHeight}
+	 */
+	public double getTotalHeight() {
+		return totalHeight;
+	}
+
+	/**
+	 * Radius (in pixels) of the {@link Circle} objects representing the network nodes.
 	 */
 	private final double radius = 5.0;
 	
 	/**
-	 * Zoom factor used to view the map.
+	 * Zoom factor used to view the map, relative to the preferred size defined 
+	 * by {@link MapScene#preferredMapWidth} and {@link MapScene#preferredMapHeight}.
 	 */
 	private double zoom = 1.0;
 	
 	/**
-	 * Contains the GUI representation of the map. Contains various {@link Circle} and {@link Line} instances, 
-	 * which correspond to the map elements. 
+	 * Container for the network(map) components such as nodes and links. 
+	 * Holds {@link Circle}, {@link Line} etc. instances, which correspond to the network elements. 
 	 */
 	private final Group mapGroup = new Group();
 	
+	/**
+	 * Scrollable container for {@link MapScene#mapGroup}
+	 */
 	private final ScrollPane mapPane = new ScrollPane(mapGroup);
 
+	/**
+	 * @return Scrollable container for the network(map) components such as nodes and links.
+	 * @see {@link MapScene#mapPane}
+	 */
 	public ScrollPane getMapPane() {
 		return mapPane;
-	}
-
-	/**
-	 * Computes the total preferred width of the map, including margins.
-	 * @return
-	 */
-	double getTotalWidth(){
-		return mapWidth + (2 * margin);
-	}
-	
-	/**
-	 * Computes the total preferred heght of the map, including margins.
-	 * @return
-	 */
-	double getTotalHeight(){
-		return mapHeight + (2 * margin);
 	}
 	
 	/**
@@ -224,7 +247,7 @@ class MapScene {
 	 * Should be called after changing the contents of {@link Visualizer#lines} and 
 	 * {@link Visualizer#circles}. It makes sure the map view is updated and reloaded accordingly. 
 	 * 
-	 * TODO: is always called in pair after {@link Visualizer#updateCirclesAndLines()}, 
+	 * TODO: is always called immediately after {@link Visualizer#updateCirclesAndLines()}, 
 	 * so these should be joined into a single method.
 	 */
 	private void reloadFxNodes(){
@@ -247,11 +270,35 @@ class MapScene {
 	}
 	
 	/**
-	 * Zooms in or zooms out the map view. Ensures the map view reloaded with the new zoom value.
-	 * @param factor
+	 * Zooms in or zooms out the map view. Ensures that the map is view reloaded with the new zoom value.
+	 * @param factor This value will be added to the current zoom factor {@link MapScene#zoom}
 	 */
 	void changeZoom(double factor){
 		zoom += factor;
+		updateCirclesAndLines();
+		reloadFxNodes();
+	}
+	
+	/**
+	 * @param nodes The network nodes. Keys = node IDs, values = {@link MyNode} node representations.
+	 * @param links The network links. Keys = link IDs, values = {@link MyLink} link representations.
+	 * @param mapWidth Preferred width of the map view, in pixels
+	 * @param mapHeight Preferred height of the map view, in pixels
+	 */
+	public MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight) {
+		this.nodes = nodes;
+		this.links = links;
+		this.preferredMapWidth = mapWidth;
+		this.preferredMapHeight = mapHeight;
+		this.totalWidth = preferredMapWidth + (2 * margin);
+		this.totalHeight = preferredMapHeight + (2 * margin);
+		double[] borders = getMapBorders();
+		this.minx = borders[0];
+		this.miny = borders[1];
+		this.maxx = borders[2];
+		this.maxy = borders[3];
+		widthFactor = mapWidth / (maxx - minx);
+		heightFactor = mapHeight / (maxy - miny);
 		updateCirclesAndLines();
 		reloadFxNodes();
 	}

@@ -1,13 +1,12 @@
 package cz.filipekt.jdcv;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
@@ -22,8 +21,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.ProgressIndicator;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -34,17 +31,10 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import javax.xml.parsers.ParserConfigurationException;
-
-import org.xml.sax.SAXException;
-
 /**
- * Run this class to show the map visualizer.
- * @author Tomas Filipek
- *
+ * Main class of the application. Run it to show the simulation data visualization.
  */
 public class Visualizer extends Application {
 	
@@ -63,16 +53,29 @@ public class Visualizer extends Application {
 	 */
 	private MapScene scene;
 	
+	/**
+	 * Sets the map that will be visualized by this application
+	 * @param scene The map that will be visualized by this application
+	 */
+	void setScene(MapScene scene) {
+		this.scene = scene;
+	}
+
+	/**
+	 * Main entry point of the JDEECoVisualizer application.
+	 * @param args Program arguments. Ignored by the application.
+	 */
 	public static void main(String[] args){
 		launch(args);
 	}
 	
 	/**
 	 * Constructs the main menu bar of the application.
-	 * @return  
-	 * @throws IOException 
+	 * @return The main menu bar of the application.
+	 * @throws IOException Unless the application source folder contents have been changed in 
+	 * any way by the user, this exception will never be thrown.
 	 */
-	private MenuBar getMenuBar() throws IOException {
+	private MenuBar createMenuBar() throws IOException {
 		MenuBar menuBar = new MenuBar();
 		Menu fileMenu = new Menu("File");
 		final MenuItem importSceneItem = new MenuItem("Import Scene"); 
@@ -145,140 +148,70 @@ public class Visualizer extends Application {
 	private final GridPane importSceneGrid;
 
 	/**
-	 * Container for map view, or if no map is currently view, a dialog for loading a map.
+	 * Container for map view, or if no map is currently view, for a dialog for loading a map.
 	 */
 	private final Pane mapPane = new StackPane();
 	
-	/**
-	 * Makes sure that when the OK button is clicked (after specifying input XML files for the visualization),
-	 * that the input data is processed and the requested visualizations are shown.
-	 * @author Tom
-	 *
+	/** 
+	 * @return Preferred width of the map view, in pixels.
+	 * @see {@link Visualizer#mapWidth}
 	 */
-	private class OkButtonEventHandler implements EventHandler<Event>{
-		
-		/**
-		 * Field containing the path to the map XML definition file. 
-		 */
-		private final TextField mapField;
-		
-		/**
-		 * The button with which this {@link EventHandler} is associated. 
-		 */
-		private final Button okButton;
-		
-		/**
-		 * Shown when a new scene is being loaded.
-		 */
-		private final ProgressIndicator progIndicator = new ProgressIndicator(-1);
-		
-		/**
-		 * The {@link Pane} which contains {@link OkButtonEventHandler#progIndicator} and {@link OkButtonEventHandler#okButton}.
-		 */
-		final GridPane pane;
-
-		OkButtonEventHandler(TextField mapField, Button okButton,
-				GridPane pane) {
-			super();
-			this.mapField = mapField;
-			this.okButton = okButton;
-			this.pane = pane;
-		}
-				
-		/**
-		 * Adds {@link OkButtonEventHandler#progIndicator} to the {@link OkButtonEventHandler#pane} container.
-		 */
-		private void openProgressIndicator(){
-			int column = GridPane.getColumnIndex(okButton);
-			int row = GridPane.getRowIndex(okButton);				
-			pane.add(progIndicator, column, row);	
-			
-		}
-		
-		/**
-		 * Removes {@link OkButtonEventHandler#progIndicator} from the {@link OkButtonEventHandler#pane} container.
-		 */
-		private void closeProgressIndiciator(){
-			pane.getChildren().remove(progIndicator);
-		}
-
-		@Override
-		public void handle(Event arg0) {
-			if ((mapField.getText() == null) || (mapField.getText().isEmpty())){
-				return;
-			}	
-			final String mapFieldText = mapField.getText();
-
-			new Thread(){
-
-				@Override
-				public void run() {
-					try {
-						Platform.runLater(new Runnable() {
-							
-							@Override
-							public void run() {								
-								openProgressIndicator();
-							}
-						});
-						
-						Path mapXmlFile = Paths.get(mapFieldText);
-						XMLextractor extractor = new XMLextractor(mapXmlFile);
-						final XMLresult parsedXml = extractor.doExtraction();
-						final MapScene scene = new MapScene(parsedXml, mapWidth, mapHeight);
-						Platform.runLater(new Runnable() {
-							
-							@Override
-							public void run() {									
-								Visualizer.this.scene = scene;
-								final ScrollPane mapScrollPane = scene.getMapPane();
-								mapScrollPane.setPrefSize(scene.getTotalWidth(), scene.getTotalHeight());
-								mapPane.getChildren().clear();
-								mapPane.getChildren().add(mapScrollPane);	
-								zoomBar.setDisable(false);
-								closeProgressIndiciator();									
-							}
-						});
-						Thread.sleep(1000);							
-					} catch (InterruptedException | ParserConfigurationException | SAXException | IOException ex){
-						ex.printStackTrace();	
-						System.exit(1);
-					}
-				}											
-			}.start();
-		}		
-		
+	double getMapWidth() {
+		return mapWidth;
 	}
-	
+
+	/**
+	 * @return Preferred height of the map view, in pixels.
+	 * @see {@link Visualizer#mapHeight}
+	 */
+	double getMapHeight() {
+		return mapHeight;
+	}
+
+	/**
+	 * @return Container for map view, or if no map is currently view, for a dialog for loading a map.
+	 * @see {@link Visualizer#mapPane}
+	 */
+	Pane getMapPane() {
+		return mapPane;
+	}
+
 	/**
 	 * Builds the {@link Visualizer#importSceneGrid}.
-	 * @return
+	 * @return The {@link GridPane} to be used for importing new scenes.
 	 */
 	private GridPane createImportSceneGrid(){
-		final GridPane pane = new GridPane();
+		GridPane pane = new GridPane();
+		List<Label> labels = new ArrayList<>();
+		labels.add(new Label("Location of the network definition XML:"));
+		labels.add(new Label("Location of the facilities definition XML:"));
+		labels.add(new Label("Location of the population/plans definition XML:"));
+		List<TextField> fields = new ArrayList<>();
+		List<Button> chooserButtons = new ArrayList<>();
+		for (int i = 0; i < labels.size(); i++){
+			fields.add(new TextField());
+			chooserButtons.add(new Button("Select.."));
+		}
+		for (TextField field : fields){
+			field.setPrefWidth(inputFieldsWidth);
+		}
+		for (int i = 0; i < chooserButtons.size(); i++){
+			Button button = chooserButtons.get(i);
+			TextField field = fields.get(i);
+			button.setOnMouseClicked(new ButtonXmlChooserHandler(stage, field));
+		}
 		int row = 0;
-		Label mapLabel = new Label("Location of the map definition XML:");
-		pane.add(mapLabel, 0, row);
-		final TextField mapField = new TextField();
-		mapField.setPrefWidth(inputFieldsWidth);
-		pane.add(mapField, 1, row);
-		Button fileChooserButton = new Button("Select..");
-		fileChooserButton.setOnMouseClicked(new EventHandler<Event>() {
-
-			@Override
-			public void handle(Event arg0) {
-				FileChooser fileChooser = new FileChooser();
-				fileChooser.setTitle("Open XML File");
-				File res = fileChooser.showOpenDialog(stage);
-				if (res != null){
-					mapField.setText(res.getAbsolutePath().toString());
-				}
-			}
-		});
-		pane.add(fileChooserButton, 2, row);
-		row += 1;
-		final Button okButton = new Button("OK");
-		okButton.setOnMouseClicked(new OkButtonEventHandler(mapField, okButton, pane));								
+		for (int i = 0; i < labels.size(); i++){
+			Label label = labels.get(i);
+			TextField field = fields.get(i);
+			Button button = chooserButtons.get(i);
+			pane.add(label, 0, row);
+			pane.add(field, 1, row);
+			pane.add(button, 2, row);
+			row += 1;
+		}
+		Button okButton = new Button("OK");
+		okButton.setOnMouseClicked(new OkButtonEventHandler(fields, okButton, pane, Visualizer.this));
 		pane.add(okButton, 1, row);
 		pane.setAlignment(Pos.CENTER);
 		pane.setHgap(importSceneGridHGap);
@@ -303,9 +236,9 @@ public class Visualizer extends Application {
 
 	/**
 	 * Constructs the toolbar for zooming in/out the map view.
-	 * @return
+	 * @return The toolbar containing zooming options.
 	 */
-	private HBox getZoomBar(){
+	private HBox createZoomBar(){
 		Button zoomInButton = new Button("Zoom IN");
 		zoomInButton.setOnMouseClicked(new  EventHandler<Event>() {
 
@@ -342,15 +275,24 @@ public class Visualizer extends Application {
 	private final HBox zoomBar;
 	
 	/**
+	 * @return The toolbar containing the zooming options.
+	 * @see {@link Visualizer#zoomBar}
+	 */
+	HBox getZoomBar() {
+		return zoomBar;
+	}
+
+	/**
 	 * The root element of the main {@link Scene} of the application.
 	 */
 	private final VBox vbox = new VBox();
 	
 	/**
 	 * Builds the GUI, should only be called by the JavaFX runtime.
-	 * @throws IOException 
+	 * @throws IOException Unless the application source folder contents have been changed in 
+	 * any way by the user, this exception will never be thrown.
 	 */
-	@Override 
+	@Override
 	public void start(Stage stage) throws IOException {	
 		this.stage = stage;
 		noMapNode.setPrefSize(mapWidth, mapHeight);
@@ -359,7 +301,7 @@ public class Visualizer extends Application {
 		helpLabel.setPadding(new Insets(10, 10, 10, 10));
 		noMapNode.getChildren().add(helpLabel);	
 		mapPane.getChildren().add(noMapNode);
-		MenuBar menuBar = getMenuBar();	
+		MenuBar menuBar = createMenuBar();	
 		vbox.getChildren().clear();
 		vbox.getChildren().addAll(menuBar, mapPane, zoomBar);
 		Scene fxScene = new Scene(vbox, Color.WHITE);
@@ -389,9 +331,12 @@ public class Visualizer extends Application {
 	    stage.show();
 	}
 
-	public Visualizer() throws ParserConfigurationException, SAXException, IOException {		
+	/**
+	 * Initializes some of the panels and tool bars.
+	 */
+	public Visualizer() {		
 		importSceneGrid = createImportSceneGrid();
-		zoomBar = getZoomBar();
+		zoomBar = createZoomBar();
 	}			
 	
 }

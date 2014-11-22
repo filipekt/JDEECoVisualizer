@@ -1,16 +1,30 @@
 package cz.filipekt.jdcv.network;
 
 /**
- * Represents a node in the map.
- * @author Tom
- *
+ * Represents a "node" XML element in the network source file.
  */
 public class MyNode {
 	
+	/**
+	 * The unique id of the node
+	 */
 	private final String id;
+	
+	/**
+	 * x-coordinate of the node
+	 */
 	private final double x;
+	
+	/**
+	 * y-coordinate of the node
+	 */
 	private final double y;
 	
+	/**
+	 * @param id The unique id of the node
+	 * @param x x-coordinate of the node
+	 * @param y y-coordinate of the node
+	 */
 	public MyNode(String id, double x, double y) {
 		super();
 		this.id = id;
@@ -18,18 +32,35 @@ public class MyNode {
 		this.y = y;
 	}
 
+	/**
+	 * @return The unique id of the node
+	 * @see {@link MyNode#id}
+	 */
 	public String getId() {
 		return id;
 	}
 
+	/**
+	 * @return x-coordinate of the node
+	 * @see {@link MyNode#x}
+	 */
 	public double getX() {
 		return x;
 	}
 
+	/**
+	 * @return y-coordinate of the node
+	 * @see {@link MyNode#y}
+	 */
 	public double getY() {
 		return y;
 	}
 
+	/**
+	 * Implements the unique identification of the {@link MyNode} object
+	 * by {@link MyNode#id}
+	 * @see {@link MyNode#hashCode()}
+	 */
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof MyNode){
@@ -40,6 +71,11 @@ public class MyNode {
 		}
 	}
 
+	/**
+	 * Implements the unique identification of the {@link MyNode} object
+	 * by {@link MyNode#id}
+	 * @see {@link MyNode#equals(Object)}
+	 */
 	@Override
 	public int hashCode() {
 		return this.id.hashCode();
