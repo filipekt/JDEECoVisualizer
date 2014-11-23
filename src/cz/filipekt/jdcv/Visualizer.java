@@ -61,6 +61,14 @@ public class Visualizer extends Application {
 	void setScene(MapScene scene) {
 		this.scene = scene;
 	}
+	
+	/**
+	 * @return The map that is being visualized, coupled with some view parameters.
+	 * @see {@link Visualizer#scene}
+	 */
+	MapScene getScene(){
+		return scene;
+	}
 
 	/**
 	 * Main entry point of the JDEECoVisualizer application.
@@ -111,8 +119,9 @@ public class Visualizer extends Application {
 		Menu viewMenu = new Menu("View");
 		final MenuItem zoomPanel = new MenuItem("Zoom Panel");
 		InputStream imageStream = getClass().getResourceAsStream("/resources/checkmark.png");
+//		InputStream imageStream = Files.newInputStream(Paths.get("C:/diplomka/JDEECoVisualizer/resources/checkmark.png"));
 		final ImageView checkBoxImage = new ImageView(new Image(imageStream, 20, 20, true, true));
-		zoomPanel.setGraphic(checkBoxImage);
+		zoomPanel.setGraphic(checkBoxImage);				
 		zoomPanel.setOnAction(new EventHandler<ActionEvent>() {
 			
 			@Override
@@ -197,6 +206,12 @@ public class Visualizer extends Application {
 		for (TextField field : fields){
 			field.setPrefWidth(inputFieldsWidth);
 		}
+		
+//		//TODO remove the following lines
+//		fields.get(0).setText("C:/diplomka/output_network.xml");
+//		fields.get(1).setText("C:/diplomka/output_facilities.xml");
+//		fields.get(2).setText("C:/diplomka/output_plans.xml");
+		
 		for (int i = 0; i < chooserButtons.size(); i++){
 			Button button = chooserButtons.get(i);
 			TextField field = fields.get(i);
@@ -327,7 +342,7 @@ public class Visualizer extends Application {
 					reg.setPrefHeight(arg2.doubleValue());
 				} 
 			}
-		});
+		});			
 	    stage.setScene(fxScene);
 	    stage.setTitle("Map Visualizer");
 	    stage.show();

@@ -5,14 +5,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-import cz.filipekt.jdcv.network.MyLink;
-import cz.filipekt.jdcv.network.MyNode;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
+import cz.filipekt.jdcv.network.MyLink;
+import cz.filipekt.jdcv.network.MyNode;
 
 /**
  * The scene that the {@link Visualizer} will visualize. It contains the map, view parameters, event log etc.
@@ -145,6 +145,18 @@ class MapScene {
 	}
 	
 	/**
+	 * Represents a single person on the map.
+	 */
+	private final Circle person = new Circle(2*radius);
+	
+	/**
+	 * @return {@link Circle} representing a single person on the map.
+	 */
+	Circle getPerson() {
+		return person;
+	}
+
+	/**
 	 * Determines the minimal and maximal x,y coordinates across all of the map nodes.
 	 * @return Array consisting of (minimal x, minimal y, maximal x, maximal y) coordinates of map nodes.
 	 */
@@ -230,6 +242,20 @@ class MapScene {
 		return res;
 	}
 	
+	double transformX(double x){
+		x -= minx;
+		x *= (widthFactor * zoom);
+		x += margin;
+		return x;
+	}
+	
+	double transformY(double y){
+		y -= miny;
+		y *= (heightFactor * zoom);
+		y += margin;
+		return y;
+	}
+	
 	/**
 	 * Updates the collections of {@link Circle} and {@link Line} objects to
 	 * represent the current state of the map view.
@@ -255,6 +281,8 @@ class MapScene {
 		Collection<Node> fxNodesToShow = new HashSet<>();
 		fxNodesToShow.addAll(lines.keySet());
 		fxNodesToShow.addAll(circles.keySet());
+		//TODO remove the following circle
+		fxNodesToShow.add(person);
 		mapGroup.getChildren().addAll(fxNodesToShow);
 	    moveCirclesToFront();	    
 	}

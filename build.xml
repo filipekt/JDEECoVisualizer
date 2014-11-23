@@ -1,62 +1,68 @@
 <project name="JDEECoVisualizer" default="run_and_clean">
 
-  <description>
-The DEECo component model is a novel component model for design and 
-development of Cyber-Physical Systems like software systems embedded in 
-vehicles, systems for smart infrastructure, etc. There are already 
-demonstration implementations of such systems using DEECo. 
-
-The goal of the thesis is to design and develop a visualization tool for data 
-collected from a DEECo-based implementation of a smart infrastructure for 
-e.g. cars. The tool has to be able to visualize the infrastructure, DEECo 
-components together with their internal DEECo knowledge. The tool has to be 
-implemented in Java. 
-  </description>
-
-  <property name="src" value="src"/>
-  <property name="build" value="build"/>
-  <property name="dist"  value="dist"/>
-  <property name="res"  value="resources"/>
-
-  <target name="clean" description="clean up" >
-    <!-- Delete the ${build} and ${dist} directory trees -->
-    <delete dir="${build}"/>
-    <delete dir="${dist}"/>
-  </target>
-
-  <target name="init" depends="clean">
-    <!-- Create the build directory structure used by compile -->
-    <mkdir dir="${build}"/>
-  </target>
-
-  <target name="compile" depends="init" description="compile the source " >
-    <!-- Compile the java code from ${src} into ${build} -->
-    <javac srcdir="${src}" destdir="${build}"/>
-  </target>
-
-  <target name="dist" depends="compile" description="generate the distribution" >
-    <!-- Create the distribution directory -->
-    <mkdir dir="${dist}"/>
-    <!-- Create a manifest specifying the main class -->
-    <manifest file="${build}/MANIFEST.MF">
-      <attribute name="Main-Class" value="cz.filipekt.jdcv.Visualizer" />
-    </manifest>
-    <!-- Put everything in ${build} into the specified jar file -->
-    <jar jarfile="${dist}/${ant.project.name}.jar" manifest="${build}/MANIFEST.MF" >      
-      <fileset dir="${build}" />  
-      <mappedresources>
-        <fileset dir="${res}" />
-        <globmapper from="*" to="${res}/*"/>
-      </mappedresources>
-    </jar>
-  </target>
-  
-  <target name="run" depends="dist">
-    <java jar="${dist}/${ant.project.name}.jar" fork="true" failonerror="true" />
-  </target>
-  
-  <target name="run_and_clean" depends="run">
-    <antcall target="clean" />
-  </target>
+	<description>
+		The DEECo component model is a novel component model for design and 
+		development of Cyber-Physical Systems like software systems embedded in 
+		vehicles, systems for smart infrastructure, etc. There are already 
+		demonstration implementations of such systems using DEECo. 
+		
+		The goal of the thesis is to design and develop a visualization tool for data 
+		collected from a DEECo-based implementation of a smart infrastructure for 
+		e.g. cars. The tool has to be able to visualize the infrastructure, DEECo 
+		components together with their internal DEECo knowledge. The tool has to be 
+		implemented in Java. 
+	</description>
+	
+	<property name="src" value="src" />
+	<property name="bin" value="bin" />
+	<property name="build" value="build" />
+	<property name="dist"  value="dist" />
+	<property name="res"  value="resources" />
+	
+	<target name="clean" description="clean up" >
+		<!-- Delete the ${build}, ${dist} and ${bin} directory trees -->
+		<delete dir="${build}" />
+		<delete dir="${dist}" />
+		<delete dir="${bin}" />
+	</target>
+	
+	<target name="init" depends="clean">
+		<!-- Create the build directory structure used by compile -->
+		<mkdir dir="${build}"/>
+	</target>
+	
+	<target name="compile" depends="init" description="compile the source " >
+		<!-- Compile the java code from ${src} into ${build} -->
+		<javac srcdir="${src}" destdir="${build}"/>
+	</target>
+	
+	<target name="dist" depends="compile" description="generate the distribution" >
+		<!-- Create the distribution directory -->
+		<mkdir dir="${dist}"/>
+		
+		<!-- Create a manifest specifying the main class -->
+		<manifest file="${build}/MANIFEST.MF">
+			<attribute name="Main-Class" value="cz.filipekt.jdcv.Visualizer" />
+		</manifest>
+		
+		<!-- Put everything in ${build} into the specified jar file -->
+		<jar jarfile="${dist}/${ant.project.name}.jar" manifest="${build}/MANIFEST.MF" >      
+			<fileset dir="${build}" />  
+			<mappedresources>
+				<fileset dir="${res}" />
+				<globmapper from="*" to="${res}/*"/>
+			</mappedresources>
+		</jar>
+	</target>
+	  
+	<target name="run" depends="dist">
+		<!-- Run the jar file previously built in the dist target. -->
+		<java jar="${dist}/${ant.project.name}.jar" fork="true" failonerror="true" />
+	</target>
+	  
+	<target name="run_and_clean" depends="run">
+		<!-- After running the program, clean the mess. -->
+		<antcall target="clean" />
+	</target>
   
 </project>
