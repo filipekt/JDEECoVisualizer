@@ -8,6 +8,7 @@ import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
 
+import cz.filipekt.jdcv.exceptions.InvalidAttributeValueException;
 import cz.filipekt.jdcv.network.MyNode;
 
 /**

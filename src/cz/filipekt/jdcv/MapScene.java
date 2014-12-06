@@ -1,16 +1,18 @@
 package cz.filipekt.jdcv;
 
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
-import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
+import javafx.scene.shape.Shape;
+import javafx.scene.transform.Scale;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;
 
@@ -72,52 +74,11 @@ class MapScene {
 	 * fits nicely into the window of preferred height {@link MapScene#preferredMapHeight}.
 	 */
 	private final double heightFactor;
-	
-	/**
-	 * Preferred width of the map view, in pixels. Does not include the margins.
-	 */
-	private final double preferredMapWidth;
-	
-	/**
-	 * Preferred height of the map view, in pixels. Does not include the margins.
-	 */
-	private final double preferredMapHeight;
-	
-	/**
-	 * Margin size (in pixels) that will be placed on the map view borders.
-	 */
-	private final double margin = 20.0;
-	
-	/**
-	 * The total preferred width of the network view, including margins both on left and right side.
-	 */
-	private final double totalWidth;
-	
-	/**
-	 * @return The total preferred width of the network view, including margins both on left and right side.
-	 * @see {@link MapScene#totalWidth}
-	 */
-	public double getTotalWidth() {
-		return totalWidth;
-	}
-	
-	/**
-	 * The total preferred height of the network view, including margins both on top and bottom.
-	 */
-	private final double totalHeight;
-
-	/**
-	 * @return The total preferred height of the network view, including margins both on top and bottom.
-	 * @see {@link MapScene#totalHeight}
-	 */
-	public double getTotalHeight() {
-		return totalHeight;
-	}
 
 	/**
 	 * Radius (in pixels) of the {@link Circle} objects representing the network nodes.
 	 */
-	private final double radius = 5.0;
+	private final double nodeRadius = 5.0;
 	
 	/**
 	 * Zoom factor used to view the map, relative to the preferred size defined 
@@ -126,35 +87,17 @@ class MapScene {
 	private double zoom = 1.0;
 	
 	/**
-	 * Container for the network(map) components such as nodes and links. 
-	 * Holds {@link Circle}, {@link Line} etc. instances, which correspond to the network elements. 
-	 */
-	private final Group mapGroup = new Group();
-	
-	/**
 	 * Scrollable container for {@link MapScene#mapGroup}
 	 */
-	private final ScrollPane mapPane = new ScrollPane(mapGroup);
+	private final ScrollPane mapPane;
 
 	/**
 	 * @return Scrollable container for the network(map) components such as nodes and links.
 	 * @see {@link MapScene#mapPane}
 	 */
-	public ScrollPane getMapPane() {
+	ScrollPane getMapPane() {
 		return mapPane;
-	}
-	
-	/**
-	 * Represents a single person on the map.
-	 */
-	private final Circle person = new Circle(2*radius);
-	
-	/**
-	 * @return {@link Circle} representing a single person on the map.
-	 */
-	Circle getPerson() {
-		return person;
-	}
+	}	
 
 	/**
 	 * Determines the minimal and maximal x,y coordinates across all of the map nodes.
@@ -196,12 +139,12 @@ class MapScene {
 			double x = node.getX();
 			x -= minx;
 			x *= (widthFactor * zoom);
-			x += margin;
+			x += (constantMargin / 2);
 			double y = node.getY();
 			y -= miny;
 			y *= (heightFactor * zoom);
-			y += margin;
-			Circle circle = new Circle(x, y, radius, Color.RED);
+			y += (constantMargin / 2);
+			Circle circle = new Circle(x, y, nodeRadius, Color.RED);
 			res.put(circle, node);
 		}
 		return res;
@@ -219,116 +162,174 @@ class MapScene {
 		Map<Node,MyLink> res = new HashMap<>();
 		for (MyLink link : links.values()){
 			double fromx = link.getFrom().getX();
-			fromx -= minx;
-			fromx *= widthFactor * zoom;
-			fromx += margin;
+			fromx = transformX(fromx);
 			double fromy = link.getFrom().getY();
-			fromy -= miny;
-			fromy *= heightFactor * zoom;
-			fromy += margin;
+			fromy = transformY(fromy);
 			double tox = link.getTo().getX();
-			tox -= minx;
-			tox *= widthFactor * zoom;
-			tox += margin;
+			tox = transformX(tox);
 			double toy = link.getTo().getY();
-			toy -= miny;
-			toy *= heightFactor * zoom;
-			toy += margin;
+			toy = transformY(toy);
 			Line line = new Line(fromx, fromy, tox, toy);
-			line.setStroke(Color.BLACK);
-			line.setStrokeWidth(3);		
+			line.setStroke(linkDefaultColor);
+			line.setStrokeWidth(linkWidth);		
 			res.put(line, link);
 		}
 		return res;
 	}
 	
+	/**
+	 * Width of the {@link Line} instances that represent links, in pixels.
+	 */
+	private final double linkWidth = 1.5;
+	
+	/**
+	 * Default color of the {@link Line} instances that represent links
+	 */
+	private final Paint linkDefaultColor = Color.BLACK;
+	
+	/**
+	 * @param x An x-coordinate as given in an XML element such event, link, etc. 
+	 * @return The x-coordinate converted to the value used in the map visualization, where the
+	 * coordinates correspond to the actual pixels on the screen (before zooming). 
+	 */
 	double transformX(double x){
 		x -= minx;
 		x *= (widthFactor * zoom);
-		x += margin;
+		x += (constantMargin / 2);
 		return x;
 	}
 	
+	/**
+	 * @param y A y-coordinate as given in an XML element such event, link, etc.
+	 * @return The y-coordinate converted to the value used in the map visualization, where the
+	 * coordinates correspond to the actual pixels on the screen (before zooming). 
+	 */
 	double transformY(double y){
 		y -= miny;
 		y *= (heightFactor * zoom);
-		y += margin;
+		y += (constantMargin / 2);
 		return y;
 	}
 	
 	/**
-	 * Updates the collections of {@link Circle} and {@link Line} objects to
-	 * represent the current state of the map view.
+	 * {@link Shape} instances representing individual people (as they move through the map).
 	 */
-	private void updateCirclesAndLines(){
+	private final Set<Shape> personShapes;
+	
+	/**
+	 * Radius (in pixels) of the {@link Circle} objects representing the people on the map.
+	 */
+	private final double personRadius = 2.0;
+	
+	/**
+	 * @return Radius (in pixels) of the {@link Circle} objects representing the people on the map.
+	 * @see {@link MapScene#personRadius}
+	 */
+	double getPersonRadius() {
+		return personRadius;
+	}
+	
+	/**
+	 * Updates the collections of {@link Shape} instances that represent the map elements,
+	 * both mobile (vehicles) and immobile (nodes,links).
+	 * Also, the {@link MapScene#mapContainer} holding these {@link Shape} instances for
+	 * visualizing purposes is updated with the new values.
+	 */
+	void update(){
 		Map<Node,MyNode> newCircles = generateCircles();
 		Map<Node,MyLink> newLines = generateLines();
 		circles.clear();
 		circles.putAll(newCircles);
 		lines.clear();
 		lines.putAll(newLines);
+		mapContainer.getChildren().clear();
+		mapContainer.getChildren().addAll(lines.keySet());
+		mapContainer.getChildren().addAll(circles.keySet());
+		mapContainer.getChildren().addAll(personShapes);
+	    moveShapesToFront();
 	}
 	
 	/**
-	 * Should be called after changing the contents of {@link Visualizer#lines} and 
-	 * {@link Visualizer#circles}. It makes sure the map view is updated and reloaded accordingly. 
-	 * 
-	 * TODO: is always called immediately after {@link Visualizer#updateCirclesAndLines()}, 
-	 * so these should be joined into a single method.
+	 * Sets the visibility of the {@link Shape} instances representing the map nodes,
+	 * depending on the value of the parameter.
+	 * @param visible If true, it makes the {@link Shape} instances representing the map nodes visible.
+	 * Otherwise it makes them invisible.
 	 */
-	private void reloadFxNodes(){
-		mapGroup.getChildren().clear();
-		Collection<Node> fxNodesToShow = new HashSet<>();
-		fxNodesToShow.addAll(lines.keySet());
-		fxNodesToShow.addAll(circles.keySet());
-		//TODO remove the following circle
-		fxNodesToShow.add(person);
-		mapGroup.getChildren().addAll(fxNodesToShow);
-	    moveCirclesToFront();	    
-	}
-	
-	/**
-	 * Ensures that the circles representing "node" elements are drawn in the 
-	 * foreground with respect to the lines representing "link" elements.
-	 */
-	private void moveCirclesToFront(){
+	void setNodesVisible(boolean visible){
 		for (Node node : circles.keySet()){
-			((Circle)node).toFront();
+			node.setVisible(visible);
 		}
 	}
 	
 	/**
-	 * Zooms in or zooms out the map view. Ensures that the map is view reloaded with the new zoom value.
-	 * @param factor This value will be added to the current zoom factor {@link MapScene#zoom}
+	 * Sets the visibility of the {@link Shape} instances representing the map links,
+	 * depending on the value of the parameter.
+	 * @param visible If true, it makes the {@link Shape} instances representing the map links visible.
+	 * Otherwise it makes them invisible.
+	 */
+	void setLinksVisible(boolean visible){
+		for (Node node : lines.keySet()){
+			node.setVisible(visible);
+		}
+	}
+	
+	/**
+	 * Ensures that the {@link Shape} instances making up the map are drawn in the correct
+	 * background-foreground manner, for example that there is no incorrect overlapping 
+	 */
+	private void moveShapesToFront(){
+		for (Node node : circles.keySet()){
+			((Circle)node).toFront();
+		}
+		for (Shape person : personShapes){
+			person.toFront();
+		}
+	}
+	
+	/**
+	 * Zooms in or zooms out the map view.
+	 * @param factor By this value the current zoom factor {@link MapScene#zoom} will be multiplied.
 	 */
 	void changeZoom(double factor){
-		zoom += factor;
-		updateCirclesAndLines();
-		reloadFxNodes();
+		zoom *= factor;				
+		Scale scale = new Scale(factor, factor, 0, 0);		
+		mapContainer.getTransforms().add(scale);
+		mapContainer.setPrefHeight(mapContainer.getPrefHeight() * factor);
+		mapContainer.setPrefWidth(mapContainer.getPrefWidth() * factor);
 	}
+	
+	/**
+	 * Container for the {@link Node} instances that represent the map elements, 
+	 * such as links, nodes, vehicles.
+	 */
+	private final Pane mapContainer = new Pane();
+	
+	/**
+	 * Double of the width of the white margin that is added on each side of the map.
+	 */
+	private final double constantMargin = 25.0;
 	
 	/**
 	 * @param nodes The network nodes. Keys = node IDs, values = {@link MyNode} node representations.
 	 * @param links The network links. Keys = link IDs, values = {@link MyLink} link representations.
 	 * @param mapWidth Preferred width of the map view, in pixels
 	 * @param mapHeight Preferred height of the map view, in pixels
+	 * @param shapes {@link Shape} instances representing individual people
 	 */
-	public MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight) {
+	MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight, Set<Shape> shapes) {
+		this.personShapes = shapes;
 		this.nodes = nodes;
 		this.links = links;
-		this.preferredMapWidth = mapWidth;
-		this.preferredMapHeight = mapHeight;
-		this.totalWidth = preferredMapWidth + (2 * margin);
-		this.totalHeight = preferredMapHeight + (2 * margin);
 		double[] borders = getMapBorders();
 		this.minx = borders[0];
 		this.miny = borders[1];
 		this.maxx = borders[2];
 		this.maxy = borders[3];
-		widthFactor = mapWidth / (maxx - minx);
-		heightFactor = mapHeight / (maxy - miny);
-		updateCirclesAndLines();
-		reloadFxNodes();
+		widthFactor = (mapWidth - constantMargin) / (maxx - minx);
+		heightFactor = (mapHeight - constantMargin) / (maxy - miny);
+		mapPane = new ScrollPane();		
+		mapPane.setContent(mapContainer);
+		mapContainer.setPrefSize(mapWidth, mapHeight);
 	}
 
 }

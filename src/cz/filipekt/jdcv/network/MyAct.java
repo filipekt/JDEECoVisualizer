@@ -37,9 +37,9 @@ public class MyAct {
 	private final MyLink link;
 	
 	/**
-	 * The facility where this activity will be performed.
+	 * ID of the facility where this activity will be performed.
 	 */
-	private final MyFacility facility;
+	private final String facility;
 	
 	/**
 	 * Defines when the activity should start
@@ -63,13 +63,13 @@ public class MyAct {
 	 * @param x The x coordinate of the activity.
 	 * @param y The y coordinate of the activity.
 	 * @param link The link where this activity will be performed.
-	 * @param facility The facility where this activity will be performed.
+	 * @param facility ID of the facility where this activity will be performed.
 	 * @param startTime when the activity should start
 	 * @param endTime when the activity should end
 	 * @param maxDur the maximum duration of the activity
 	 */
 	public MyAct(String type, double x, double y, MyLink link,
-			MyFacility facility, Date startTime, Date endTime, Date maxDur) {
+			String facility, Date startTime, Date endTime, Date maxDur) {
 		this.type = type;
 		this.x = x;
 		this.y = y;
@@ -109,9 +109,9 @@ public class MyAct {
 	}
 
 	/**
-	 * @return The facility where this activity will be performed.
+	 * @return ID of the facility where this activity will be performed.
 	 */
-	public MyFacility getFacility() {
+	public String getFacility() {
 		return facility;
 	}
 

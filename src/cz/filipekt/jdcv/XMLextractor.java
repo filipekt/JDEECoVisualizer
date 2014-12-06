@@ -16,7 +16,7 @@ import org.xml.sax.XMLReader;
 /**
  * Takes care of loading and parsing the input XML file. 
  */
-public class XMLextractor {
+class XMLextractor {
 
 	/**
 	 * Input XML file

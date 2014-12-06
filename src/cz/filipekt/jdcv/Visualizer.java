@@ -2,11 +2,10 @@ package cz.filipekt.jdcv;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -18,6 +17,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
@@ -79,6 +80,11 @@ public class Visualizer extends Application {
 	}
 	
 	/**
+	 * Width and height of the check mark shown next to the items in the View menu.
+	 */
+	private final double checkBoxSize = 18.0;
+	
+	/**
 	 * Constructs the main menu bar of the application.
 	 * @return The main menu bar of the application.
 	 * @throws IOException Unless the application source folder contents have been changed in 
@@ -112,15 +118,20 @@ public class Visualizer extends Application {
 				closeThisSceneItem.setDisable(true);
 				importSceneItem.setDisable(false);	
 				zoomBar.setDisable(true);
+				graphicsColumn.setDisable(true);
 			}
 		});
 		fileMenu.getItems().addAll(importSceneItem, closeThisSceneItem);
 		Menu editMenu = new Menu("Edit");
 		Menu viewMenu = new Menu("View");
 		final MenuItem zoomPanel = new MenuItem("Zoom Panel");
+		
 		InputStream imageStream = getClass().getResourceAsStream("/resources/checkmark.png");
 //		InputStream imageStream = Files.newInputStream(Paths.get("C:/diplomka/JDEECoVisualizer/resources/checkmark.png"));
-		final ImageView checkBoxImage = new ImageView(new Image(imageStream, 20, 20, true, true));
+		InputStream imageStream2 = getClass().getResourceAsStream("/resources/checkmark.png");
+//		InputStream imageStream2 = Files.newInputStream(Paths.get("C:/diplomka/JDEECoVisualizer/resources/checkmark.png"));
+		
+		final ImageView checkBoxImage = new ImageView(new Image(imageStream, checkBoxSize, checkBoxSize, true, true));
 		zoomPanel.setGraphic(checkBoxImage);				
 		zoomPanel.setOnAction(new EventHandler<ActionEvent>() {
 			
@@ -143,7 +154,32 @@ public class Visualizer extends Application {
 			
 			private boolean barIsShown = true;
 		});
-		viewMenu.getItems().addAll(zoomPanel);
+		final MenuItem graphicsPanel = new MenuItem("Graphics Panel");		
+		final ImageView checkBoxImage2 = new ImageView(new Image(imageStream2, checkBoxSize, checkBoxSize, true, true));
+		graphicsPanel.setGraphic(checkBoxImage2);
+		graphicsPanel.setOnAction(new EventHandler<ActionEvent>() {
+			
+			@Override
+			public void handle(ActionEvent arg0) {
+				if (panelShown){
+					if (middleRow.getChildren().contains(graphicsColumn)){
+						middleRow.getChildren().remove(graphicsColumn);
+						panelShown = false;
+						graphicsPanel.setGraphic(null);
+					}
+				} else {
+					if (!middleRow.getChildren().contains(graphicsColumn)){
+						middleRow.getChildren().add(0, graphicsColumn);
+						panelShown = true;
+						graphicsPanel.setGraphic(checkBoxImage2);
+					}
+				}
+			}
+			
+			private boolean panelShown = true;
+			
+		});
+		viewMenu.getItems().addAll(zoomPanel, graphicsPanel);
 		menuBar.getMenus().addAll(fileMenu, editMenu, viewMenu);
 		return menuBar;
 	}
@@ -186,6 +222,19 @@ public class Visualizer extends Application {
 	Pane getMapPane() {
 		return mapPane;
 	}
+	
+	/**
+	 * Timeline used for animation of the simulation output 
+	 */
+	private final Timeline timeLine = new Timeline();
+
+	/**
+	 * @return Timeline used for animation of the simulation output
+	 * @see {@link Visualizer#timeLine}
+	 */
+	public Timeline getTimeLine() {
+		return timeLine;
+	}
 
 	/**
 	 * Builds the {@link Visualizer#importSceneGrid}.
@@ -195,8 +244,7 @@ public class Visualizer extends Application {
 		GridPane pane = new GridPane();
 		List<Label> labels = new ArrayList<>();
 		labels.add(new Label("Location of the network definition XML:"));
-		labels.add(new Label("Location of the facilities definition XML:"));
-		labels.add(new Label("Location of the population/plans definition XML:"));
+		labels.add(new Label("Location of the event log:"));
 		List<TextField> fields = new ArrayList<>();
 		List<Button> chooserButtons = new ArrayList<>();
 		for (int i = 0; i < labels.size(); i++){
@@ -207,10 +255,9 @@ public class Visualizer extends Application {
 			field.setPrefWidth(inputFieldsWidth);
 		}
 		
-//		//TODO remove the following lines
-//		fields.get(0).setText("C:/diplomka/output_network.xml");
-//		fields.get(1).setText("C:/diplomka/output_facilities.xml");
-//		fields.get(2).setText("C:/diplomka/output_plans.xml");
+		// The following 2 lines are used for debugging
+		fields.get(0).setText("C:/diplomka/output_network.xml");
+		fields.get(1).setText("C:/diplomka/events.xml");
 		
 		for (int i = 0; i < chooserButtons.size(); i++){
 			Button button = chooserButtons.get(i);
@@ -227,8 +274,18 @@ public class Visualizer extends Application {
 			pane.add(button, 2, row);
 			row += 1;
 		}
+		
+		Label durationLabel = new Label("Target duration (seconds):");
+		ComboBox<Integer> durationsBox = new ComboBox<>();
+		durationsBox.setEditable(false);
+		durationsBox.getItems().addAll(10, 30, 60, 120, 300, 3600);
+		durationsBox.setValue(60);
+		pane.add(durationLabel, 0, row);
+		pane.add(durationsBox, 1, row);		
+		row += 1;
+		
 		Button okButton = new Button("OK");
-		okButton.setOnMouseClicked(new OkButtonEventHandler(fields, okButton, pane, Visualizer.this));
+		okButton.setOnMouseClicked(new SceneBuilder(fields, okButton, pane, Visualizer.this, durationsBox));
 		pane.add(okButton, 1, row);
 		pane.setAlignment(Pos.CENTER);
 		pane.setHgap(importSceneGridHGap);
@@ -262,7 +319,7 @@ public class Visualizer extends Application {
 			@Override
 			public void handle(Event arg0) {
 				if (scene != null){
-					scene.changeZoom(0.2);
+					scene.changeZoom(1.2);
 				}
 			}
 		});
@@ -272,7 +329,7 @@ public class Visualizer extends Application {
 			@Override
 			public void handle(Event arg0) {
 				if (scene != null){
-					scene.changeZoom(-0.2);
+					scene.changeZoom(1/1.2);
 				}
 			}
 		});
@@ -305,6 +362,71 @@ public class Visualizer extends Application {
 	private final VBox vbox = new VBox();
 	
 	/**
+	 * @return Builds and returns the column, shown on the left side of the map, containing various graphics options
+	 */
+	private VBox createGraphicsColumn(){
+		VBox panel = new VBox();
+		panel.setDisable(true);
+		panel.setAlignment(Pos.TOP_LEFT);
+		final CheckBox showNodesBox = new CheckBox("Show nodes");
+		showNodesBox.setSelected(true);
+		showNodesBox.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent arg0) {
+				if (scene != null){
+					scene.setNodesVisible(showNodesBox.isSelected());
+				}
+			}
+		});
+		panel.getChildren().add(showNodesBox);
+		final CheckBox showLinksBox = new CheckBox("Show links");
+		showLinksBox.setSelected(true);
+		showLinksBox.setOnAction(new EventHandler<ActionEvent>() {
+			
+			@Override
+			public void handle(ActionEvent arg0) {
+				if (scene != null){
+					scene.setLinksVisible(showLinksBox.isSelected());
+				}
+			}
+		});
+		panel.getChildren().add(showLinksBox);
+		VBox.setMargin(showNodesBox, new Insets(2 * graphicsItemsMargin, 0, graphicsItemsMargin, 2 * graphicsItemsMargin));
+		VBox.setMargin(showLinksBox, new Insets(graphicsItemsMargin, 0, graphicsItemsMargin, 2 * graphicsItemsMargin));
+		return panel;
+	}
+	
+	/**
+	 * The stripe of the application view that contains the {@link Visualizer#graphicsColumn},
+	 * {@link MapScene#mapPane} and others
+	 */
+	private final HBox middleRow = new HBox();
+	
+	/**
+	 * The column, shown on the left side of the map, containing various graphics options
+	 */
+	private final VBox graphicsColumn;
+	
+	/**
+	 * @return The column, shown on the left side of the map, containing various graphics options
+	 * @see {@link Visualizer#graphicsColumn}
+	 */
+	VBox getGraphicsColumn(){
+		return graphicsColumn;
+	}
+	
+	/**
+	 * Preferred width of the {@link Visualizer#graphicsColumn}
+	 */
+	private final double graphicsColumnWidth = 200.0;
+	
+	/**
+	 * Margin of the elements inside the {@link Visualizer#graphicsColumn}
+	 */
+	private final double graphicsItemsMargin = 10;
+	
+	/**
 	 * Builds the GUI, should only be called by the JavaFX runtime.
 	 * @throws IOException Unless the application source folder contents have been changed in 
 	 * any way by the user, this exception will never be thrown.
@@ -318,9 +440,13 @@ public class Visualizer extends Application {
 		helpLabel.setPadding(new Insets(10, 10, 10, 10));
 		noMapNode.getChildren().add(helpLabel);	
 		mapPane.getChildren().add(noMapNode);
+		
+		graphicsColumn.setPrefWidth(graphicsColumnWidth);
+		graphicsColumn.setMinWidth(graphicsColumnWidth);
+		middleRow.getChildren().addAll(graphicsColumn, mapPane);
 		MenuBar menuBar = createMenuBar();	
 		vbox.getChildren().clear();
-		vbox.getChildren().addAll(menuBar, mapPane, zoomBar);
+		vbox.getChildren().addAll(menuBar, middleRow, zoomBar);
 		Scene fxScene = new Scene(vbox, Color.WHITE);
 		fxScene.heightProperty().addListener(new ChangeListener<Number>() {
 
@@ -329,6 +455,15 @@ public class Visualizer extends Application {
 					Number arg1, Number arg2) {
 				double diff = arg2.doubleValue() - arg1.doubleValue();
 				mapPane.setPrefHeight(mapPane.getPrefHeight() + diff);			
+			}
+		});
+		fxScene.widthProperty().addListener(new ChangeListener<Number>() {
+
+			@Override
+			public void changed(ObservableValue<? extends Number> arg0,
+					Number arg1, Number arg2) {
+				double diff = arg2.doubleValue() - arg1.doubleValue();
+				mapPane.setPrefWidth(mapPane.getPrefWidth() + diff);
 			}
 		});
 		mapPane.heightProperty().addListener(new ChangeListener<Number>() {
@@ -343,6 +478,18 @@ public class Visualizer extends Application {
 				} 
 			}
 		});			
+		mapPane.widthProperty().addListener(new ChangeListener<Number>() {
+
+			@Override
+			public void changed(ObservableValue<? extends Number> arg0,
+					Number arg1, Number arg2) {
+				Node child = mapPane.getChildren().get(0);
+				if (child instanceof Region){
+					Region reg = (Region)child;
+					reg.setPrefWidth(arg2.doubleValue());
+				}
+			}
+		});
 	    stage.setScene(fxScene);
 	    stage.setTitle("Map Visualizer");
 	    stage.show();
@@ -354,6 +501,7 @@ public class Visualizer extends Application {
 	public Visualizer() {		
 		importSceneGrid = createImportSceneGrid();
 		zoomBar = createZoomBar();
+		graphicsColumn = createGraphicsColumn();
 	}			
 	
 }

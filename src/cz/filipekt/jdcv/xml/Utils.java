@@ -2,6 +2,8 @@ package cz.filipekt.jdcv.xml;
 
 import org.xml.sax.SAXException;
 
+import cz.filipekt.jdcv.exceptions.MandatoryAttributeNotFoundException;
+
 /**
  * Contains static utility methods for use inside the package.
  */

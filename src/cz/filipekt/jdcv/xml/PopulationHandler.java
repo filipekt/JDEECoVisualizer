@@ -13,8 +13,9 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import cz.filipekt.jdcv.exceptions.InvalidAttributeValueException;
+import cz.filipekt.jdcv.exceptions.LinkNotFoundException;
 import cz.filipekt.jdcv.network.MyAct;
-import cz.filipekt.jdcv.network.MyFacility;
 import cz.filipekt.jdcv.network.MyLeg;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyPerson;
@@ -315,18 +316,10 @@ public class PopulationHandler extends DefaultHandler {
 	private final Map<String,MyLink> links;
 	
 	/**
-	 * The facilities definitions, previously parsed from a separate XML file.
-	 */
-	private final Map<String,MyFacility> facilities;
-	
-	/**
 	 * @param links The links definitions, previously parsed from a separate XML file.
-	 * @param facilities The facilities definitions, previously parsed from a separate XML file.
 	 */
-	public PopulationHandler(Map<String, MyLink> links,
-			Map<String, MyFacility> facilities) {
+	public PopulationHandler(Map<String, MyLink> links) {
 		this.links = links;
-		this.facilities = facilities;
 	}
 
 	/**
@@ -511,10 +504,6 @@ public class PopulationHandler extends DefaultHandler {
 			}
 		}
 		String facilityVal = attributes.getValue(actFacilityName);
-		MyFacility facility = null;
-		if (Utils.checkNonNullAndNonEmpty(facilityVal)){
-			facility = facilities.get(facilityVal);
-		}
 		String startTimeVal = attributes.getValue(actStartTimeName);
 		Date startTime = null;
 		if (Utils.checkNonNullAndNonEmpty(startTimeVal)){
@@ -542,7 +531,7 @@ public class PopulationHandler extends DefaultHandler {
 				throw new SAXException(new InvalidAttributeValueException());
 			}
 		}
-		MyAct act = new MyAct(typeVal, x, y, link, facility, startTime, endTime, maxDur);
+		MyAct act = new MyAct(typeVal, x, y, link, facilityVal, startTime, endTime, maxDur);
 		currentActivities.add(act);
 	}
 	
