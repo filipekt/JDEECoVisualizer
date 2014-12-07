@@ -4,8 +4,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import javafx.animation.Timeline;
 import javafx.scene.Node;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.effect.BoxBlur;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
@@ -78,7 +80,12 @@ class MapScene {
 	/**
 	 * Radius (in pixels) of the {@link Circle} objects representing the network nodes.
 	 */
-	private final double nodeRadius = 5.0;
+	private final double nodeRadius = 4.0;
+	
+	/**
+	 * Color of the {@link Circle} objects representing the network nodes.
+	 */
+	private final Paint nodeColor = Color.FIREBRICK;
 	
 	/**
 	 * Zoom factor used to view the map, relative to the preferred size defined 
@@ -144,7 +151,8 @@ class MapScene {
 			y -= miny;
 			y *= (heightFactor * zoom);
 			y += (constantMargin / 2);
-			Circle circle = new Circle(x, y, nodeRadius, Color.RED);
+			Circle circle = new Circle(x, y, nodeRadius, nodeColor);
+			circle.setEffect(new BoxBlur());
 			res.put(circle, node);
 		}
 		return res;
@@ -185,7 +193,7 @@ class MapScene {
 	/**
 	 * Default color of the {@link Line} instances that represent links
 	 */
-	private final Paint linkDefaultColor = Color.BLACK;
+	private final Paint linkDefaultColor = Color.SILVER;
 	
 	/**
 	 * @param x An x-coordinate as given in an XML element such event, link, etc. 
@@ -219,7 +227,7 @@ class MapScene {
 	/**
 	 * Radius (in pixels) of the {@link Circle} objects representing the people on the map.
 	 */
-	private final double personRadius = 2.0;
+	private final double personRadius = 1.5;
 	
 	/**
 	 * @return Radius (in pixels) of the {@link Circle} objects representing the people on the map.
@@ -227,6 +235,32 @@ class MapScene {
 	 */
 	double getPersonRadius() {
 		return personRadius;
+	}
+	
+	/**
+	 * Color of the {@link Circle} objects representing the people on the map.
+	 */
+	private final Paint personColor = Color.LIME;
+	
+	/**
+	 * @return Color of the {@link Circle} objects representing the people on the map.
+	 * @see {@link MapScene#personColor}
+	 */
+	Paint getPersonColor() {
+		return personColor;
+	}
+
+	/**
+	 * Timeline used for animation of the simulation output 
+	 */
+	private final Timeline timeLine = new Timeline();
+
+	/**
+	 * @return Timeline used for animation of the simulation output
+	 * @see {@link Visualizer#timeLine}
+	 */
+	public Timeline getTimeLine() {
+		return timeLine;
 	}
 	
 	/**
@@ -330,6 +364,7 @@ class MapScene {
 		mapPane = new ScrollPane();		
 		mapPane.setContent(mapContainer);
 		mapContainer.setPrefSize(mapWidth, mapHeight);
+		mapContainer.setId("mapContainer");
 	}
 
 }

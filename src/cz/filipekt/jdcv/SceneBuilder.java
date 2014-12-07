@@ -19,7 +19,6 @@ import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
-import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Shape;
 import javafx.util.Duration;
@@ -186,12 +185,12 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 				visualizer.getZoomBar().setDisable(false);
 				visualizer.getGraphicsColumn().setDisable(false);
 				closeProgressIndiciator();
-				visualizer.getTimeLine().getKeyFrames().addAll(keyFrames);
-				visualizer.getTimeLine().play();
+				scene.getTimeLine().getKeyFrames().addAll(keyFrames);
+				scene.getTimeLine().play();
 			}
 		});				
 	}
-	
+		
 	/**
 	 * Given the {@link CheckPointDatabase}, this method converts its contents into the format
 	 * specified by JavaFX {@link Timeline} animation model. The {@code shapes} collection is 
@@ -203,32 +202,32 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	 */
 	private List<KeyFrame> buildKeyFrames(CheckPointDatabase cdb, Set<Shape> shapes, MapScene scene){
 		List<KeyFrame> frames = new ArrayList<>();
-		for (final String vehicleID : cdb.getKeys()){
-			List<CheckPoint> checkPoints = cdb.getList(vehicleID);
-			Circle vehicleShape = buildVehicleShape(checkPoints, scene);
-			if (vehicleShape == null){
+		for (String personID : cdb.getKeys()){
+			List<CheckPoint> checkPoints = cdb.getList(personID);
+			Circle personShape = buildPersonShape(checkPoints, scene);
+			if (personShape == null){
 				continue;
 			}
-			vehicleShape.setVisible(false);
+			personShape.setVisible(false);
 			for (CheckPoint cp : checkPoints){
 				Duration actualTime = new Duration(cdb.transformTime(cp.getTime(), durationBox.getValue()));
 				KeyFrame frame = null;
 				if (cp.getType().equals(Type.POSITION_DEF)){
 					double actualX = scene.transformX(cp.getX());
 					double actualY = scene.transformY(cp.getY());
-					KeyValue xVal = new KeyValue(vehicleShape.centerXProperty(), actualX);
-					KeyValue yVal = new KeyValue(vehicleShape.centerYProperty(), actualY);
+					KeyValue xVal = new KeyValue(personShape.centerXProperty(), actualX);
+					KeyValue yVal = new KeyValue(personShape.centerYProperty(), actualY);
 					frame = new KeyFrame(actualTime, xVal, yVal);					
 				} else if (cp.getType().equals(Type.PERSON_ENTERS) || cp.getType().equals(Type.PERSON_LEAVES)){
 					boolean personEnters = cp.getType().equals(Type.PERSON_ENTERS);
-					KeyValue visibleVal = new KeyValue(vehicleShape.visibleProperty(), personEnters);
+					KeyValue visibleVal = new KeyValue(personShape.visibleProperty(), personEnters);
 					frame = new KeyFrame(actualTime, visibleVal);
 				} else {
 					throw new UnsupportedOperationException();
 				}
 				frames.add(frame);
 			}
-			shapes.add(vehicleShape);
+			shapes.add(personShape);
 		}
 		return frames;
 	}
@@ -239,7 +238,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	 * @param mapScene A {@link MapScene} instance that will hold the returned {@link Circle} instance.
 	 * @return A {@link Circle} that represents a moving person/vehicle on the map.
 	 */
-	private Circle buildVehicleShape(List<CheckPoint> checkPoints, MapScene mapScene){
+	private Circle buildPersonShape(List<CheckPoint> checkPoints, MapScene mapScene){
 		double x = Double.MIN_VALUE;
 		double y = Double.MIN_VALUE;
 		for (CheckPoint cp : checkPoints){
@@ -252,7 +251,8 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		if (x == Double.MIN_VALUE){
 			return null;
 		} else {
-			return new Circle(mapScene.transformX(x), mapScene.transformY(y), mapScene.getPersonRadius(), Color.GREENYELLOW); 
+			Circle circle = new Circle(mapScene.transformX(x), mapScene.transformY(y), mapScene.getPersonRadius(), mapScene.getPersonColor());			
+			return circle;
 		}
 	}
 	
@@ -284,34 +284,37 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 				db.setInVehicle(personID, null);
 			} else if (event.getType().equals(EventType.ENTERED_LINK)){
 				String vehicleID = db.getInVehicle(personID);
-				if (vehicleID != null){
-					EnteredOrLeftLink ell = (EnteredOrLeftLink)event;					
-					MyLink link = ell.getLink();
-					boolean justDeparted = db.getJustDeparted(personID);
-					MyNode node;
-					if (justDeparted){
-						node = link.getTo();
-					} else {
-						node = link.getFrom();
-					}
-					double x = node.getX();
-					double y = node.getY();
-					CheckPoint cp = new CheckPoint(x, y, time, personID, vehicleID, Type.POSITION_DEF);
+				EnteredOrLeftLink ell = (EnteredOrLeftLink)event;					
+				MyLink link = ell.getLink();
+				boolean justDeparted = db.getJustDeparted(personID);
+				if (justDeparted && (vehicleID==null)){
+					CheckPoint cp = new CheckPoint(time, personID, vehicleID, Type.PERSON_ENTERS);
 					db.add(personID, cp);
-					db.setJustDeparted(personID, false);
 				}
+				MyNode node;
+				if (justDeparted){
+					node = link.getTo();
+				} else {
+					node = link.getFrom();
+				}
+				double x = node.getX();
+				double y = node.getY();
+				CheckPoint cp = new CheckPoint(x, y, time, personID, vehicleID, Type.POSITION_DEF);
+				db.add(personID, cp);
+				db.setJustDeparted(personID, false);
 			} else if (event.getType().equals(EventType.DEPARTURE)){
 				db.setJustDeparted(personID, true);
 			} else if (event.getType().equals(EventType.LEFT_LINK)){
 				String vehicleID = db.getInVehicle(personID);
-				if (vehicleID != null){
-					EnteredOrLeftLink ell = (EnteredOrLeftLink)event;
-					MyNode node = ell.getLink().getTo();
-					double x = node.getX();
-					double y = node.getY();
-					CheckPoint cp = new CheckPoint(x, y, time, personID, vehicleID, Type.POSITION_DEF);
-					db.add(personID, cp);
-				}
+				EnteredOrLeftLink ell = (EnteredOrLeftLink)event;
+				MyNode node = ell.getLink().getTo();
+				double x = node.getX();
+				double y = node.getY();
+				CheckPoint cp = new CheckPoint(x, y, time, personID, vehicleID, Type.POSITION_DEF);
+				db.add(personID, cp);
+			} else if (event.getType().equals(EventType.ARRIVAL)){
+				CheckPoint cp = new CheckPoint(time, personID, null, Type.PERSON_LEAVES);
+				db.add(personID, cp);
 			}
 		}
 		return db;

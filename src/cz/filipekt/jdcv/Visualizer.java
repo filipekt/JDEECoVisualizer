@@ -1,11 +1,13 @@
 package cz.filipekt.jdcv;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -26,6 +28,9 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.DragEvent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -85,6 +90,19 @@ public class Visualizer extends Application {
 	private final double checkBoxSize = 18.0;
 	
 	/**
+	 * Marks whether the application runs in debugging mode
+	 */
+	private final boolean debug = false;
+	
+	/**
+	 * Sets all the controls contained in the graphics columns to to the default values.
+	 * The references to those {@link Node} instances that are affected are stored inside 
+	 * this implementation, which prevents the need to store the references in separate 
+	 * class variables, which would make the class messy.
+	 */
+	private Runnable setGraphicsColumnDefaults;
+	
+	/**
 	 * Constructs the main menu bar of the application.
 	 * @return The main menu bar of the application.
 	 * @throws IOException Unless the application source folder contents have been changed in 
@@ -114,23 +132,28 @@ public class Visualizer extends Application {
 			public void handle(ActionEvent arg0) {
 				mapPane.getChildren().clear();
 				mapPane.getChildren().add(noMapNode);
+				scene.getTimeLine().stop();
 				scene = null;
 				closeThisSceneItem.setDisable(true);
 				importSceneItem.setDisable(false);	
 				zoomBar.setDisable(true);
 				graphicsColumn.setDisable(true);
+				setGraphicsColumnDefaults.run();
 			}
 		});
 		fileMenu.getItems().addAll(importSceneItem, closeThisSceneItem);
 		Menu editMenu = new Menu("Edit");
 		Menu viewMenu = new Menu("View");
 		final MenuItem zoomPanel = new MenuItem("Zoom Panel");
-		
-		InputStream imageStream = getClass().getResourceAsStream("/resources/checkmark.png");
-//		InputStream imageStream = Files.newInputStream(Paths.get("C:/diplomka/JDEECoVisualizer/resources/checkmark.png"));
-		InputStream imageStream2 = getClass().getResourceAsStream("/resources/checkmark.png");
-//		InputStream imageStream2 = Files.newInputStream(Paths.get("C:/diplomka/JDEECoVisualizer/resources/checkmark.png"));
-		
+		InputStream imageStream;
+		InputStream imageStream2;
+		if (debug){
+			imageStream = Files.newInputStream(Paths.get("C:/diplomka/JDEECoVisualizer/resources/checkmark.png"));
+			imageStream2 = Files.newInputStream(Paths.get("C:/diplomka/JDEECoVisualizer/resources/checkmark.png"));
+		} else {
+			imageStream = getClass().getResourceAsStream("/resources/checkmark.png");
+			imageStream2 = getClass().getResourceAsStream("/resources/checkmark.png");
+		}
 		final ImageView checkBoxImage = new ImageView(new Image(imageStream, checkBoxSize, checkBoxSize, true, true));
 		zoomPanel.setGraphic(checkBoxImage);				
 		zoomPanel.setOnAction(new EventHandler<ActionEvent>() {
@@ -221,20 +244,7 @@ public class Visualizer extends Application {
 	 */
 	Pane getMapPane() {
 		return mapPane;
-	}
-	
-	/**
-	 * Timeline used for animation of the simulation output 
-	 */
-	private final Timeline timeLine = new Timeline();
-
-	/**
-	 * @return Timeline used for animation of the simulation output
-	 * @see {@link Visualizer#timeLine}
-	 */
-	public Timeline getTimeLine() {
-		return timeLine;
-	}
+	}		
 
 	/**
 	 * Builds the {@link Visualizer#importSceneGrid}.
@@ -245,7 +255,7 @@ public class Visualizer extends Application {
 		List<Label> labels = new ArrayList<>();
 		labels.add(new Label("Location of the network definition XML:"));
 		labels.add(new Label("Location of the event log:"));
-		List<TextField> fields = new ArrayList<>();
+		final List<TextField> fields = new ArrayList<>();
 		List<Button> chooserButtons = new ArrayList<>();
 		for (int i = 0; i < labels.size(); i++){
 			fields.add(new TextField());
@@ -254,11 +264,33 @@ public class Visualizer extends Application {
 		for (TextField field : fields){
 			field.setPrefWidth(inputFieldsWidth);
 		}
-		
-		// The following 2 lines are used for debugging
-		fields.get(0).setText("C:/diplomka/output_network.xml");
-		fields.get(1).setText("C:/diplomka/events.xml");
-		
+		if (debug){
+			fields.get(0).setText("C:/diplomka/output_network.xml");
+			fields.get(1).setText("C:/diplomka/events.xml");
+		}
+		for (final TextField field : fields){
+			field.setOnDragOver(new EventHandler<DragEvent>() {
+	
+				@Override
+				public void handle(DragEvent event) {
+					event.acceptTransferModes(TransferMode.COPY);
+				}
+			});
+			field.setOnDragDropped(new EventHandler<DragEvent>() {
+	
+				@Override
+				public void handle(DragEvent event) {
+					Dragboard dragBoard = event.getDragboard();
+					if (dragBoard.hasFiles()){
+						for (File file : dragBoard.getFiles()){
+							field.setText(file.getAbsolutePath().toString());
+						}
+						event.setDropCompleted(true);
+						event.consume();
+					}
+				}
+			});
+		}
 		for (int i = 0; i < chooserButtons.size(); i++){
 			Button button = chooserButtons.get(i);
 			TextField field = fields.get(i);
@@ -394,6 +426,14 @@ public class Visualizer extends Application {
 		panel.getChildren().add(showLinksBox);
 		VBox.setMargin(showNodesBox, new Insets(2 * graphicsItemsMargin, 0, graphicsItemsMargin, 2 * graphicsItemsMargin));
 		VBox.setMargin(showLinksBox, new Insets(graphicsItemsMargin, 0, graphicsItemsMargin, 2 * graphicsItemsMargin));
+		setGraphicsColumnDefaults = new Runnable() {
+			
+			@Override
+			public void run() {
+				showNodesBox.setSelected(true);
+				showLinksBox.setSelected(true);
+			}
+		};
 		return panel;
 	}
 	
@@ -440,7 +480,6 @@ public class Visualizer extends Application {
 		helpLabel.setPadding(new Insets(10, 10, 10, 10));
 		noMapNode.getChildren().add(helpLabel);	
 		mapPane.getChildren().add(noMapNode);
-		
 		graphicsColumn.setPrefWidth(graphicsColumnWidth);
 		graphicsColumn.setMinWidth(graphicsColumnWidth);
 		middleRow.getChildren().addAll(graphicsColumn, mapPane);
