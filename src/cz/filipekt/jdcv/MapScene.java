@@ -1,13 +1,30 @@
 package cz.filipekt.jdcv;
 
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.imageio.ImageIO;
+
+import javafx.animation.Animation.Status;
+import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.beans.value.ChangeListener;
+import javafx.embed.swing.SwingFXUtils;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.scene.Node;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.effect.BoxBlur;
+import javafx.scene.image.WritableImage;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
@@ -15,6 +32,7 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Shape;
 import javafx.scene.transform.Scale;
+import javafx.util.Duration;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;
 
@@ -94,7 +112,7 @@ class MapScene {
 	private double zoom = 1.0;
 	
 	/**
-	 * Scrollable container for {@link MapScene#mapGroup}
+	 * Scrollable container for {@link MapScene#mapContainer}
 	 */
 	private final ScrollPane mapPane;
 
@@ -105,6 +123,132 @@ class MapScene {
 	ScrollPane getMapPane() {
 		return mapPane;
 	}	
+	
+	/**
+	 * Interval (in miliseconds) at which a screenshot is taken when recording the visualization
+	 */
+	private final double recordingFreqency = 200;
+	
+	/**
+	 * Directory to which the recorded images will be stored
+	 */
+	private File recordingDirectory;
+	
+	/**
+	 * @param recordingDirectory Directory to which the recorded images will be stored
+	 * @see {@link MapScene#recordingDirectory}
+	 */
+	void setRecordingDirectory(File recordingDirectory) {
+		this.recordingDirectory = recordingDirectory;
+	}
+	
+	/**
+	 * If true, the visualization is currently being recorded. If false, it is not.
+	 */
+	private boolean recordingInProgress = false;
+
+	/**
+	 * @param recordingInProgress If true, the visualization will from now be recorded. If false, it will not.
+	 * @see {@link MapScene#recordingInProgress}
+	 */
+	void setRecordingInProgress(boolean recordingInProgress) {
+		this.recordingInProgress = recordingInProgress;
+	}
+
+	/**
+	 * @return If true, the visualization is currently being recorded. If false, it is not.
+	 */
+	boolean isRecordingInProgress() {
+		return recordingInProgress;
+	}
+	
+	/**
+	 * Makes sure that the {@link KeyFrame} instances allowing for recording of
+	 * snapshots are added to the keyframe list of {@link MapScene#timeLine}.
+	 */
+	void addRecordingFrames(){
+		if (!recordingFramesAdded){			
+			List<KeyFrame> frames = createRecordingFrames();
+			timeLine.getKeyFrames().addAll(frames);
+			recordingFramesAdded = true;
+		}
+	}
+	
+	/**
+	 * After recording of snapshots has been stopped, this method is called
+	 * to flush the recorded snapshots (stored in {@link MapScene#recordedFrames})
+	 * to disk.
+	 */
+	void flushRecordedFrames(){
+		//TODO use a single ImageWriter for all images
+		if (recordedFrames.size() > 0){
+			new Thread(new Runnable() {
+				
+				@Override
+				public void run() {
+					BufferedImage bim;
+					File file;
+					int i = 0;
+					DateFormat df = new SimpleDateFormat("yyyy-MMM-dd-HH-mm-ss");
+					String datePrefix = df.format(new Date());
+					for (WritableImage wi : recordedFrames){
+						bim = SwingFXUtils.fromFXImage(wi, null);
+						file = new File(recordingDirectory, datePrefix + "_" + i + ".png");
+						try {
+							ImageIO.write(bim, "png", file);
+						} catch (IOException ex) {}
+						i += 1;
+					}
+					recordedFrames.clear();
+				}
+			}).start();
+			
+		}
+	}
+	
+	/**
+	 * Temporary storage for recorded snapshots when recording is underway.
+	 */
+	List<WritableImage> recordedFrames = new ArrayList<>();
+	
+	/**
+	 * If true, the {@link KeyFrame} instances produced by {@link MapScene#createRecordingFrames()}
+	 * have already been added to the list of keyframes of {@link MapScene#timeLine}.
+	 */
+	private boolean recordingFramesAdded = false;
+	
+	/**
+	 * @return {@link KeyFrame} instances that are later inserted into the {@link MapScene#timeLine} 
+	 * keyframes, to allow possible recording requests.
+	 */
+	private List<KeyFrame> createRecordingFrames(){
+		double totalTime = timeLine.getTotalDuration().toMillis();
+		List<KeyFrame> res = new ArrayList<>();
+		int count = (int)Math.floor(totalTime / recordingFreqency);
+		for (int i = 0; i<count; i++){
+			double time = recordingFreqency * i;
+			Duration timeVal = new Duration(time);
+			KeyFrame frame = new KeyFrame(timeVal, new RecordingAction());
+			res.add(frame);
+		}		
+		return res;
+	}
+	
+	/**
+	 * Called whenever the visualization is being recorded and the {@link MapScene#recordingFreqency}
+	 * interval just passed. Saves a current snapshot into {@link MapScene#recordedFrames}.
+	 */
+	private class RecordingAction implements EventHandler<ActionEvent>{
+
+		@Override
+		public void handle(ActionEvent event) {
+			if (recordingInProgress){
+				WritableImage image = mapContainer.snapshot(null, null);
+				recordedFrames.add(image);
+			}
+		}
+		
+	}
 
 	/**
 	 * Determines the minimal and maximal x,y coordinates across all of the map nodes.
@@ -339,6 +483,15 @@ class MapScene {
 	private final Pane mapContainer = new Pane();
 	
 	/**
+	 * @return Container for the {@link Node} instances that represent the map elements, 
+	 * such as links, nodes, vehicles.
+	 * @see {@link MapScene#mapContainer}
+	 */
+	Pane getMapContainer() {
+		return mapContainer;
+	}
+
+	/**
 	 * Double of the width of the white margin that is added on each side of the map.
 	 */
 	private final double constantMargin = 25.0;
@@ -350,7 +503,8 @@ class MapScene {
 	 * @param mapHeight Preferred height of the map view, in pixels
 	 * @param shapes {@link Shape} instances representing individual people
 	 */
-	MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight, Set<Shape> shapes) {
+	MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight, 
+			Set<Shape> shapes, ChangeListener<? super Status> timeLineStatus, ChangeListener<? super Number> timeLineRate) {
 		this.personShapes = shapes;
 		this.nodes = nodes;
 		this.links = links;
@@ -365,6 +519,8 @@ class MapScene {
 		mapPane.setContent(mapContainer);
 		mapContainer.setPrefSize(mapWidth, mapHeight);
 		mapContainer.setId("mapContainer");
+		timeLine.statusProperty().addListener(timeLineStatus);
+		timeLine.rateProperty().addListener(timeLineRate);
 	}
 
 }

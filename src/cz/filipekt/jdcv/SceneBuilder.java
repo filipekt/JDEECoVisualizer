@@ -8,10 +8,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import javafx.animation.Animation.Status;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
 import javafx.event.EventHandler;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -70,6 +72,16 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	 * clicking the OK button.
 	 */
 	private final Visualizer visualizer;
+	
+	/**
+	 * Called whenever the visualization is started, paused or stopped
+	 */
+	private final ChangeListener<Status> timeLineStatus;
+	
+	/**
+	 * Called whenever the visualization is sped up or down
+	 */
+	private final ChangeListener<Number> timeLineRate;
 
 	/**
 	 * @param fields Text fields containing the paths to the source XML files.
@@ -78,14 +90,19 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	 * and {@link SceneBuilder#okButton}.
 	 * @param visualizer The {@link Visualizer} that will show the network that has been 
 	 * submitted by clicking the OK button.
+	 * @param durationBox The {@link ComboBox} containing the desired duration of the visualization
+	 * @param timeLineStatus Called whenever the visualization is started, paused or stopped
+	 * @param timeLineRate Called whenever the visualization is sped up or down
 	 */
-	public SceneBuilder(List<TextField> fields, Button okButton,
-			GridPane pane, Visualizer visualizer, ComboBox<Integer> durationBox) {
+	public SceneBuilder(List<TextField> fields, Button okButton, GridPane pane, Visualizer visualizer, 
+			ComboBox<Integer> durationBox, ChangeListener<Status> timeLineStatus, ChangeListener<Number> timeLineRate) {
 		this.fields = fields;
 		this.okButton = okButton;
 		this.pane = pane;
 		this.visualizer = visualizer;
 		this.durationBox = durationBox;
+		this.timeLineStatus = timeLineStatus;
+		this.timeLineRate = timeLineRate;
 	}
 	
 	/**
@@ -152,8 +169,8 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	 * @throws IOException If the source XML file, specified by a method parameter, 
 	 * does not exist or is inaccessible.
 	 */
-	private void importNewScene(String networkFieldText, String facilitiesFieldText, String plansFieldText, String eventsFieldText) 
-			throws ParserConfigurationException, SAXException, IOException{
+	private void importNewScene(String networkFieldText, String facilitiesFieldText, String plansFieldText, 
+			String eventsFieldText) throws ParserConfigurationException, SAXException, IOException{
 		Platform.runLater(new Runnable() {
 			
 			@Override
@@ -171,7 +188,8 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		XMLextractor.run(eventsFile, eh);
 		CheckPointDatabase cdb = buildCheckPointDatabase(eh.getEvents());
 		Set<Shape> shapes = new HashSet<>();
-		final MapScene scene = new MapScene(nodeHandler.getNodes(), linkHandler.getLinks(), visualizer.getMapWidth(), visualizer.getMapHeight(), shapes);
+		final MapScene scene = new MapScene(nodeHandler.getNodes(), linkHandler.getLinks(), visualizer.getMapWidth(), 
+				visualizer.getMapHeight(), shapes, timeLineStatus, timeLineRate);
 		final List<KeyFrame> keyFrames = buildKeyFrames(cdb, shapes, scene);
 		Platform.runLater(new Runnable() {
 			
@@ -182,15 +200,15 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 				ScrollPane mapScrollPane = scene.getMapPane();
 				visualizer.getMapPane().getChildren().clear();
 				visualizer.getMapPane().getChildren().add(mapScrollPane);				
-				visualizer.getZoomBar().setDisable(false);
+				visualizer.getControlsBar().setDisable(false);
 				visualizer.getGraphicsColumn().setDisable(false);
 				closeProgressIndiciator();
 				scene.getTimeLine().getKeyFrames().addAll(keyFrames);
-				scene.getTimeLine().play();
+				scene.addRecordingFrames();
 			}
 		});				
 	}
-		
+	
 	/**
 	 * Given the {@link CheckPointDatabase}, this method converts its contents into the format
 	 * specified by JavaFX {@link Timeline} animation model. The {@code shapes} collection is 
@@ -209,6 +227,10 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 				continue;
 			}
 			personShape.setVisible(false);
+			KeyValue initX = new KeyValue(personShape.centerXProperty(), personShape.getCenterX());
+			KeyValue initY = new KeyValue(personShape.centerYProperty(), personShape.getCenterY());
+			KeyValue initVis = new KeyValue(personShape.visibleProperty(), false);
+			frames.add(new KeyFrame(Duration.ZERO, initX, initY, initVis));
 			for (CheckPoint cp : checkPoints){
 				Duration actualTime = new Duration(cdb.transformTime(cp.getTime(), durationBox.getValue()));
 				KeyFrame frame = null;
