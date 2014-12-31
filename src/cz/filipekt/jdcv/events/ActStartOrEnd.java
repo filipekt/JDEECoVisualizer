@@ -2,7 +2,10 @@ package cz.filipekt.jdcv.events;
 
 import cz.filipekt.jdcv.network.MyLink;
 
-public class ActStartOrEnd implements Event {
+/**
+ * Models an event of type "actstart" or "actend", which appears in the MATSIM event log
+ */
+public class ActStartOrEnd implements MatsimEvent {
 	
 	/**
 	 * The time at which the event occurred.

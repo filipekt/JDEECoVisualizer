@@ -16,7 +16,8 @@ public enum EventType {
 	ACT_END,
 	WAIT_2_LINK,
 	STUCK_AND_ABORT,
-	TRAVELLED;
+	TRAVELLED,
+	ENSEMBLE;
 	
 	/**
 	 * The actual value of the type attribute that is represented by the 
@@ -85,6 +86,12 @@ public enum EventType {
 	private static final String travelledValue = "travelled";
 	
 	/**
+	 * The actual value of the type attribute that is represented by the 
+	 * {@link EventType#ENSEMBLE} value. 
+	 */
+	private static final String ensembleValue = "ensemble";
+	
+	/**
 	 * @param text Value of the type attribute in an event element
 	 * @return The enum representation of the value of the type attribute. 
 	 * If the attribute value is unrecognized, null is returned.
@@ -113,6 +120,8 @@ public enum EventType {
 				return EventType.STUCK_AND_ABORT;
 			case EventType.travelledValue:
 				return EventType.TRAVELLED;
+			case EventType.ensembleValue:
+				return EventType.ENSEMBLE;
 			default:
 				return null;
 		}

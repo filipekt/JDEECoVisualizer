@@ -12,8 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.imageio.ImageIO;
-
 import javafx.animation.Animation.Status;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -21,7 +19,6 @@ import javafx.beans.value.ChangeListener;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
-import javafx.scene.Node;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.effect.BoxBlur;
 import javafx.scene.image.WritableImage;
@@ -33,13 +30,16 @@ import javafx.scene.shape.Line;
 import javafx.scene.shape.Shape;
 import javafx.scene.transform.Scale;
 import javafx.util.Duration;
+
+import javax.imageio.ImageIO;
+
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;
 
 /**
  * The scene that the {@link Visualizer} will visualize. It contains the map, view parameters, event log etc.
  */
-class MapScene {
+public class MapScene {
 	
 	/**
 	 * Contains the network nodes. Keys = node IDs, values = {@link MyNode} node representations.
@@ -52,16 +52,16 @@ class MapScene {
 	private final Map<String,MyLink> links;
 	
 	/**
-	 * Maps {@link Circle} to {@link MyNode}. Each {@link Circle} represents a view of the 
-	 * corresponding {@link MyNode}.
+	 * Maps each {@link Shape} to the corresponding {@link MyNode} instance. Each key represents the 
+	 * corresponding {@link MyNode} in the visualization.
 	 */
-	private final Map<Node,MyNode> circles = new HashMap<>();
+	private final Map<Shape,MyNode> circles = new HashMap<>();
 	
 	/**
-	 * Maps {@link Line} to {@link MyLink}. Each {@link Line} represents a view of the 
-	 * corresponding {@link MyLink}.
+	 * Maps each {@link Shape} to the corresponding {@link MyLink} instance. Each key represents the 
+	 * corresponding {@link MyLink} in the visualization.
 	 */
-	private final Map<Node,MyLink> lines = new HashMap<>();
+	private final Map<Shape,MyLink> lines = new HashMap<>();
 	
 	/**
 	 * Minimal value of x-coordinate among all the nodes in {@link MapScene#nodes}
@@ -96,12 +96,12 @@ class MapScene {
 	private final double heightFactor;
 
 	/**
-	 * Radius (in pixels) of the {@link Circle} objects representing the network nodes.
+	 * Radius (in pixels) of the {@link Shape} objects representing the network nodes.
 	 */
 	private final double nodeRadius = 4.0;
 	
 	/**
-	 * Color of the {@link Circle} objects representing the network nodes.
+	 * Color of the {@link Shape} instances representing the network nodes.
 	 */
 	private final Paint nodeColor = Color.FIREBRICK;
 	
@@ -138,7 +138,7 @@ class MapScene {
 	 * @param recordingDirectory Directory to which the recorded images will be stored
 	 * @see {@link MapScene#recordingDirectory}
 	 */
-	void setRecordingDirectory(File recordingDirectory) {
+	public void setRecordingDirectory(File recordingDirectory) {
 		this.recordingDirectory = recordingDirectory;
 	}
 	
@@ -151,14 +151,14 @@ class MapScene {
 	 * @param recordingInProgress If true, the visualization will from now be recorded. If false, it will not.
 	 * @see {@link MapScene#recordingInProgress}
 	 */
-	void setRecordingInProgress(boolean recordingInProgress) {
+	public void setRecordingInProgress(boolean recordingInProgress) {
 		this.recordingInProgress = recordingInProgress;
 	}
 
 	/**
 	 * @return If true, the visualization is currently being recorded. If false, it is not.
 	 */
-	boolean isRecordingInProgress() {
+	public boolean isRecordingInProgress() {
 		return recordingInProgress;
 	}
 	
@@ -179,7 +179,7 @@ class MapScene {
 	 * to flush the recorded snapshots (stored in {@link MapScene#recordedFrames})
 	 * to disk.
 	 */
-	void flushRecordedFrames(){
+	public void flushRecordedFrames(){
 		//TODO use a single ImageWriter for all images
 		if (recordedFrames.size() > 0){
 			new Thread(new Runnable() {
@@ -276,7 +276,7 @@ class MapScene {
 		return new double[]{minx, miny, maxx, maxy};
 	}
 	
-	/**
+	/*
 	 * After some changes have been made to {@link Visualizer#nodes}, {@link Visualizer#zoom} or
 	 * other fields that have influence on the map view, call this method to get an updated
 	 * collection of the {@link Circle} objects. These represent the {@link cz.filipekt.jdcv.network.MyNode}
@@ -284,8 +284,9 @@ class MapScene {
 	 * @return Updated collection of {@link Circle} objects, representing the 
 	 * {@link cz.filipekt.jdcv.network.MyNode} objects for purposes of visualization. 
 	 */
-	private Map<Node,MyNode> generateCircles(){
-		Map<Node,MyNode> res = new HashMap<>();
+	
+	private Map<Shape,MyNode> generateCircles(){
+		Map<Shape,MyNode> res = new HashMap<>();
 		for (MyNode node : nodes.values()){
 			double x = node.getX();
 			x -= minx;
@@ -302,7 +303,7 @@ class MapScene {
 		return res;
 	}
 	
-	/**
+	/*
 	 * After some changes have been made to {@link Visualizer#links}, {@link Visualizer#zoom} or
 	 * other fields that have influence on the map view, call this method to get an updated
 	 * collection of the {@link Line} objects. These represent the {@link cz.filipekt.jdcv.network.MyLink}
@@ -310,8 +311,9 @@ class MapScene {
 	 * @return Updated collection of {@link Line} objects, representing the 
 	 * {@link cz.filipekt.jdcv.network.MyLink} objects for purposes of visualization. 
 	 */
-	private Map<Node,MyLink> generateLines(){
-		Map<Node,MyLink> res = new HashMap<>();
+	
+	private Map<Shape,MyLink> generateLines(){
+		Map<Shape,MyLink> res = new HashMap<>();
 		for (MyLink link : links.values()){
 			double fromx = link.getFrom().getX();
 			fromx = transformX(fromx);
@@ -366,15 +368,15 @@ class MapScene {
 	/**
 	 * {@link Shape} instances representing individual people (as they move through the map).
 	 */
-	private final Set<Shape> personShapes;
+	private final Map<String,? extends Shape> personShapes;
 	
 	/**
 	 * Radius (in pixels) of the {@link Circle} objects representing the people on the map.
 	 */
-	private final double personRadius = 1.5;
+	private final double personRadius = 2.5;
 	
 	/**
-	 * @return Radius (in pixels) of the {@link Circle} objects representing the people on the map.
+	 * @return Radius (in pixels) of the {@link Shape} objects representing the people on the map.
 	 * @see {@link MapScene#personRadius}
 	 */
 	double getPersonRadius() {
@@ -382,12 +384,12 @@ class MapScene {
 	}
 	
 	/**
-	 * Color of the {@link Circle} objects representing the people on the map.
+	 * Color of the {@link Shape} objects representing the people on the map.
 	 */
 	private final Paint personColor = Color.LIME;
 	
 	/**
-	 * @return Color of the {@link Circle} objects representing the people on the map.
+	 * @return Color of the {@link Shape} instances representing the people on the map.
 	 * @see {@link MapScene#personColor}
 	 */
 	Paint getPersonColor() {
@@ -414,8 +416,8 @@ class MapScene {
 	 * visualizing purposes is updated with the new values.
 	 */
 	void update(){
-		Map<Node,MyNode> newCircles = generateCircles();
-		Map<Node,MyLink> newLines = generateLines();
+		Map<Shape,MyNode> newCircles = generateCircles();
+		Map<Shape,MyLink> newLines = generateLines();
 		circles.clear();
 		circles.putAll(newCircles);
 		lines.clear();
@@ -423,7 +425,8 @@ class MapScene {
 		mapContainer.getChildren().clear();
 		mapContainer.getChildren().addAll(lines.keySet());
 		mapContainer.getChildren().addAll(circles.keySet());
-		mapContainer.getChildren().addAll(personShapes);
+		mapContainer.getChildren().addAll(personShapes.values());
+		mapContainer.getChildren().addAll(ensembleShapes);
 	    moveShapesToFront();
 	}
 	
@@ -434,7 +437,7 @@ class MapScene {
 	 * Otherwise it makes them invisible.
 	 */
 	void setNodesVisible(boolean visible){
-		for (Node node : circles.keySet()){
+		for (Shape node : circles.keySet()){
 			node.setVisible(visible);
 		}
 	}
@@ -446,8 +449,8 @@ class MapScene {
 	 * Otherwise it makes them invisible.
 	 */
 	void setLinksVisible(boolean visible){
-		for (Node node : lines.keySet()){
-			node.setVisible(visible);
+		for (Shape link : lines.keySet()){
+			link.setVisible(visible);
 		}
 	}
 	
@@ -456,10 +459,10 @@ class MapScene {
 	 * background-foreground manner, for example that there is no incorrect overlapping 
 	 */
 	private void moveShapesToFront(){
-		for (Node node : circles.keySet()){
-			((Circle)node).toFront();
+		for (Shape node : circles.keySet()){	
+			node.toFront();
 		}
-		for (Shape person : personShapes){
+		for (Shape person : personShapes.values()){
 			person.toFront();
 		}
 	}
@@ -468,7 +471,7 @@ class MapScene {
 	 * Zooms in or zooms out the map view.
 	 * @param factor By this value the current zoom factor {@link MapScene#zoom} will be multiplied.
 	 */
-	void changeZoom(double factor){
+	public void changeZoom(double factor){
 		zoom *= factor;				
 		Scale scale = new Scale(factor, factor, 0, 0);		
 		mapContainer.getTransforms().add(scale);
@@ -477,17 +480,17 @@ class MapScene {
 	}
 	
 	/**
-	 * Container for the {@link Node} instances that represent the map elements, 
+	 * Container for the {@link Shape} instances that represent the map elements, 
 	 * such as links, nodes, vehicles.
 	 */
 	private final Pane mapContainer = new Pane();
 	
 	/**
-	 * @return Container for the {@link Node} instances that represent the map elements, 
+	 * @return Container for the {@link Shape} instances that represent the map elements, 
 	 * such as links, nodes, vehicles.
 	 * @see {@link MapScene#mapContainer}
 	 */
-	Pane getMapContainer() {
+	public Pane getMapContainer() {
 		return mapContainer;
 	}
 
@@ -497,15 +500,23 @@ class MapScene {
 	private final double constantMargin = 25.0;
 	
 	/**
+	 * Each {@link Shape} instance represents an ensemble membership
+	 */
+	private final Set<? extends Shape> ensembleShapes;
+	
+	/**
 	 * @param nodes The network nodes. Keys = node IDs, values = {@link MyNode} node representations.
 	 * @param links The network links. Keys = link IDs, values = {@link MyLink} link representations.
 	 * @param mapWidth Preferred width of the map view, in pixels
 	 * @param mapHeight Preferred height of the map view, in pixels
-	 * @param shapes {@link Shape} instances representing individual people
+	 * @param personShapes {@link Shape} instances representing individual people
+	 * @param ensembleShapes {@link Shape} instances representing ensemble membership
+	 * @param
 	 */
-	MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight, 
-			Set<Shape> shapes, ChangeListener<? super Status> timeLineStatus, ChangeListener<? super Number> timeLineRate) {
-		this.personShapes = shapes;
+	MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight, Map<String,? extends Shape> personShapes, 
+			Set<? extends Shape> ensembleShapes, ChangeListener<? super Status> timeLineStatus, ChangeListener<? super Number> timeLineRate) {
+		this.personShapes = personShapes;
+		this.ensembleShapes = ensembleShapes;
 		this.nodes = nodes;
 		this.links = links;
 		double[] borders = getMapBorders();

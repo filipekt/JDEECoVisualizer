@@ -2,7 +2,10 @@ package cz.filipekt.jdcv.events;
 
 import cz.filipekt.jdcv.network.MyLink;
 
-public class EnteredOrLeftLink implements EventWithLink {
+/**
+ * Models an event of type "entered link" or "left link", which appears in the MATSIM event log
+ */
+public class EnteredOrLeftLink implements MatsimEvent {
 	
 	/**
 	 * Time at which the event occurred.
@@ -42,7 +45,6 @@ public class EnteredOrLeftLink implements EventWithLink {
 	 * @return The link that has been entered (or left).
 	 * @see {@link EnteredOrLeftLink#link}
 	 */
-	@Override
 	public MyLink getLink() {
 		return link;
 	}

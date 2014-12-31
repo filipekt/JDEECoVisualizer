@@ -1,6 +1,5 @@
 package cz.filipekt.jdcv;
 
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,14 +13,11 @@ import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
-import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
-import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.geometry.VPos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -34,7 +30,6 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.image.WritableImage;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.TransferMode;
@@ -45,19 +40,27 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.stage.DirectoryChooser;
-import javafx.stage.FileChooser;
-import javafx.stage.FileChooser.ExtensionFilter;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.stage.StageStyle;
-
-import javax.imageio.ImageIO;
+import cz.filipekt.jdcv.gui_logic.CloseSceneHandler;
+import cz.filipekt.jdcv.gui_logic.ControlsBarItemHandler;
+import cz.filipekt.jdcv.gui_logic.GraphicsPanelHandler;
+import cz.filipekt.jdcv.gui_logic.ImportSceneHandler;
+import cz.filipekt.jdcv.gui_logic.PlayButtonHandler;
+import cz.filipekt.jdcv.gui_logic.RecordingHandler;
+import cz.filipekt.jdcv.gui_logic.ScreenShotHandler;
+import cz.filipekt.jdcv.gui_logic.TimeLineRateChanged;
+import cz.filipekt.jdcv.gui_logic.TimeLineStatusHandler;
+import cz.filipekt.jdcv.gui_logic.ZoomingHandler;
 
 /**
  * Main class of the application. Run it to show the simulation data visualization.
  */
 public class Visualizer extends Application {
+	
+	/**
+	 * Marks whether the application runs in debugging mode
+	 */
+	private final boolean debug = false;
 	
 	/**
 	 * Preferred width of the map view, in pixels.
@@ -78,7 +81,7 @@ public class Visualizer extends Application {
 	 * Sets the map that will be visualized by this application
 	 * @param scene The map that will be visualized by this application
 	 */
-	void setScene(MapScene scene) {
+	public void setScene(MapScene scene) {
 		this.scene = scene;
 	}
 	
@@ -86,7 +89,7 @@ public class Visualizer extends Application {
 	 * @return The map that is being visualized, coupled with some view parameters.
 	 * @see {@link Visualizer#scene}
 	 */
-	MapScene getScene(){
+	public MapScene getScene(){
 		return scene;
 	}
 
@@ -110,18 +113,24 @@ public class Visualizer extends Application {
 	private final double playIconSize = 20.0;
 	
 	/**
-	 * Marks whether the application runs in debugging mode
+	 * Sets all the controls contained in the graphics columns to to the default values.
+	 * The references to those {@link Node} instances that are affected are stored inside 
+	 * this implementation, which prevents the need to store the references in separate 
+	 * class variables, which would make the class messy.
 	 */
-	private final boolean debug = false;
+	private Runnable graphicsColumnDefaults;
 	
 	/**
 	 * Sets all the controls contained in the graphics columns to to the default values.
 	 * The references to those {@link Node} instances that are affected are stored inside 
 	 * this implementation, which prevents the need to store the references in separate 
 	 * class variables, which would make the class messy.
+	 * @see {@link Visualizer#graphicsColumnDefaults}
 	 */
-	private Runnable setGraphicsColumnDefaults;
-	
+	public void setGraphicsColumnDefaults() {
+		graphicsColumnDefaults.run();
+	}
+
 	/**
 	 * @param resourceName A resource to be loaded
 	 * @return An {@link InputStream} instance reading from the specified resource
@@ -140,7 +149,7 @@ public class Visualizer extends Application {
 	 * @param size Preferred width and height of the {@link ImageView} 
 	 * @return The desired image wrapped in a {@link ImageView}
 	 */
-	private ImageView getImageView(String resourceFileName, double size){
+	ImageView getImageView(String resourceFileName, double size){
 		try {
 			if (resourceFileName == null){
 				throw new NullPointerException();
@@ -161,102 +170,53 @@ public class Visualizer extends Application {
 	private MenuBar createMenuBar() throws IOException {
 		MenuBar menuBar = new MenuBar();
 		Menu fileMenu = new Menu("File");
-		final MenuItem importSceneItem = new MenuItem("Import Scene"); 
+		MenuItem importSceneItem = new MenuItem("Import Scene"); 
 		importSceneItem.setDisable(false);
-		final MenuItem closeThisSceneItem = new MenuItem("Close This Scene");
+		MenuItem closeThisSceneItem = new MenuItem("Close This Scene");
 		closeThisSceneItem.setDisable(true);
-		importSceneItem.setOnAction(new EventHandler<ActionEvent>() {
-			
-			@Override
-			public void handle(ActionEvent arg0) {					
-				mapPane.getChildren().clear();
-				mapPane.getChildren().add(importSceneGrid);				
-				scene = null;
-	            closeThisSceneItem.setDisable(false);
-	            importSceneItem.setDisable(true);					           
-			}
-		});
-		closeThisSceneItem.setOnAction(new EventHandler<ActionEvent>() {
-
-			@Override
-			public void handle(ActionEvent arg0) {
-				mapPane.getChildren().clear();
-				mapPane.getChildren().add(noMapNode);
-				scene.getTimeLine().stop();
-				scene = null;
-				closeThisSceneItem.setDisable(true);
-				importSceneItem.setDisable(false);	
-				controlsBar.setDisable(true);
-				graphicsColumn.setDisable(true);
-				setGraphicsColumnDefaults.run();
-			}
-		});
+		importSceneItem.setOnAction(new ImportSceneHandler(importSceneItem, closeThisSceneItem, this));
+		closeThisSceneItem.setOnAction(new CloseSceneHandler(importSceneItem, closeThisSceneItem, this));
 		fileMenu.getItems().addAll(importSceneItem, closeThisSceneItem);
 		Menu editMenu = new Menu("Options");
 		Menu viewMenu = new Menu("View");
-		final MenuItem zoomPanel = new MenuItem("Controls Panel");
-		final ImageView checkBoxImage = getImageView("checkmark.png", checkBoxSize);
-		zoomPanel.setGraphic(checkBoxImage);				
-		zoomPanel.setOnAction(new EventHandler<ActionEvent>() {
-			
-			@Override
-			public void handle(ActionEvent arg0) {
-				if (barIsShown){
-					if (vbox.getChildren().contains(controlsBar)){
-						vbox.getChildren().remove(controlsBar);
-						barIsShown = false;
-						zoomPanel.setGraphic(null);
-					}
-				} else {
-					if (!vbox.getChildren().contains(controlsBar)){
-						vbox.getChildren().add(controlsBar);
-						barIsShown = true;
-						zoomPanel.setGraphic(checkBoxImage);
-					}
-				}
-			}
-			
-			private boolean barIsShown = true;
-		});
+		MenuItem controlsPanel = new MenuItem("Controls Panel");
+		ImageView checkBoxImage = getImageView("checkmark.png", checkBoxSize);
+		controlsPanel.setGraphic(checkBoxImage);	
+		controlsPanel.setOnAction(new ControlsBarItemHandler(controlsPanel, checkBoxImage, this));
 		final MenuItem graphicsPanel = new MenuItem("Graphics Panel");	
 		final ImageView checkBoxImage2 = getImageView("checkmark.png", checkBoxSize);
 		graphicsPanel.setGraphic(checkBoxImage2);
-		graphicsPanel.setOnAction(new EventHandler<ActionEvent>() {
-			
-			@Override
-			public void handle(ActionEvent arg0) {
-				if (panelShown){
-					if (middleRow.getChildren().contains(graphicsColumn)){
-						middleRow.getChildren().remove(graphicsColumn);
-						panelShown = false;
-						graphicsPanel.setGraphic(null);
-					}
-				} else {
-					if (!middleRow.getChildren().contains(graphicsColumn)){
-						middleRow.getChildren().add(0, graphicsColumn);
-						panelShown = true;
-						graphicsPanel.setGraphic(checkBoxImage2);
-					}
-				}
-			}
-			
-			private boolean panelShown = true;
-			
-		});
-		viewMenu.getItems().addAll(zoomPanel, graphicsPanel);
+		graphicsPanel.setOnAction(new GraphicsPanelHandler(graphicsPanel, checkBoxImage2, this));
+		viewMenu.getItems().addAll(controlsPanel, graphicsPanel);
 		menuBar.getMenus().addAll(fileMenu, editMenu, viewMenu);
 		return menuBar;
 	}
 	
 	/**
-	 * This {@link Node} is shown whenever no map scene is open.
+	 * The {@link Node} that is shown whenever no map scene is open.
 	 */
 	private final Pane noMapNode = new VBox();
 	
 	/**
+	 * @return The {@link Node} that is shown whenever no map scene is open.
+	 * @see {@link Visualizer#noMapNode}
+	 */
+	public Pane getNoMapNode() {
+		return noMapNode;
+	}
+
+	/**
 	 * Contains the controls where users can specify input XML files for the visualization. 
 	 */
 	private final GridPane importSceneGrid;
+
+	/**
+	 * @return Grid that contains the controls where users can specify input XML files for the visualization.
+	 * @see {@link Visualizer#importSceneGrid}
+	 */
+	public GridPane getImportSceneGrid() {
+		return importSceneGrid;
+	}
 
 	/**
 	 * Container for map view, or if no map is currently view, for a dialog for loading a map.
@@ -283,33 +243,15 @@ public class Visualizer extends Application {
 	 * @return Container for map view, or if no map is currently view, for a dialog for loading a map.
 	 * @see {@link Visualizer#mapPane}
 	 */
-	Pane getMapPane() {
+	public Pane getMapPane() {
 		return mapPane;
 	}		
-
+	
 	/**
-	 * Builds the {@link Visualizer#importSceneGrid}.
-	 * @param timeLineStatus Called whenever the visualization is started, paused or stopped
-	 * @return The {@link GridPane} to be used for importing new scenes.
+	 * Sets up the drag&drop functionality for the input fields where user defines the input files
+	 * @param fields The fields where user defines the input files
 	 */
-	private GridPane createImportSceneGrid(ChangeListener<Status> timeLineStatus, ChangeListener<Number> timeLineRate){
-		GridPane pane = new GridPane();
-		List<Label> labels = new ArrayList<>();
-		labels.add(new Label("Location of the network definition XML:"));
-		labels.add(new Label("Location of the event log:"));
-		final List<TextField> fields = new ArrayList<>();
-		List<Button> chooserButtons = new ArrayList<>();
-		for (int i = 0; i < labels.size(); i++){
-			fields.add(new TextField());
-			chooserButtons.add(new Button("Select.."));
-		}
-		for (TextField field : fields){
-			field.setPrefWidth(inputFieldsWidth);
-		}
-		if (debug){
-			fields.get(0).setText("C:/diplomka/output_network.xml");
-			fields.get(1).setText("C:/diplomka/events.xml");
-		}
+	private void setUpDragNDrop(List<TextField> fields){
 		for (final TextField field : fields){
 			field.setOnDragOver(new EventHandler<DragEvent>() {
 	
@@ -333,6 +275,34 @@ public class Visualizer extends Application {
 				}
 			});
 		}
+	}
+
+	/**
+	 * Builds the {@link Visualizer#importSceneGrid}.
+	 * @param timeLineStatus Called whenever the visualization is started, paused or stopped
+	 * @return The {@link GridPane} to be used for importing new scenes.
+	 */
+	private GridPane createImportSceneGrid(ChangeListener<Status> timeLineStatus, ChangeListener<Number> timeLineRate){
+		GridPane pane = new GridPane();
+		List<Label> labels = new ArrayList<>();
+		labels.add(new Label("Location of the network definition XML:"));
+		labels.add(new Label("Location of the event log:"));
+		labels.add(new Label("Location of the ensemble event log:"));
+		final List<TextField> fields = new ArrayList<>();
+		List<Button> chooserButtons = new ArrayList<>();
+		for (int i = 0; i < labels.size(); i++){
+			fields.add(new TextField());
+			chooserButtons.add(new Button("Select.."));
+		}
+		for (TextField field : fields){
+			field.setPrefWidth(inputFieldsWidth);
+		}
+		if (debug){
+			fields.get(0).setText("C:/diplomka/example_output/network.xml");
+			fields.get(1).setText("C:/diplomka/example_output/events.xml");
+			fields.get(2).setText("C:/diplomka/example_output/ensembles.xml");
+		}
+		setUpDragNDrop(fields);
 		for (int i = 0; i < chooserButtons.size(); i++){
 			Button button = chooserButtons.get(i);
 			TextField field = fields.get(i);
@@ -358,8 +328,16 @@ public class Visualizer extends Application {
 		pane.add(durationsBox, 1, row);		
 		row += 1;
 		
+		Label onlyComponentsLabel = new Label("Show only the injected JDEECo components:");
+		CheckBox onlyComponentsBox = new CheckBox();
+		onlyComponentsBox.setSelected(true);
+		pane.add(onlyComponentsLabel, 0, row);
+		pane.add(onlyComponentsBox, 1, row);
+		row += 1;
+		
 		Button okButton = new Button("OK");
-		okButton.setOnMouseClicked(new SceneBuilder(fields, okButton, pane, Visualizer.this, durationsBox, timeLineStatus, timeLineRate));
+		okButton.setOnMouseClicked(new SceneBuilder(fields, okButton, onlyComponentsBox, pane, 
+				Visualizer.this, durationsBox, timeLineStatus, timeLineRate));
 		pane.add(okButton, 1, row);
 		pane.setAlignment(Pos.CENTER);
 		pane.setHgap(importSceneGridHGap);
@@ -394,10 +372,19 @@ public class Visualizer extends Application {
 	private final double timeLineRateStep = 0.5;
 	
 	/**
+	 * @return Difference by which the {@link Timeline#rateProperty()} will be changed when
+	 * the fast forward or rewind buttons are clicked.
+	 * @see {@link Visualizer#timeLineRateStep}
+	 */
+	public double getTimeLineRateStep() {
+		return timeLineRateStep;
+	}
+
+	/**
 	 * Called whenever the visualization is sped up or down
 	 */
 	private ChangeListener<Number> timeLineRate;
-
+	
 	/**
 	 * Constructs the tool bar for zooming, pausing, forwarding etc. the simulation visualization.
 	 * It is shown at the bottom of the main window.
@@ -406,39 +393,13 @@ public class Visualizer extends Application {
 	 * any way by the user, this exception will never be thrown.
 	 */
 	private HBox createControlsBar() throws IOException{
-		final ImageView pauseImage = getImageView("video-pause.png", playIconSize);
-		final ImageView playImage = getImageView("video-play.png", playIconSize);
-		final Button playButton = new Button();
+		ImageView pauseImage = getImageView("video-pause.png", playIconSize);
+		ImageView playImage = getImageView("video-play.png", playIconSize);
+		Button playButton = new Button();
+		final Button stopButton = new Button();
 		playButton.setGraphic(playImage);
-		playButton.setOnMouseClicked(new EventHandler<Event>() {
-
-			@Override
-			public void handle(Event arg0) {
-				if (scene != null){
-					Timeline timeLine = scene.getTimeLine();
-					if (timeLine.getStatus() == Status.RUNNING){
-						timeLine.pause();
-					} else if (timeLine.getStatus() == Status.STOPPED){
-						timeLine.playFromStart();
-					} else {
-						timeLine.play();
-					}
-				}
-			}
-		});
-		timeLineStatus = new ChangeListener<Status>() {
-			
-			@Override
-			public void changed(ObservableValue<? extends Status> arg0, Status oldSTatus,
-					Status newStatus) {
-				if (newStatus == Status.RUNNING){
-					playButton.setGraphic(pauseImage);
-				} else {
-					playButton.setGraphic(playImage);
-				}
-			}
-
-		};
+		playButton.setOnMouseClicked(new PlayButtonHandler(this));
+		timeLineStatus = new TimeLineStatusHandler(playButton, stopButton, playImage, pauseImage);
 		final Label speedLabel = new Label("Speed: 1.0x");
 		timeLineRate = new ChangeListener<Number>() {
 			
@@ -452,67 +413,30 @@ public class Visualizer extends Application {
 		Button ffdButton = new Button("Speed up", ffdImage);
 		ImageView rwImage = getImageView("rewind.png", playIconSize);
 		Button rwButton = new Button("Speed down", rwImage);
-		
-		/**
-		 * Listener for the {@link Event} that the user clicks a fast forward or
-		 * rewind button. Makes sure that the visualization is accordingly
-		 * sped up or down.
-		 */
-		class TimeLineRateChanged implements EventHandler<Event>{
-
-			/**
-			 * If true, the rate changes to a higher value.
-			 * If false, the rate changes to a lower value.
-			 */
-			private final boolean speedUp;
-			
-			/**
-			 * Makes sure that the visualization is accordingly sped up or down.
-			 */
-			@Override
-			public void handle(Event arg0) {
-				MapScene scene = Visualizer.this.scene;
-				if (scene != null){
-					Timeline timeLine = scene.getTimeLine();
-					double old = timeLine.getRate();
-					double diff = speedUp ? timeLineRateStep : (-1*timeLineRateStep);
-					timeLine.setRate(old + diff);
-				}
-			}
-
-			/**
-			 * @param speedUp If true, the rate changes to a higher value.
-			 * If false, the rate changes to a lower value.
-			 */
-			TimeLineRateChanged(boolean speedUp) {
-				this.speedUp = speedUp;
-			}
-		};
-		ffdButton.setOnMouseClicked(new TimeLineRateChanged(true));
-		rwButton.setOnMouseClicked(new TimeLineRateChanged(false));
+		ffdButton.setOnMouseClicked(new TimeLineRateChanged(true, this));
+		rwButton.setOnMouseClicked(new TimeLineRateChanged(false, this));
 		ImageView zoomInImage = getImageView("zoom-in.png", playIconSize);
 		Button zoomInButton = new Button("Zoom IN", zoomInImage);
-		zoomInButton.setOnMouseClicked(new  EventHandler<Event>() {
-
-			@Override
-			public void handle(Event arg0) {
-				if (scene != null){
-					scene.changeZoom(1.2);
-				}
-			}
-		});
+		zoomInButton.setOnMouseClicked(new ZoomingHandler(1.2, this));
 		ImageView zoomOutImage = getImageView("zoom-out.png", playIconSize);
 		Button zoomOutButton = new Button("Zoom OUT", zoomOutImage);
-		zoomOutButton.setOnMouseClicked(new EventHandler<Event>() {
+		zoomOutButton.setOnMouseClicked(new ZoomingHandler(1/1.2, this));
+		ImageView stopImage = getImageView("stop-black.png", playIconSize);
+		stopButton.setDisable(true);
+		stopButton.setGraphic(stopImage);
+		stopButton.setOnMouseClicked(new EventHandler<Event>() {
 
 			@Override
 			public void handle(Event arg0) {
-				if (scene != null){
-					scene.changeZoom(1/1.2);
+				Timeline timeline = scene.getTimeLine();
+				if ((timeline.getStatus() == Status.RUNNING) || (timeline.getStatus() == Status.PAUSED)){
+					timeline.stop();
+					stopButton.setDisable(true);
 				}
 			}
 		});
-		HBox hbox = new HBox(speedLabel, rwButton, playButton, ffdButton, zoomInButton, zoomOutButton); 	
+		
+		HBox hbox = new HBox(speedLabel, rwButton, playButton, stopButton, ffdButton, zoomInButton, zoomOutButton); 	
 		hbox.setSpacing(10);
 		hbox.setAlignment(Pos.CENTER_RIGHT);
 		return hbox;
@@ -523,6 +447,14 @@ public class Visualizer extends Application {
 	 */
 	private Stage stage;
 	
+	/**
+	 * @return The stage used by this application.
+	 * @see {@link Visualizer#stage}
+	 */
+	public Stage getStage() {
+		return stage;
+	}
+
 	/**
 	 * The tool bar containing the various zooming, pausing, forwarding etc. options
 	 */
@@ -538,7 +470,7 @@ public class Visualizer extends Application {
 	 * @return The tool bar containing the various zooming, pausing, forwarding etc. options
 	 * @see {@link Visualizer#controlsBar}
 	 */
-	HBox getControlsBar() {
+	public HBox getControlsBar() {
 		return controlsBar;
 	}
 
@@ -548,12 +480,19 @@ public class Visualizer extends Application {
 	private final VBox vbox = new VBox();
 	
 	/**
-	 * @return Builds and returns the column, shown on the left side of the map, containing various graphics options
+	 * @return The root element of the main {@link Scene} of the application.
+	 * @see {@link Visualizer#vbox}
+	 */
+	public VBox getVBox(){
+		return vbox;
+	}
+	
+	/**
+	 * @return Builds and returns the column, shown next to the map on the left side, containing various graphics options.
 	 * @throws IOException Unless the application source folder contents have been changed in 
 	 * any way by the user, this exception will never be thrown. 
 	 */
 	private VBox createGraphicsColumn() throws IOException{
-		//TODO break this method into smaller pieces of code
 		VBox panel = new VBox();
 		panel.setDisable(true);
 		panel.setAlignment(Pos.TOP_LEFT);
@@ -583,84 +522,17 @@ public class Visualizer extends Application {
 		panel.getChildren().add(showLinksBox);
 		ImageView snapShotImage = getImageView("screenshot.png", playIconSize);
 		Button screenShotButton = new Button("Snapshot", snapShotImage);
-		screenShotButton.setOnMouseClicked(new EventHandler<Event>() {
-
-			@Override
-			public void handle(Event arg0) {
-				if (scene != null){
-					Timeline timeLine = scene.getTimeLine();
-					boolean paused = false;
-					if (timeLine.getStatus() == Status.RUNNING){
-						timeLine.pause();
-						paused = true;
-					}
-					WritableImage image = scene.getMapContainer().snapshot(null, null);
-					FileChooser fileChooser = new FileChooser();
-					fileChooser.setTitle("Specify a PNG file");
-					FileChooser.ExtensionFilter filter = new ExtensionFilter("Just PNG files", "png");
-					fileChooser.getExtensionFilters().add(filter);
-					File file = fileChooser.showSaveDialog(stage);
-					if (file != null){
-						BufferedImage bim = SwingFXUtils.fromFXImage(image, null);
-						boolean success = false;
-						try {
-							success = ImageIO.write(bim, "png", file);															
-						} catch (IOException ex) {}
-						if (success){
-							showDialog(DialogType.SUCCESS, "The snapshot has been saved to", 
-									file.getAbsoluteFile().toString());
-						} else {
-							showDialog(DialogType.ERROR, "The snapshot could not be saved.");
-						}
-					}
-					if (paused){
-						timeLine.play();
-					}
-				}
-			}
-		});
+		screenShotButton.setOnMouseClicked(new ScreenShotHandler(this));
 		panel.getChildren().add(screenShotButton);		
-		final ImageView recordStartImage = getImageView("record.png", playIconSize);
-		final ImageView recordStopImage = getImageView("stop.png", playIconSize);
-		final Button recordButton = new Button("Record", recordStartImage);
-		recordButton.setOnMouseClicked(new EventHandler<Event>() {
-
-			@Override
-			public void handle(Event arg0) {
-				if (scene != null){			
-					if (scene.isRecordingInProgress()){
-						scene.setRecordingInProgress(false);
-						scene.flushRecordedFrames();
-						recordButton.setText("Record");
-						recordButton.setGraphic(recordStartImage);
-					} else {
-						Timeline timeLine = scene.getTimeLine();
-						boolean paused = false;
-						if (timeLine.getStatus() == Status.RUNNING){
-							timeLine.pause();
-							paused = true;
-						}
-						DirectoryChooser dirChooser = new DirectoryChooser();
-						dirChooser.setTitle("Select a folder");
-						File dir = dirChooser.showDialog(stage);
-						if (dir != null){
-							scene.setRecordingDirectory(dir);
-							scene.setRecordingInProgress(true);
-							recordButton.setText("Stop");
-							recordButton.setGraphic(recordStopImage);
-						}
-						if (paused){
-							timeLine.play();
-						}
-					}					
-				}
-			}
-		});
+		ImageView recordStartImage = getImageView("record.png", playIconSize);
+		ImageView recordStopImage = getImageView("stop.png", playIconSize);
+		Button recordButton = new Button("Record", recordStartImage);
+		recordButton.setOnMouseClicked(new RecordingHandler(recordButton, recordStartImage, recordStopImage, this));
 		panel.getChildren().add(recordButton);
 		for (Node node : panel.getChildren()){
 			VBox.setMargin(node, new Insets(graphicsItemsMargin, 0, graphicsItemsMargin, 2 * graphicsItemsMargin));
 		}
-		setGraphicsColumnDefaults = new Runnable() {
+		graphicsColumnDefaults = new Runnable() {
 			
 			@Override
 			public void run() {
@@ -672,107 +544,20 @@ public class Visualizer extends Application {
 	}
 	
 	/**
-	 * Shows a simple dialog to the user, containing a text message.
-	 * User only has to click the OK button.
-	 * @param type Type of the dialog, i.e. error, success etc.
-	 * @param messages Each message will we shown as a single line in the dialog
-	 */
-	private void showDialog(DialogType type, String... messages) {
-		//TODO wrap this functionality inside an extra class
-		if ((type == null) || (messages == null) || (messages.length == 0)){
-			return;
-		}
-		cropMessages(messages);
-		String imageResource = null;
-		switch(type){
-			case ERROR:
-				imageResource = "error.png";
-				break;
-			case INFO:
-				imageResource = "info.png";
-				break;
-			case SUCCESS:
-				imageResource = "success.png";
-				break;			
-		}
-		ImageView image = getImageView(imageResource, dialogIconSize);
-		List<Label> labels = new ArrayList<>();
-		labels.add(new Label());
-		for (String msg : messages){
-			Label label = new Label(msg);
-			labels.add(label);
-		}
-		labels.add(new Label());
-		Button okButton = new Button("OK");
-		GridPane gridPane = new GridPane();		
-		GridPane.setHalignment(okButton, HPos.CENTER);
-		GridPane.setValignment(image, VPos.CENTER);			
-		int row = 0;
-		gridPane.add(image, 0, 0, 1, labels.size());
-		for (Label lab : labels){
-			GridPane.setMargin(lab, new Insets(0, 20, 0, 20));
-			gridPane.add(lab, 1, row);
-			row += 1;
-		}
-		gridPane.add(okButton, 1, row);
-		Scene scene = new Scene(gridPane);
-		final Stage dialog = new Stage();
-		okButton.setOnMouseClicked(new EventHandler<Event>() {
-
-			@Override
-			public void handle(Event arg0) {
-				dialog.close();
-			}
-		});
-		dialog.initStyle(StageStyle.UTILITY);
-		dialog.initModality(Modality.APPLICATION_MODAL);
-		dialog.setScene(scene);
-		dialog.sizeToScene();
-		dialog.show();
-	}
-	
-	/**
-	 * Makes sure that the given Strings contain at most {@link Visualizer#dialogMessageLineLength}
-	 * characters each. If any of them is longer, it is replaced with a cropped version.
-	 * @param messages These Strings are checked for their length.
-	 */
-	private void cropMessages(String[] messages){
-		if (messages != null){
-			for (int i = 0; i < messages.length; i++){
-				String msg = messages[i];
-				if ((msg != null) && (msg.length() > dialogMessageLineLength)){
-					String newMsg = msg.substring(0, dialogMessageLineLength) + "...";
-					messages[i] = newMsg;
-				}
-			}
-		}
-	}
-	
-	/**
-	 * Maximum number of characters in a single line of the messages that are shown by
-	 * the dialog produced in {@link Visualizer#showDialog(DialogType, String...)}
-	 */
-	private final int dialogMessageLineLength = 128;
-	
-	/**
-	 * Type of the dialogs that are produced by {@link Visualizer#showDialog(DialogType, String)} 
-	 */
-	private static enum DialogType {
-		INFO, SUCCESS, ERROR;
-	}
-	
-	/**
-	 * Width and height of the illustrative icon shown inside the dialog that
-	 * is shown with {@link Visualizer#showDialog(DialogType, String)}
-	 */
-	private final double dialogIconSize = 64.0;
-	
-	/**
 	 * The stripe of the application view that contains the {@link Visualizer#graphicsColumn},
 	 * {@link MapScene#mapPane} and others
 	 */
 	private final HBox middleRow = new HBox();
 	
+	/**
+	 * @return The stripe of the application view that contains the {@link Visualizer#graphicsColumn},
+	 * {@link MapScene#mapPane} and others
+	 * @see {@link Visualizer#middleRow}
+	 */
+	public HBox getMiddleRow() {
+		return middleRow;
+	}
+
 	/**
 	 * The column, shown on the left side of the map, containing various graphics options
 	 */
@@ -782,7 +567,7 @@ public class Visualizer extends Application {
 	 * @return The column, shown on the left side of the map, containing various graphics options
 	 * @see {@link Visualizer#graphicsColumn}
 	 */
-	VBox getGraphicsColumn(){
+	public VBox getGraphicsColumn(){
 		return graphicsColumn;
 	}
 	

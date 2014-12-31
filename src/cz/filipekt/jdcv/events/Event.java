@@ -1,8 +1,7 @@
 package cz.filipekt.jdcv.events;
 
-
 /**
- * Represents an event element from the simulation output.
+ * Represents an event element, either from the MATSIM output or from ensemble log output.
  */
 public interface Event {
 	
@@ -16,9 +15,4 @@ public interface Event {
 	 * @return The time at which the event occurred.
 	 */
 	double getTime();
-	
-	/**
-	 * @return ID of the person involved in the event
-	 */
-	String getPerson();
 }

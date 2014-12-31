@@ -2,7 +2,10 @@ package cz.filipekt.jdcv.events;
 
 import cz.filipekt.jdcv.network.MyLink;
 
-public class ArrivalOrDeparture implements EventWithLink {
+/**
+ * Models an event of type "departure" or "arrival", which appears in the MATSIM event log
+ */
+public class ArrivalOrDeparture implements MatsimEvent {
 	
 	public static enum LegMode {
 		CAR, TRANSIT_WALK;
@@ -78,7 +81,6 @@ public class ArrivalOrDeparture implements EventWithLink {
 	 * @return The link through which the person arrived (or departed).
 	 * @see {@link ArrivalOrDeparture#link}
 	 */
-	@Override
 	public MyLink getLink() {
 		return link;
 	}
