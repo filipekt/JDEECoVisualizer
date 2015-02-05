@@ -3,11 +3,13 @@ package cz.filipekt.jdcv;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.Writer;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,6 +37,8 @@ import javax.imageio.ImageIO;
 
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;
+import cz.filipekt.jdcv.prefs.LinkPrefs;
+import cz.filipekt.jdcv.prefs.MembershipPrefs;
 
 /**
  * The scene that the {@link Visualizer} will visualize. It contains the map, view parameters, event log etc.
@@ -209,7 +213,7 @@ public class MapScene {
 	/**
 	 * Temporary storage for recorded snapshots when recording is underway.
 	 */
-	List<WritableImage> recordedFrames = new ArrayList<>();
+	private List<WritableImage> recordedFrames = new ArrayList<>();
 	
 	/**
 	 * If true, the {@link KeyFrame} instances produced by {@link MapScene#createRecordingFrames()}
@@ -276,15 +280,12 @@ public class MapScene {
 		return new double[]{minx, miny, maxx, maxy};
 	}
 	
-	/*
-	 * After some changes have been made to {@link Visualizer#nodes}, {@link Visualizer#zoom} or
-	 * other fields that have influence on the map view, call this method to get an updated
-	 * collection of the {@link Circle} objects. These represent the {@link cz.filipekt.jdcv.network.MyNode}
-	 * objects for purposes of visualization.
-	 * @return Updated collection of {@link Circle} objects, representing the 
-	 * {@link cz.filipekt.jdcv.network.MyNode} objects for purposes of visualization. 
+	/**
+	 * Constructs the visualizations of the map nodes. Makes sure that proper
+	 * magnification and metric is used.
+	 * @return The visualizations of the map nodes mapped to corresponding node 
+	 * element representations.
 	 */
-	
 	private Map<Shape,MyNode> generateCircles(){
 		Map<Shape,MyNode> res = new HashMap<>();
 		for (MyNode node : nodes.values()){
@@ -303,15 +304,12 @@ public class MapScene {
 		return res;
 	}
 	
-	/*
-	 * After some changes have been made to {@link Visualizer#links}, {@link Visualizer#zoom} or
-	 * other fields that have influence on the map view, call this method to get an updated
-	 * collection of the {@link Line} objects. These represent the {@link cz.filipekt.jdcv.network.MyLink}
-	 * objects for purposes of visualization.
-	 * @return Updated collection of {@link Line} objects, representing the 
-	 * {@link cz.filipekt.jdcv.network.MyLink} objects for purposes of visualization. 
+	/**
+	 * Constructs the visualizations of the map links. Makes sure that proper
+	 * magnification and metric is used.
+	 * @return The visualizations of the map links mapped to corresponding link 
+	 * element representations.
 	 */
-	
 	private Map<Shape,MyLink> generateLines(){
 		Map<Shape,MyLink> res = new HashMap<>();
 		for (MyLink link : links.values()){
@@ -327,6 +325,21 @@ public class MapScene {
 			line.setStroke(linkDefaultColor);
 			line.setStrokeWidth(linkWidth);		
 			res.put(line, link);
+		}
+		return res;
+	}
+	
+	/**
+	 * @return The link preferences objects mapped the corresponding link IDs.
+	 */
+	public Map<String,LinkPrefs> getLinkPrefs(){
+		Map<String,LinkPrefs> res = new HashMap<>();
+		for (Shape shape : lines.keySet()){
+			MyLink link = lines.get(shape);
+			Line line = (Line)shape;
+			Writer writer = Console.getInstance().getWriter();
+			LinkPrefs prefs = new LinkPrefs(link.getId(), link.getFrom().getId(), link.getTo().getId(), line, writer);
+			res.put(link.getId(), prefs);
 		}
 		return res;
 	}
@@ -411,7 +424,7 @@ public class MapScene {
 	
 	/**
 	 * Updates the collections of {@link Shape} instances that represent the map elements,
-	 * both mobile (vehicles) and immobile (nodes,links).
+	 * both mobile (agents, ensemble memberships) and immobile (nodes,links).
 	 * Also, the {@link MapScene#mapContainer} holding these {@link Shape} instances for
 	 * visualizing purposes is updated with the new values.
 	 */
@@ -426,7 +439,7 @@ public class MapScene {
 		mapContainer.getChildren().addAll(lines.keySet());
 		mapContainer.getChildren().addAll(circles.keySet());
 		mapContainer.getChildren().addAll(personShapes.values());
-		mapContainer.getChildren().addAll(ensembleShapes);
+		mapContainer.getChildren().addAll(ensembleShapes.values());
 	    moveShapesToFront();
 	}
 	
@@ -502,7 +515,20 @@ public class MapScene {
 	/**
 	 * Each {@link Shape} instance represents an ensemble membership
 	 */
-	private final Set<? extends Shape> ensembleShapes;
+	private final Map<MembershipRelation,? extends Shape> ensembleShapes;
+	
+	/**
+	 * @return The ensemble membership preferences objects
+	 */
+	public Set<MembershipPrefs> getMembershipPrefs(){
+		Set<MembershipPrefs> res = new HashSet<>();
+		for (MembershipRelation mr : ensembleShapes.keySet()){
+			Line line = (Line)ensembleShapes.get(mr);
+			MembershipPrefs pref = new MembershipPrefs(mr.getEnsembleName(), mr.getCoordinator(), mr.getMember(), line);
+			res.add(pref);
+		}
+		return res;
+	}
 	
 	/**
 	 * @param nodes The network nodes. Keys = node IDs, values = {@link MyNode} node representations.
@@ -514,7 +540,7 @@ public class MapScene {
 	 * @param
 	 */
 	MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight, Map<String,? extends Shape> personShapes, 
-			Set<? extends Shape> ensembleShapes, ChangeListener<? super Status> timeLineStatus, ChangeListener<? super Number> timeLineRate) {
+			Map<MembershipRelation,? extends Shape> ensembleShapes, ChangeListener<? super Status> timeLineStatus, ChangeListener<? super Number> timeLineRate) {
 		this.personShapes = personShapes;
 		this.ensembleShapes = ensembleShapes;
 		this.nodes = nodes;

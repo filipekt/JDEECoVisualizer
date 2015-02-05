@@ -2,9 +2,6 @@ package cz.filipekt.jdcv;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +25,6 @@ import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
@@ -60,7 +56,12 @@ public class Visualizer extends Application {
 	/**
 	 * Marks whether the application runs in debugging mode
 	 */
-	private final boolean debug = false;
+	public static final boolean debug = false;
+	
+	/**
+	 * When in debug mode, this is the directory that contains example data 
+	 */
+	private final String debugExamplesDir = "C:/Users/Tom/Documents/diplomka/JDEECoVisualizer-master/example_data";
 	
 	/**
 	 * Preferred width of the map view, in pixels.
@@ -132,36 +133,6 @@ public class Visualizer extends Application {
 	}
 
 	/**
-	 * @param resourceName A resource to be loaded
-	 * @return An {@link InputStream} instance reading from the specified resource
-	 * @throws IOException When the specified resource could not be found or opened
-	 */
-	private InputStream getResourceInputStream(String resourceName) throws IOException{
-		if (debug){
-			return Files.newInputStream(Paths.get("C:/diplomka/JDEECoVisualizer/resources", resourceName));
-		} else {
-			return getClass().getResourceAsStream("/resources/" + resourceName);
-		}
-	}
-	
-	/**
-	 * @param resourceFileName Filename of the desired image
-	 * @param size Preferred width and height of the {@link ImageView} 
-	 * @return The desired image wrapped in a {@link ImageView}
-	 */
-	ImageView getImageView(String resourceFileName, double size){
-		try {
-			if (resourceFileName == null){
-				throw new NullPointerException();
-			}
-			InputStream stream = getResourceInputStream(resourceFileName);
-			return new ImageView(new Image(stream, size, size, true, true));
-		} catch (Exception ex) { // if the specified image is not found
-			return new ImageView();
-		}
-	}
-	
-	/**
 	 * Constructs the main menu bar of the application.
 	 * @return The main menu bar of the application.
 	 * @throws IOException Unless the application source folder contents have been changed in 
@@ -177,18 +148,27 @@ public class Visualizer extends Application {
 		importSceneItem.setOnAction(new ImportSceneHandler(importSceneItem, closeThisSceneItem, this));
 		closeThisSceneItem.setOnAction(new CloseSceneHandler(importSceneItem, closeThisSceneItem, this));
 		fileMenu.getItems().addAll(importSceneItem, closeThisSceneItem);
-		Menu editMenu = new Menu("Options");
+		Menu optionsMenu = new Menu("Options");
+		MenuItem scriptingPanel = new MenuItem("Open Console");
+		scriptingPanel.setOnAction(new EventHandler<ActionEvent>() {
+			
+			@Override
+			public void handle(ActionEvent arg0) {
+				Console.getInstance().showScriptingConsole(Visualizer.this);
+			}
+		});
+		optionsMenu.getItems().addAll(scriptingPanel);
 		Menu viewMenu = new Menu("View");
 		MenuItem controlsPanel = new MenuItem("Controls Panel");
-		ImageView checkBoxImage = getImageView("checkmark.png", checkBoxSize);
+		ImageView checkBoxImage = Resources.getImageView("checkmark.png", checkBoxSize);
 		controlsPanel.setGraphic(checkBoxImage);	
 		controlsPanel.setOnAction(new ControlsBarItemHandler(controlsPanel, checkBoxImage, this));
 		final MenuItem graphicsPanel = new MenuItem("Graphics Panel");	
-		final ImageView checkBoxImage2 = getImageView("checkmark.png", checkBoxSize);
+		final ImageView checkBoxImage2 = Resources.getImageView("checkmark.png", checkBoxSize);
 		graphicsPanel.setGraphic(checkBoxImage2);
 		graphicsPanel.setOnAction(new GraphicsPanelHandler(graphicsPanel, checkBoxImage2, this));
 		viewMenu.getItems().addAll(controlsPanel, graphicsPanel);
-		menuBar.getMenus().addAll(fileMenu, editMenu, viewMenu);
+		menuBar.getMenus().addAll(fileMenu, optionsMenu, viewMenu);
 		return menuBar;
 	}
 	
@@ -298,9 +278,9 @@ public class Visualizer extends Application {
 			field.setPrefWidth(inputFieldsWidth);
 		}
 		if (debug){
-			fields.get(0).setText("C:/diplomka/example_output/network.xml");
-			fields.get(1).setText("C:/diplomka/example_output/events.xml");
-			fields.get(2).setText("C:/diplomka/example_output/ensembles.xml");
+			fields.get(0).setText(debugExamplesDir + "/network.xml");
+			fields.get(1).setText(debugExamplesDir + "/events.xml");
+			fields.get(2).setText(debugExamplesDir + "/ensembles.xml");
 		}
 		setUpDragNDrop(fields);
 		for (int i = 0; i < chooserButtons.size(); i++){
@@ -393,8 +373,8 @@ public class Visualizer extends Application {
 	 * any way by the user, this exception will never be thrown.
 	 */
 	private HBox createControlsBar() throws IOException{
-		ImageView pauseImage = getImageView("video-pause.png", playIconSize);
-		ImageView playImage = getImageView("video-play.png", playIconSize);
+		ImageView pauseImage = Resources.getImageView("video-pause.png", playIconSize);
+		ImageView playImage = Resources.getImageView("video-play.png", playIconSize);
 		Button playButton = new Button();
 		final Button stopButton = new Button();
 		playButton.setGraphic(playImage);
@@ -409,19 +389,19 @@ public class Visualizer extends Application {
 				speedLabel.setText("Speed: " + arg2.doubleValue() + "x");
 			}
 		};
-		ImageView ffdImage = getImageView("fast-forward.png", playIconSize);
+		ImageView ffdImage = Resources.getImageView("fast-forward.png", playIconSize);
 		Button ffdButton = new Button("Speed up", ffdImage);
-		ImageView rwImage = getImageView("rewind.png", playIconSize);
+		ImageView rwImage = Resources.getImageView("rewind.png", playIconSize);
 		Button rwButton = new Button("Speed down", rwImage);
 		ffdButton.setOnMouseClicked(new TimeLineRateChanged(true, this));
 		rwButton.setOnMouseClicked(new TimeLineRateChanged(false, this));
-		ImageView zoomInImage = getImageView("zoom-in.png", playIconSize);
+		ImageView zoomInImage = Resources.getImageView("zoom-in.png", playIconSize);
 		Button zoomInButton = new Button("Zoom IN", zoomInImage);
 		zoomInButton.setOnMouseClicked(new ZoomingHandler(1.2, this));
-		ImageView zoomOutImage = getImageView("zoom-out.png", playIconSize);
+		ImageView zoomOutImage = Resources.getImageView("zoom-out.png", playIconSize);
 		Button zoomOutButton = new Button("Zoom OUT", zoomOutImage);
 		zoomOutButton.setOnMouseClicked(new ZoomingHandler(1/1.2, this));
-		ImageView stopImage = getImageView("stop-black.png", playIconSize);
+		ImageView stopImage = Resources.getImageView("stop-black.png", playIconSize);
 		stopButton.setDisable(true);
 		stopButton.setGraphic(stopImage);
 		stopButton.setOnMouseClicked(new EventHandler<Event>() {
@@ -520,12 +500,12 @@ public class Visualizer extends Application {
 			}
 		});
 		panel.getChildren().add(showLinksBox);
-		ImageView snapShotImage = getImageView("screenshot.png", playIconSize);
+		ImageView snapShotImage = Resources.getImageView("screenshot.png", playIconSize);
 		Button screenShotButton = new Button("Snapshot", snapShotImage);
 		screenShotButton.setOnMouseClicked(new ScreenShotHandler(this));
 		panel.getChildren().add(screenShotButton);		
-		ImageView recordStartImage = getImageView("record.png", playIconSize);
-		ImageView recordStopImage = getImageView("stop.png", playIconSize);
+		ImageView recordStartImage = Resources.getImageView("record.png", playIconSize);
+		ImageView recordStopImage = Resources.getImageView("stop.png", playIconSize);
 		Button recordButton = new Button("Record", recordStartImage);
 		recordButton.setOnMouseClicked(new RecordingHandler(recordButton, recordStartImage, recordStopImage, this));
 		panel.getChildren().add(recordButton);
@@ -642,7 +622,7 @@ public class Visualizer extends Application {
 			}
 		});
 	    stage.setScene(fxScene);
-	    stage.setTitle("Map Visualizer");
+	    stage.setTitle("JDEECo Visualizer");
 	    stage.show();
 	}
 

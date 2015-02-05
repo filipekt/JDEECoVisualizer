@@ -43,16 +43,13 @@ public class Dialog {
 	private static final double dialogIconSize = 64.0;
 	
 	/**
-	 * Shows a simple dialog to the user, containing a text message. 
-	 * User only has to click the OK button.
-	 * @param type Type of the dialog, i.e. error, success etc.
-	 * @param messages Each message will we shown as a single line in the dialog
+	 * Loads the graphics corresponding to the dialog type specified by
+	 * the parameter.
+	 * @param type Dialog type determining the image to be loaded
+	 * @return Graphics corresponding to the dialog type specified by
+	 * the parameter
 	 */
-	public static void show(Visualizer visualizer, Dialog.Type type, String... messages){
-		if ((type == null) || (messages == null) || (messages.length == 0)){
-			return;
-		}
-		cropMessages(messages);
+	private static ImageView loadGraphic(Dialog.Type type){
 		String imageResource = null;
 		switch(type){
 			case ERROR:
@@ -65,7 +62,25 @@ public class Dialog {
 				imageResource = "success.png";
 				break;			
 		}
-		ImageView image = visualizer.getImageView(imageResource, dialogIconSize);
+		if (imageResource == null){
+			return new ImageView();
+		} else {
+			return Resources.getImageView(imageResource, dialogIconSize);
+		}
+	}
+	
+	/**
+	 * Shows a simple dialog to the user, containing a text message. 
+	 * User only has to click the OK button.
+	 * @param type Type of the dialog, i.e. error, success etc.
+	 * @param messages Each message will we shown as a single line in the dialog
+	 */
+	public static void show(Dialog.Type type, String... messages){
+		if ((type == null) || (messages == null) || (messages.length == 0)){
+			return;
+		}
+		cropMessages(messages);
+		ImageView image = loadGraphic(type);
 		List<Label> labels = new ArrayList<>();
 		labels.add(new Label());
 		for (String msg : messages){

@@ -4,12 +4,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javafx.animation.Animation.Status;
 import javafx.animation.KeyFrame;
@@ -215,7 +212,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		XMLextractor.run(eventsFile, eventWithPersonHandler);
 		CheckPointDatabase cdb = buildCheckPointDatabase(eventWithPersonHandler.getEvents());
 		Map<String,Shape> personShapes = new HashMap<>();
-		Set<Shape> ensembleShapes = new HashSet<>();
+		Map<MembershipRelation,Shape> ensembleShapes = new HashMap<>();
 		final MapScene scene = new MapScene(nodeHandler.getNodes(), linkHandler.getLinks(), visualizer.getMapWidth(), 
 				visualizer.getMapHeight(), personShapes, ensembleShapes, timeLineStatus, timeLineRate);
 		final List<KeyFrame> keyFrames = buildKeyFrames(cdb, personShapes, scene);
@@ -239,8 +236,10 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		});				
 	}
 	
+	//TODO take care of the corner cases in this method
+	//TODO add javadoc
 	private List<KeyFrame> buildKeyFrames2(List<EnsembleEvent> events, Map<String,? extends Shape> personShapes, 
-			MapScene scene, CheckPointDatabase cdb, Set<Shape> ensembleShapes){
+			MapScene scene, CheckPointDatabase cdb, Map<MembershipRelation,Shape> ensembleShapes){
 		
 		// Assumption: the {@link Shape} instances in {@code personShapes} are of type Circle
 		
@@ -249,17 +248,22 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		for (EnsembleEvent eev : events){
 			double timeVal = cdb.transformTime(eev.getTime(), durationBox.getValue());
 			Duration time = new Duration(timeVal);
-			Circle coordShape = (Circle)personShapes.get(eev.getCoordinator());
-			Circle memberShape = (Circle)personShapes.get(eev.getMember());
-			if ((coordShape != null) && (memberShape != null)){			
-				Shape ensembleShape = edb.getEnsembleShape(eev.getEnsemble(), coordShape, memberShape);
+			String coord = eev.getCoordinator();
+			Circle coordShape = (Circle)personShapes.get(coord);
+			String member = eev.getMember();
+			Circle memberShape = (Circle)personShapes.get(member);
+			if ((coordShape != null) && (memberShape != null)){		
+				
+//				TODO what if some of them is null? when does it happen?
+				
+				Shape ensembleShape = edb.getEnsembleShape(eev.getEnsemble(), coord, member, coordShape, memberShape);
 				KeyValue kv = new KeyValue(ensembleShape.visibleProperty(), eev.getMembership());
 				KeyFrame kf = new KeyFrame(time, kv);
 				res.add(kf);
 			}
 		}
-		ensembleShapes.addAll(edb.getAllEnsembleShapes());
-		for (Shape line : ensembleShapes){
+		ensembleShapes.putAll(edb.getEnsembleShapes());
+		for (Shape line : ensembleShapes.values()){
 			KeyValue kv = new KeyValue(line.visibleProperty(), Boolean.FALSE);
 			KeyFrame kf = new KeyFrame(Duration.ZERO, kv);
 			res.add(kf);
@@ -267,137 +271,44 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		return res;
 	}
 	
+	/**
+	 * Stores the shapes representing the ensemble membership relation.
+	 */
 	private static class EnsembleDatabase {
-		public static class Pair {
-			
-			/**
-			 * Name of an ensemble
-			 */
-			private final String ensembleName;
-			
-			/**
-			 * ID of a coordinator
-			 */
-			private final Shape coordinator;
-			
-			/**
-			 * @param ensembleName Name of an ensemble
-			 * @param coordinator ID of a coordinator
-			 */
-			public Pair(String ensembleName, Shape coordinator) {
-				this.ensembleName = ensembleName;
-				this.coordinator = coordinator;
-			}
+		
+		/**
+		 * To a membership relation, i.e. a triplet (ensemble,coordinator,member),
+		 * it maps a corresponding shape visualizing the relation.
+		 */
+		private final Map<MembershipRelation,Shape> shapeMappings = new HashMap<>();
 
-			/**
-			 * Depends precisely on the following two fields:
-			 * {@link Pair#ensembleName} , {@link Pair#coordinator}
-			 */
-			@Override
-			public int hashCode() {
-				final int prime = 31;
-				int result = 1;
-				result = prime * result
-						+ ((coordinator == null) ? 0 : coordinator.hashCode());
-				result = prime
-						* result
-						+ ((ensembleName == null) ? 0 : ensembleName.hashCode());
-				return result;
-			}
-
-			/**
-			 * Equality holds precisely when following fields are equal amid instances:
-			 * {@link Pair#ensembleName} , {@link Pair#coordinator}
-			 */
-			@Override
-			public boolean equals(Object obj) {
-				if (this == obj)
-					return true;
-				if (obj == null)
-					return false;
-				if (getClass() != obj.getClass())
-					return false;
-				Pair other = (Pair) obj;
-				if (coordinator == null) {
-					if (other.coordinator != null)
-						return false;
-				} else if (!coordinator.equals(other.coordinator))
-					return false;
-				if (ensembleName == null) {
-					if (other.ensembleName != null)
-						return false;
-				} else if (!ensembleName.equals(other.ensembleName))
-					return false;
-				return true;
-			}	
+		/**
+		 * @return To a membership relation, i.e. a triplet (ensemble,coordinator,member),
+		 * it maps a corresponding shape visualizing the relation.
+		 * @see {@link EnsembleDatabase#shapeMappings} 
+		 */
+		public Map<MembershipRelation,Shape> getEnsembleShapes(){
+			return shapeMappings;
 		}
 		
-		public static class Triplet extends Pair {
-			
-			/**
-			 * A member of ensemble
-			 */
-			private final Shape member;
-
-			/**
-			 * @param ensembleName Name of an ensemble
-			 * @param coordinator ID of a coordinator
-			 * @param member A member of ensemble
-			 */
-			public Triplet(String ensembleName, Shape coordinator, Shape member) {
-				super(ensembleName, coordinator);
-				this.member = member;
-			}
-
-			/**
-			 * Depends precisely on the following three fields:
-			 * {@link Pair#ensembleName} , 
-			 * {@link Pair#coordinator} ,
-			 * {@link Triplet#member}
-			 */
-			@Override
-			public int hashCode() {
-				final int prime = 31;
-				int result = super.hashCode();
-				result = prime * result
-						+ ((member == null) ? 0 : member.hashCode());
-				return result;
-			}
-
-			/**
-			 * Equality holds precisely when following fields are equal amid instances:
-			 * {@link Pair#ensembleName} , 
-			 * {@link Pair#coordinator} ,
-			 * {@link Triplet#member}
-			 */
-			@Override
-			public boolean equals(Object obj) {
-				if (this == obj)
-					return true;
-				if (!super.equals(obj))
-					return false;
-				if (getClass() != obj.getClass())
-					return false;
-				Triplet other = (Triplet) obj;
-				if (member == null) {
-					if (other.member != null)
-						return false;
-				} else if (!member.equals(other.member))
-					return false;
-				return true;
-			}
-		}
+		/**
+		 * For given ensemble name and coordinator, it stores a color used
+		 * for shapes visualizing the membership relations including these
+		 * two (ensemble,coordinator).
+		 */
+		private final Map<CoordinatorRelation,Paint> colors = new HashMap<>();
 		
-		private final Map<Triplet,Shape> shapeMappings = new HashMap<>();
-		
-		public Collection<Shape> getAllEnsembleShapes(){
-			return shapeMappings.values();
-		}
-		
-		private final Map<Pair,Paint> colors = new HashMap<>();
-		
-		private Paint getColor(String ensembleName, Shape coordinator){
-			Pair pair = new Pair(ensembleName, coordinator);
+		/**
+		 * Given an ensemble name and coordinator ID, this method gives a color
+		 * which will be used to visualize the ensemble memberships including
+		 * the given ensemble and coordinator.
+		 * @param ensembleName Name of an ensemble
+		 * @param coordinator ID of an coordinator
+		 * @return Color which will be used to visualize the ensemble memberships 
+		 * including the given ensemble and coordinator
+		 */
+		private Paint getColor(String ensembleName, String coordinator){
+			CoordinatorRelation pair = new CoordinatorRelation(ensembleName, coordinator);
 			if (!colors.containsKey(pair)){
 				double red = Math.random();
 				double green = Math.random();
@@ -408,18 +319,37 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 			return colors.get(pair);
 		}
 		
+		/**
+		 * Width of the lines used to visualize the ensemble membership relation
+		 */
 		private final double ensembleLineWidth = 1.5;
+		
+		/**
+		 * Opacity of the lines used to visualize the ensemble membership relation
+		 */
 		private final double ensembleLineOpacity = 0.8;
 		
-		public Shape getEnsembleShape(String ensembleName, Circle coordinator, Circle member){
-			Triplet t = new Triplet(ensembleName, coordinator, member);
-			if (!shapeMappings.containsKey(t)){
+		/**
+		 * Given the ensemble name and IDs of coordinator and member, this method
+		 * gives a geometric shape visualizing this relationship.
+		 * @param ensembleName Name of an ensemble
+		 * @param coordinator ID of an coordinator
+		 * @param member ID of a member
+		 * @param coordinatorCircle The shape visualizing the coordinator
+		 * @param memberCircle The shape visualizing the member
+		 * @return Geometric shape visualizing this relationship specified
+		 * by the ensemble name, coordinator and member IDs 
+		 */
+		public Shape getEnsembleShape(String ensembleName, String coordinator, String member, 
+				Circle coordinatorCircle, Circle memberCircle){
+			MembershipRelation t = new MembershipRelation(ensembleName, coordinator, member);
+			if (!shapeMappings.containsKey(t) && (memberCircle!=null)){
 				Line line = new Line();
 				line.setVisible(false);
-				line.startXProperty().bind(coordinator.centerXProperty());
-				line.startYProperty().bind(coordinator.centerYProperty());
-				line.endXProperty().bind(member.centerXProperty());
-				line.endYProperty().bind(member.centerYProperty());
+				line.startXProperty().bind(coordinatorCircle.centerXProperty());
+				line.startYProperty().bind(coordinatorCircle.centerYProperty());
+				line.endXProperty().bind(memberCircle.centerXProperty());
+				line.endYProperty().bind(memberCircle.centerYProperty());
 				Paint color = getColor(ensembleName, coordinator);
 				line.setStroke(color);
 				line.setStrokeWidth(ensembleLineWidth);

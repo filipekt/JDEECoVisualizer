@@ -66,10 +66,10 @@ public class ScreenShotHandler implements EventHandler<Event>{
 					success = ImageIO.write(bim, "png", file);															
 				} catch (IOException ex) {}
 				if (success){
-					Dialog.show(visualizer, Dialog.Type.SUCCESS, "The snapshot has been saved to", 
+					Dialog.show(Dialog.Type.SUCCESS, "The snapshot has been saved to", 
 							file.getAbsoluteFile().toString());
 				} else {
-					Dialog.show(visualizer, Dialog.Type.ERROR, "The snapshot could not be saved.");
+					Dialog.show(Dialog.Type.ERROR, "The snapshot could not be saved.");
 				}
 			}
 			if (paused){
