@@ -5,6 +5,8 @@ package cz.filipekt.jdcv;
  * The ensemble membership predicate is defined precisely
  * on these triplets, so this class provides means to work
  * with that predicate.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class MembershipRelation extends CoordinatorRelation {
 	

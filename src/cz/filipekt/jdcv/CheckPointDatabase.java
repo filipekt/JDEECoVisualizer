@@ -11,6 +11,8 @@ import java.util.Set;
  * it assigns to each person (given by ID) a list of {@link CheckPoint} instances.
  * These checkpoints determine some relevant events regarding the person, such as
  * "entering/leaving a vehicle", or "being at a certain place at a certain time". 
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 class CheckPointDatabase {
 	

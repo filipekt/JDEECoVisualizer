@@ -16,9 +16,9 @@ import javafx.stage.Stage;
 
 import javax.imageio.ImageIO;
 
-import cz.filipekt.jdcv.Dialog;
 import cz.filipekt.jdcv.MapScene;
 import cz.filipekt.jdcv.Visualizer;
+import cz.filipekt.jdcv.util.Dialog;
 
 /**
  * Listener for the {@link Event} that user clicks the "screenshot" button.

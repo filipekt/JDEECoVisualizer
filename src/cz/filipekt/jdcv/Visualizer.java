@@ -3,6 +3,7 @@ package cz.filipekt.jdcv;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javafx.animation.Animation.Status;
@@ -13,6 +14,7 @@ import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
+import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -37,7 +39,10 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.util.converter.IntegerStringConverter;
+import cz.filipekt.jdcv.gui_logic.ButtonXmlChooserHandler;
 import cz.filipekt.jdcv.gui_logic.CloseSceneHandler;
+import cz.filipekt.jdcv.gui_logic.ConfigFileLoader;
 import cz.filipekt.jdcv.gui_logic.ControlsBarItemHandler;
 import cz.filipekt.jdcv.gui_logic.GraphicsPanelHandler;
 import cz.filipekt.jdcv.gui_logic.ImportSceneHandler;
@@ -47,31 +52,26 @@ import cz.filipekt.jdcv.gui_logic.ScreenShotHandler;
 import cz.filipekt.jdcv.gui_logic.TimeLineRateChanged;
 import cz.filipekt.jdcv.gui_logic.TimeLineStatusHandler;
 import cz.filipekt.jdcv.gui_logic.ZoomingHandler;
+import cz.filipekt.jdcv.util.CharsetNames;
+import cz.filipekt.jdcv.util.Debug;
+import cz.filipekt.jdcv.util.Resources;
 
 /**
- * Main class of the application. Run it to show the simulation data visualization.
+ * Main class of the application. Run it to show the visualized simulation data.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class Visualizer extends Application {
 	
 	/**
-	 * Marks whether the application runs in debugging mode
-	 */
-	public static final boolean debug = false;
-	
-	/**
-	 * When in debug mode, this is the directory that contains example data 
-	 */
-	private final String debugExamplesDir = "C:/Users/Tom/Documents/diplomka/JDEECoVisualizer-master/example_data";
-	
-	/**
 	 * Preferred width of the map view, in pixels.
 	 */
-	private final double mapWidth = 800.0;
+	private final double mapWidth = 1000.0;
 	
 	/**
 	 * Preferred height of the map view, in pixels.
 	 */
-	private final double mapHeight = 600.0;
+	private final double mapHeight = 800.0;
 	
 	/**
 	 * The map that is being visualized, coupled with some view parameters.
@@ -256,31 +256,43 @@ public class Visualizer extends Application {
 			});
 		}
 	}
+	
+	/**
+	 * This encoding is the default selection in the combo-boxes on the scene-import page.
+	 */
+	private final String preferredEncoding = "UTF-8";
+	
+	/**
+	 * The preferred width of the combo-boxes for selecting the input file encoding
+	 */
+	private final double encodingBoxWidth = 90.0;
 
 	/**
 	 * Builds the {@link Visualizer#importSceneGrid}.
 	 * @param timeLineStatus Called whenever the visualization is started, paused or stopped
 	 * @return The {@link GridPane} to be used for importing new scenes.
 	 */
-	private GridPane createImportSceneGrid(ChangeListener<Status> timeLineStatus, ChangeListener<Number> timeLineRate){
+	private GridPane createImportSceneGrid(ChangeListener<Status> timeLineStatus, 
+			ChangeListener<Number> timeLineRate){
 		GridPane pane = new GridPane();
 		List<Label> labels = new ArrayList<>();
-		labels.add(new Label("Location of the network definition XML:"));
-		labels.add(new Label("Location of the event log:"));
-		labels.add(new Label("Location of the ensemble event log:"));
+		labels.add(new Label("Network definition XML:"));
+		labels.add(new Label("Event log:"));
+		labels.add(new Label("Ensemble event log:"));
 		final List<TextField> fields = new ArrayList<>();
+		List<ComboBox<String>> charsets = new ArrayList<>();
 		List<Button> chooserButtons = new ArrayList<>();
 		for (int i = 0; i < labels.size(); i++){
 			fields.add(new TextField());
 			chooserButtons.add(new Button("Select.."));
+			ComboBox<String> charsetBox = new ComboBox<String>();
+			charsetBox.getItems().addAll(CharsetNames.get());
+			charsetBox.getSelectionModel().select(preferredEncoding);
+			charsetBox.setPrefWidth(encodingBoxWidth);
+			charsets.add(charsetBox);
 		}
 		for (TextField field : fields){
 			field.setPrefWidth(inputFieldsWidth);
-		}
-		if (debug){
-			fields.get(0).setText(debugExamplesDir + "/network.xml");
-			fields.get(1).setText(debugExamplesDir + "/events.xml");
-			fields.get(2).setText(debugExamplesDir + "/ensembles.xml");
 		}
 		setUpDragNDrop(fields);
 		for (int i = 0; i < chooserButtons.size(); i++){
@@ -292,17 +304,20 @@ public class Visualizer extends Application {
 		for (int i = 0; i < labels.size(); i++){
 			Label label = labels.get(i);
 			TextField field = fields.get(i);
+			ComboBox<String> charsetBox = charsets.get(i);
 			Button button = chooserButtons.get(i);
 			pane.add(label, 0, row);
 			pane.add(field, 1, row);
-			pane.add(button, 2, row);
+			pane.add(charsetBox, 2, row);
+			pane.add(button, 3, row);
 			row += 1;
 		}
 		
 		Label durationLabel = new Label("Target duration (seconds):");
 		ComboBox<Integer> durationsBox = new ComboBox<>();
-		durationsBox.setEditable(false);
-		durationsBox.getItems().addAll(10, 30, 60, 120, 300, 3600);
+		durationsBox.setEditable(true);
+		durationsBox.setConverter(new IntegerStringConverter());
+		durationsBox.getItems().addAll(15, 30, 50, 100, 200, 500, 1000, 2000);
 		durationsBox.setValue(60);
 		pane.add(durationLabel, 0, row);
 		pane.add(durationsBox, 1, row);		
@@ -313,7 +328,37 @@ public class Visualizer extends Application {
 		onlyComponentsBox.setSelected(true);
 		pane.add(onlyComponentsLabel, 0, row);
 		pane.add(onlyComponentsBox, 1, row);
-		row += 1;
+		row += 2;
+		
+		String line = "----------";
+		Label orLabel = new Label(line + " OR " + line);
+		pane.add(orLabel, 0, row, 2, 1);
+		GridPane.setHalignment(orLabel, HPos.CENTER);
+		row += 2;
+		
+		Label configFileLabel = new Label("Specify Configuration File:");
+		final TextField configFileField = new TextField();
+		configFileField.setPrefWidth(inputFieldsWidth);
+		setUpDragNDrop(Arrays.asList(configFileField));
+		final ComboBox<String> configFileCharsets = new ComboBox<String>();
+		configFileCharsets.getItems().addAll(CharsetNames.get());
+		configFileCharsets.getSelectionModel().select(preferredEncoding);
+		configFileCharsets.setPrefWidth(encodingBoxWidth);
+		Button configFileSelect = new Button("Select..");
+		configFileSelect.setOnMouseClicked(new ButtonXmlChooserHandler(stage, configFileField));
+		Button configFileLoad = new Button("Load!");
+		configFileLoad.setOnAction(new ConfigFileLoader(configFileField, configFileCharsets, fields, 
+				charsets, durationsBox));
+		pane.add(configFileLabel, 0, row);
+		pane.add(configFileField, 1, row);
+		pane.add(configFileCharsets, 2, row);
+		pane.add(configFileSelect, 3, row);
+		pane.add(configFileLoad, 4, row);
+		row += 2;
+		
+		if (Debug.debugModeOn){
+			configFileField.setText("C:/diplomka/JDEECoVisualizer-master/example_data/config.txt");
+		}
 		
 		Button okButton = new Button("OK");
 		okButton.setOnMouseClicked(new SceneBuilder(fields, okButton, onlyComponentsBox, pane, 

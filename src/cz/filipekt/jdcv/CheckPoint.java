@@ -4,6 +4,8 @@ package cz.filipekt.jdcv;
  * Marks an relevant event on the timeline. Can hold three types of information -
  * that a person entered a vehicle, left a vehicle, or is at a specified place at specified 
  * time with the car.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 class CheckPoint {	
 	

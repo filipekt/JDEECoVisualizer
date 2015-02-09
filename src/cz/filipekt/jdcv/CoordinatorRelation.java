@@ -6,6 +6,8 @@ package cz.filipekt.jdcv;
  * whether the agent B is in the ensemble E with A as the coordinator.
  * Main usage is when determining the colors of the ensemble membership lines
  * in the visualization. 
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class CoordinatorRelation {
 	

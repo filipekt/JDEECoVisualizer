@@ -41,7 +41,10 @@ import cz.filipekt.jdcv.prefs.LinkPrefs;
 import cz.filipekt.jdcv.prefs.MembershipPrefs;
 
 /**
- * The scene that the {@link Visualizer} will visualize. It contains the map, view parameters, event log etc.
+ * The scene that the {@link Visualizer} makes a graphic view of. 
+ * It contains the map, view parameters, event log etc.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class MapScene {
 	

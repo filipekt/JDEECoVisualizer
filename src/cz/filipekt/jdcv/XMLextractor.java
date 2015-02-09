@@ -14,12 +14,14 @@ import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
 
 /**
- * Takes care of loading and parsing the input XML file. 
+ * Takes care of loading and parsing the input XML files. 
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 class XMLextractor {
 
 	/**
-	 * Input XML file
+	 * The input XML file
 	 */
 	private final Path xmlFile;
 	

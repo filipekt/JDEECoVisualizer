@@ -1,18 +1,19 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.gui_logic;
 
 import java.io.File;
 
 import javafx.event.Event;
 import javafx.event.EventHandler;
-import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 /**
- * This {@link EventHandler} is used with any {@link Button} that allows user to select an input file.
+ * Listener for the {@link Event} that the user clicks a button that allows to choose a
+ * file from the local filesystem. Shows the standard {@link FileChooser} and records the
+ * selected file into a {@link TextField} specified by {@link ButtonXmlChooserHandler#field}. 
  */
-class ButtonXmlChooserHandler implements EventHandler<Event>{
+public class ButtonXmlChooserHandler implements EventHandler<Event>{
 
 	/**
 	 * The main {@link Stage} of the application

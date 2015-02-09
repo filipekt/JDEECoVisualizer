@@ -48,9 +48,11 @@ import cz.filipekt.jdcv.xml.LinkHandler;
 import cz.filipekt.jdcv.xml.NodeHandler;
 
 /**
- * Makes sure that when the OK button is clicked (after specifying input XML files 
- * for the visualization), that the input data is processed and the requested 
- * visualizations are shown.
+ * Listener for the event that the user requests a visualization scene to be
+ * created. Makes sure that when the OK button (on the import-scene page) is 
+ * clicked, the input data is processed and the requested visualization is shown.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 class SceneBuilder implements EventHandler<javafx.event.Event>{
 	

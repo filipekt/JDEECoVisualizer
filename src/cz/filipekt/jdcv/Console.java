@@ -3,13 +3,14 @@ package cz.filipekt.jdcv;
 import java.awt.Desktop;
 import java.awt.Desktop.Action;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.Arrays;
@@ -25,6 +26,7 @@ import javafx.event.EventHandler;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Control;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
@@ -32,8 +34,8 @@ import javafx.scene.control.SplitMenuButton;
 import javafx.scene.control.TextArea;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -43,9 +45,12 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
-import cz.filipekt.jdcv.Dialog.Type;
 import cz.filipekt.jdcv.prefs.LinkPrefs;
 import cz.filipekt.jdcv.prefs.MembershipPrefs;
+import cz.filipekt.jdcv.util.CharsetNames;
+import cz.filipekt.jdcv.util.Dialog;
+import cz.filipekt.jdcv.util.Resources;
+import cz.filipekt.jdcv.util.Dialog.Type;
 
 /**
  * A console providing the user with the option to change some of the
@@ -61,7 +66,7 @@ public class Console {
 	/**
 	 * Width (in pixels) of the buttons provided in the console window
 	 */
-	private final double buttonWidth = 150;
+	private final double buttonWidth = 130;
 	
 	/**
 	 * The amount of horizontal space between the buttons
@@ -119,7 +124,6 @@ public class Console {
 	 * The only instance can be retrieved by {@link Console#getInstance()}.
 	 */
 	private Console(){
-		initCharsets();
 		ScriptEngineManager manager = new ScriptEngineManager();
 		engine = manager.getEngineByName("ecmascript");
 		engine.getContext().setWriter(writer);
@@ -136,26 +140,6 @@ public class Console {
 	 * Text encoding of the script file specified by {@link Console#initScript}
 	 */
 	private final String initScriptEncoding = "UTF-8";
-	
-	/**
-	 * The script files can be loaded using one of these charsets.
-	 */
-	private final Set<String> charsets = new HashSet<>(); 
-	
-	/**
-	 * Fills the {@link Console#charsets} with the available charset names.
-	 * The six charsets required by the Java platform are added, plus the
-	 * default encoding of the computer.
-	 */
-	private void initCharsets(){
-		if (charsets.size() == 0){
-			String defaultCharset = Charset.defaultCharset().name();
-			List<String> mandatoryCharsets = Arrays.asList(
-					"US-ASCII", "ISO-8859-1", "UTF-8", "UTF-16BE", "UTF-16LE", "UTF-16");
-			charsets.add(defaultCharset);
-			charsets.addAll(mandatoryCharsets);
-		}
-	}
 	
 	/**
 	 * Runs the initialization scripts in the scripting environment
@@ -234,22 +218,19 @@ public class Console {
 	}
 	
 	/**
-	 * Opens a console providing the user with the option to change some of 
-	 * the settings and parameters of the visualization with an ECMA script.
+	 * Fills the "buttonsBox" with the buttons that provide options to import a script
+	 * file, run the script, delete the input/output area, view help file.
+	 * @param buttonsBox The box to be filled with buttons
+	 * @param inputArea The area where the user writes the scripts
+	 * @param outputArea The area where the script output is viewed
 	 * @param visualizer The parent application
+	 * @param stage The main stage of the console window
 	 */
-	public void showScriptingConsole(final Visualizer visualizer){
-		if (visualizer == null){
-			return;
-		}
-		int row = 0;
-		GridPane gridPane = new GridPane();
-		Scene scene = new Scene(gridPane);
-		final Stage stage = new Stage();
-		final TextArea inputArea = new TextArea();
+	private void fillButtonsBox(HBox buttonsBox, TextArea inputArea, TextArea outputArea, 
+			Visualizer visualizer, Stage stage){
 		ImageView importImage = Resources.getImageView("import.png", buttonIconSize);
 		Set<MenuItem> importButtons = new HashSet<>();
-		for (String encoding : charsets){
+		for (String encoding : CharsetNames.get()){
 			MenuItem item = new MenuItem();
 			item.setText(encoding);
 			item.setOnAction(new ImportButtonHandler(encoding, stage, inputArea));
@@ -260,45 +241,68 @@ public class Console {
 		importButton.setGraphic(importImage);
 		importButton.setText("Import File");
 		importButton.setOnAction(new ImportButtonHandler(Charset.defaultCharset().name(), stage, inputArea));
-		importButton.setPrefWidth(buttonWidth);
 		ImageView runImage = Resources.getImageView("run.png", buttonIconSize);
 		Button runButton = new Button("Run!", runImage);
-		runButton.setPrefWidth(buttonWidth);
 		ImageView clearImage = Resources.getImageView("clear.png", buttonIconSize);
 		MenuItem clearInputItem = new MenuItem("Clear Input");
 		MenuItem clearOutputItem = new MenuItem("Clear Output");
 		SplitMenuButton clearButton = new SplitMenuButton(clearInputItem, clearOutputItem);
 		clearButton.setGraphic(clearImage);
 		clearButton.setText("Clear Input");
-		clearButton.setPrefWidth(buttonWidth);
 		ImageView helpImage = Resources.getImageView("help.png", buttonIconSize);
 		Button helpButton = new Button("Help", helpImage);
-		helpButton.setPrefWidth(buttonWidth);
 		helpButton.setOnAction(new HelpButtonHandler());
-		HBox buttonsBox = new HBox();
-		buttonsBox.getChildren().addAll(importButton, runButton, clearButton, helpButton);
+		List<Control> buttons = Arrays.<Control>asList(importButton, runButton, clearButton, helpButton);
+		for (Control button : buttons){
+			button.setPrefWidth(buttonWidth);
+		}
+		buttonsBox.getChildren().addAll(buttons);
 		buttonsBox.setAlignment(Pos.TOP_CENTER);
 		buttonsBox.setSpacing(buttonsSpacing);
-		gridPane.add(buttonsBox, 0, row++);
-		Label inputLabel = new Label("INPUT:");
-		gridPane.add(inputLabel, 0, row++);
-		ScrollPane inputAreaPane = new ScrollPane(inputArea);
-		gridPane.add(inputAreaPane, 0, row++);
-		Label outputLabel = new Label("OUTPUT:");
-		gridPane.add(outputLabel, 0, row++);
-		final TextArea outputArea = new TextArea();
-		ScrollPane outputAreaPane = new ScrollPane(outputArea);
-		outputArea.setText(writer.toString());
-		clearWriterBuffer();
-		outputArea.setEditable(false);
-		gridPane.add(outputAreaPane, 0, row++);
 		runButton.setOnMouseClicked(new RunButtonHandler(visualizer, inputArea, outputArea));
 		clearButton.setOnAction(new ClearButtonHandler(inputArea));
 		clearInputItem.setOnAction(new ClearButtonHandler(inputArea));
-		clearOutputItem.setOnAction(new ClearButtonHandler(outputArea));		
-		stage.initStyle(StageStyle.DECORATED);
-		stage.initModality(Modality.NONE);
+		clearOutputItem.setOnAction(new ClearButtonHandler(outputArea));	
+	}
+	
+	/**
+	 * Opens a console providing the user with the option to change some of 
+	 * the settings and parameters of the visualization with an ECMA script.
+	 * @param visualizer The parent application
+	 */
+	public void showScriptingConsole(final Visualizer visualizer){
+		if (visualizer == null){
+			return;
+		}
+		Stage stage = new Stage();
+		VBox pane = new VBox();
+		Scene scene = new Scene(pane);
+		HBox buttonsBox = new HBox();
+		Label inputLabel = new Label("INPUT:");
+		TextArea inputArea = new TextArea();
+		ScrollPane inputAreaPane = new ScrollPane(inputArea);
+		inputAreaPane.setFitToWidth(true);
+		Label outputLabel = new Label("OUTPUT:");
+		TextArea outputArea = new TextArea();
+		ScrollPane outputAreaPane = new ScrollPane(outputArea);
+		outputAreaPane.setFitToWidth(true);
+		outputArea.setText(writer.toString());
+		outputArea.setEditable(false);
+		fillButtonsBox(buttonsBox, inputArea, outputArea, visualizer, stage);
+		pane.getChildren().addAll(buttonsBox, inputLabel, inputAreaPane, outputLabel, outputAreaPane);
 		stage.setScene(scene);
+		stage.initModality(Modality.NONE);
+		decorateConsoleWindow(stage);
+		clearWriterBuffer();
+		stage.show();
+	}
+	
+	/**
+	 * Decorates the scripting console window
+	 * @param stage The main {@link Stage} of the scripting console
+	 */
+	private void decorateConsoleWindow(Stage stage){
+		stage.initStyle(StageStyle.DECORATED);
 		stage.sizeToScene();
 		stage.setTitle("Scripting Console");
 		InputStream consoleIconStream = Resources.getResourceInputStream("console.png");
@@ -306,7 +310,6 @@ public class Console {
 			Image consoleIcon = new Image(consoleIconStream);
 			stage.getIcons().add(consoleIcon);
 		}
-		stage.show();
 	}
 	
 	/**
@@ -317,16 +320,75 @@ public class Console {
 	private static class HelpButtonHandler implements EventHandler<ActionEvent>{
 		
 		/**
-		 * Location of the manual page
+		 * Name of the resource containing the manual page.
 		 */
-		private final URI helpFile = Resources.getResourceAsURI("scriptingHelp.html");
+		private final String helpFileName = "scriptingHelp.html";
+		
+		/**
+		 * The temporary file that the manual page has been copied to.
+		 * This file is created so that the manual page is contained in a regular file
+		 * present in the local filesystem - while the resources bundled with the
+		 * applications are not, as they are packed inside a jar file. 
+		 */
+		private final File tempHelpFile;
+		
+		/**
+		 * Creates the new temporary file to be stored at {@link HelpButtonHandler#tempHelpFile}
+		 * @return A reference to the newly created temporary file
+		 * @see {@link HelpButtonHandler#tempHelpFile}
+		 */
+		private File initializeHelpFile() {
+			try {
+				File temp = File.createTempFile("ManPage", ".html");
+				InputStream fromStream = Resources.getResourceInputStream(helpFileName);
+				OutputStream toStream = new FileOutputStream(temp);
+				try {
+					copy(fromStream, toStream);
+				} finally {
+					if (fromStream != null){
+						fromStream.close();
+					}
+					if (toStream != null){
+						toStream.close();
+					}
+				}
+				temp.deleteOnExit();
+				return temp;
+			} catch (IOException ex){
+				return null;
+			}
+		}
+		
+		/**
+		 * Copies all the bytes from the source input stream to the target output stream
+		 * using a 4kB buffer.
+		 * @param fromStream The source input stream
+		 * @param toStream The target output stream
+		 * @throws IOException Thrown when the copying went wrong
+		 */
+		private void copy(InputStream fromStream, OutputStream toStream) throws IOException{
+			int bufferSize = 4096;
+			byte[] buffer = new byte[bufferSize];
+			int count;
+			while ((count=fromStream.read(buffer)) > 0){
+				toStream.write(buffer, 0, count);
+			}
+		}
+		
+		/**
+		 * Just initializes the {@link HelpButtonHandler#tempHelpFile}
+		 */
+		public HelpButtonHandler() {
+			tempHelpFile = initializeHelpFile();
+		}
 		
 		/**
 		 * When thrown, it means that the platform default web browser could not
 		 * be found or started.
 		 */
 		@SuppressWarnings("serial") 
-		class BrowserNotAvailableException extends Exception {}
+		private static class BrowserNotAvailableException extends Exception {}
+		
 
 		/**
 		 * Makes sure that when clicked, the platform default browser is 
@@ -335,14 +397,16 @@ public class Console {
 		@Override
 		public void handle(ActionEvent arg0) {
 			try {
-				if (!Desktop.isDesktopSupported()){
-					throw new BrowserNotAvailableException();
+				if ((tempHelpFile != null) && (tempHelpFile.exists())){
+					if (!Desktop.isDesktopSupported()){
+						throw new BrowserNotAvailableException();
+					}
+					Desktop desktop = Desktop.getDesktop();
+					if ((desktop == null) || (!desktop.isSupported(Action.BROWSE))){
+						throw new BrowserNotAvailableException();
+					}
+					desktop.browse(tempHelpFile.toURI());	
 				}
-				Desktop desktop = Desktop.getDesktop();
-				if ((desktop == null) || (!desktop.isSupported(Action.BROWSE))){
-					throw new BrowserNotAvailableException();
-				}
-				desktop.browse(helpFile);	
 			} catch (IOException | BrowserNotAvailableException ex){
 				Dialog.show(Type.ERROR, "Browser could not be started.", 
 						"You can find the manual pages on the GitHub repository of this application.");

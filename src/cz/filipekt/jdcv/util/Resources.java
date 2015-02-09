@@ -1,4 +1,4 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.util;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -7,11 +7,14 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Paths;
 
+import cz.filipekt.jdcv.Visualizer;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 
 /**
- * A utility class simplifying the access to the resources of the application.
+ * Utility class simplifying the access to the resources of the application.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class Resources {
 
@@ -21,7 +24,6 @@ public class Resources {
 		 * @param resourceName A resource to be loaded
 		 * @return An {@link InputStream} instance reading from the specified resource.
 		 * <br>If the resource could not be found or is inaccessible, null is returned.
-		 * @throws IOException When the specified resource could not be found or opened
 		 */
 		public static InputStream getResourceInputStream(String resourceName) {
 			URI resource = getResourceAsURI(resourceName);
@@ -46,8 +48,8 @@ public class Resources {
 		 */
 		public static URI getResourceAsURI(String resourceName) {
 			try {
-				if (Visualizer.debug){
-					return Paths.get(resourcesDir, resourceName).toUri();
+				if (Debug.debugModeOn){
+					return Paths.get(Debug.projectDir, "resources", resourceName).toUri();
 				} else {
 					return Visualizer.class.getResource("/resources/" + resourceName).toURI();
 				}
@@ -55,12 +57,6 @@ public class Resources {
 				return null;
 			}
 		}
-		
-		/**
-		 * When in debug mode (specified by {@link Visualizer#debug}), this is
-		 * used to specify the directory with application resources.
-		 */
-		private static final String resourcesDir = "C:/Users/Tom/Documents/diplomka/JDEECoVisualizer-master/resources";
 
 		/**
 		 * Loads an image specified by its resource name and returns it
@@ -69,7 +65,8 @@ public class Resources {
 		 * is returned.  
 		 * @param resourceName Name of the desired image
 		 * @param size Preferred width and height of the {@link ImageView} 
-		 * @return The desired image wrapped in a {@link ImageView}
+		 * @return The desired image wrapped in a {@link ImageView}. If the image could
+		 * not be loaded, an empty {@link ImageView} is returned.
 		 */
 		public static ImageView getImageView(String resourceName, double size){
 			try {

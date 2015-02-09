@@ -1,8 +1,9 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.util;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import cz.filipekt.jdcv.Visualizer;
 import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.HPos;
@@ -18,8 +19,10 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 /**
- * Allows for showing simple dialogs for the user. The dialogs show textual information
- * and user then clicks the OK button. The 
+ * Allows for showing simple dialogs to the user. The dialogs show textual information
+ * and the user then clicks the OK button. 
+ * 
+ *  @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class Dialog {
 	
