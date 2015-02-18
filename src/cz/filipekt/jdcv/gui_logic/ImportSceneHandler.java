@@ -1,12 +1,10 @@
 package cz.filipekt.jdcv.gui_logic;
 
-import cz.filipekt.jdcv.Visualizer;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.scene.control.MenuItem;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.Pane;
+import cz.filipekt.jdcv.Visualizer;
 
 /**
  * Listener for the {@link Event} that user clicks the "import new scene" option in the menu.
@@ -47,11 +45,8 @@ public class ImportSceneHandler implements EventHandler<ActionEvent> {
 	 */
 	@Override
 	public void handle(ActionEvent arg0) {
-		Pane mapPane = visualizer.getMapPane();
-		GridPane importSceneGrid = visualizer.getImportSceneGrid();
-		mapPane.getChildren().clear();
-		mapPane.getChildren().add(importSceneGrid);				
-		visualizer.setScene(null);
+		visualizer.setScene(null, 0, 0);
+		visualizer.showImportScene();				
         closeThisSceneItem.setDisable(false);
         importSceneItem.setDisable(true);
 	}

@@ -53,7 +53,7 @@ public class ControlsBarItemHandler implements EventHandler<ActionEvent> {
 	@Override
 	public void handle(ActionEvent arg0) {
 		HBox controlsBar = visualizer.getControlsBar();
-		VBox vbox = visualizer.getVBox();
+		VBox vbox = visualizer.getRootPane();
 		if (barIsShown){
 			if (vbox.getChildren().contains(controlsBar)){
 				vbox.getChildren().remove(controlsBar);

@@ -67,22 +67,24 @@ class CheckPointDatabase {
 	private double minTime = Double.MAX_VALUE;
 	
 	/**
+	 * @return Minimal value of "time" attribute across all of the recorded {@link CheckPoint} instances.
+	 * @see {@link CheckPointDatabase#minTime}
+	 */
+	public double getMinTime() {
+		return minTime;
+	}
+	
+	/**
 	 * Maximal value of "time" attribute across all of the recorded {@link CheckPoint} instances.
 	 */
 	private double maxTime = Double.MIN_VALUE;
-	
+
 	/**
-	 * @param time A time value, as specified in an event XML element
-	 * @param totalTime The total time of the visualization
-	 * @return The time, given in the first parameter,  converted to the timeline starting at
-	 * zero and ending at the value given by totalTime parameter. The beginning of the timeline
-	 * corresponds to the time of the first event and the end corresponds to the time of the
-	 * last event.
+	 * @return Maximal value of "time" attribute across all of the recorded {@link CheckPoint} instances.
+	 * @see {@link CheckPointDatabase#maxTime}
 	 */
-	public double transformTime(double time, int totalTime){		
-		double diff = time - minTime;
-		double ratio = totalTime * 1000 / (maxTime - minTime);
-		return diff * ratio;
+	public double getMaxTime() {
+		return maxTime;
 	}
 	
 	/**

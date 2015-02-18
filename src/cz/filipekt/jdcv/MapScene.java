@@ -21,6 +21,7 @@ import javafx.beans.value.ChangeListener;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.scene.Node;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.effect.BoxBlur;
 import javafx.scene.image.WritableImage;
@@ -117,11 +118,6 @@ public class MapScene {
 	 * by {@link MapScene#preferredMapWidth} and {@link MapScene#preferredMapHeight}.
 	 */
 	private double zoom = 1.0;
-	
-	/**
-	 * Scrollable container for {@link MapScene#mapContainer}
-	 */
-	private final ScrollPane mapPane;
 
 	/**
 	 * @return Scrollable container for the network(map) components such as nodes and links.
@@ -382,9 +378,45 @@ public class MapScene {
 	}
 	
 	/**
+	 * The simulation time at which we start the visualization
+	 */
+	private final double minTime;
+	
+	/**
+	 * The simulation time at which we end the visualization
+	 */
+	private final double maxTime;
+	
+	/**
+	 * The actual intended duration of the visualization (i.e. in visualization time)
+	 */
+	private final int duration;
+	
+	/**
+	 * Converter from visualization to simulation time
+	 * @param visualizationTime A time in visualization time format
+	 * @return The time in simulation time format 
+	 */
+	public double convertToSimulationTime(double visualizationTime){
+		double ratio = duration * 1000 / (maxTime - minTime);
+		return (visualizationTime / ratio) + minTime;
+	}
+	
+	/**
+	 * Converter from simulation to visualization time
+	 * @param simulationTime A time in simulation time format
+	 * @return The time in visualization time format
+	 */
+	public double convertToVisualizationTime(double simulationTime){
+		double ratio = duration * 1000 / (maxTime - minTime);
+		double diff = simulationTime - minTime;
+		return diff * ratio;
+	}
+	
+	/**
 	 * {@link Shape} instances representing individual people (as they move through the map).
 	 */
-	private final Map<String,? extends Shape> personShapes;
+	private final Map<String,Node> personShapes;
 	
 	/**
 	 * Radius (in pixels) of the {@link Circle} objects representing the people on the map.
@@ -443,7 +475,7 @@ public class MapScene {
 		mapContainer.getChildren().addAll(circles.keySet());
 		mapContainer.getChildren().addAll(personShapes.values());
 		mapContainer.getChildren().addAll(ensembleShapes.values());
-	    moveShapesToFront();
+	    moveShapesToFront();	    
 	}
 	
 	/**
@@ -478,7 +510,7 @@ public class MapScene {
 		for (Shape node : circles.keySet()){	
 			node.toFront();
 		}
-		for (Shape person : personShapes.values()){
+		for (Node person : personShapes.values()){
 			person.toFront();
 		}
 	}
@@ -509,6 +541,11 @@ public class MapScene {
 	public Pane getMapContainer() {
 		return mapContainer;
 	}
+	
+	/**
+	 * Scrollable container for {@link MapScene#mapContainer}
+	 */
+	private final ScrollPane mapPane = new ScrollPane(mapContainer);
 
 	/**
 	 * Double of the width of the white margin that is added on each side of the map.
@@ -518,7 +555,7 @@ public class MapScene {
 	/**
 	 * Each {@link Shape} instance represents an ensemble membership
 	 */
-	private final Map<MembershipRelation,? extends Shape> ensembleShapes;
+	private final Map<MembershipRelation,Node> ensembleShapes;
 	
 	/**
 	 * @return The ensemble membership preferences objects
@@ -540,10 +577,16 @@ public class MapScene {
 	 * @param mapHeight Preferred height of the map view, in pixels
 	 * @param personShapes {@link Shape} instances representing individual people
 	 * @param ensembleShapes {@link Shape} instances representing ensemble membership
-	 * @param
+	 * 
+	 * TODO dodelat javadoc
 	 */
-	MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight, Map<String,? extends Shape> personShapes, 
-			Map<MembershipRelation,? extends Shape> ensembleShapes, ChangeListener<? super Status> timeLineStatus, ChangeListener<? super Number> timeLineRate) {
+	MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight, 
+			Map<String,Node> personShapes, Map<MembershipRelation,Node> ensembleShapes, 
+			ChangeListener<? super Status> timeLineStatus, ChangeListener<? super Number> timeLineRate,
+			double minTime, double maxTime, int duration) {
+		this.minTime = minTime;
+		this.maxTime = maxTime;
+		this.duration = duration;
 		this.personShapes = personShapes;
 		this.ensembleShapes = ensembleShapes;
 		this.nodes = nodes;
@@ -555,8 +598,6 @@ public class MapScene {
 		this.maxy = borders[3];
 		widthFactor = (mapWidth - constantMargin) / (maxx - minx);
 		heightFactor = (mapHeight - constantMargin) / (maxy - miny);
-		mapPane = new ScrollPane();		
-		mapPane.setContent(mapContainer);
 		mapContainer.setPrefSize(mapWidth, mapHeight);
 		mapContainer.setId("mapContainer");
 		timeLine.statusProperty().addListener(timeLineStatus);

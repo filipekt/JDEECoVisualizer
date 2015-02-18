@@ -26,6 +26,8 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.DragEvent;
@@ -34,12 +36,13 @@ import javafx.scene.input.TransferMode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
-import javafx.util.converter.IntegerStringConverter;
+import javafx.util.Duration;
 import cz.filipekt.jdcv.gui_logic.ButtonXmlChooserHandler;
 import cz.filipekt.jdcv.gui_logic.CloseSceneHandler;
 import cz.filipekt.jdcv.gui_logic.ConfigFileLoader;
@@ -74,16 +77,81 @@ public class Visualizer extends Application {
 	private final double mapHeight = 800.0;
 	
 	/**
-	 * The map that is being visualized, coupled with some view parameters.
+	 * Well prepared simulation data and settings, i.e. this is what will be visualized
 	 */
 	private MapScene scene;
 	
+	private ChangeListener<Duration> timelineToSliderListener;
+	private ChangeListener<Number> sliderToTimelineListener;
+	
 	/**
-	 * Sets the map that will be visualized by this application
-	 * @param scene The map that will be visualized by this application
+	 * This method is used to specify what will be visualized. The {@link MapScene} instance
+	 * given in the parameter contains a well prepared simulation data and settings.
+	 * Further, this method takes care of some basic GUI operations associated with the
+	 * above actions - such as making the relevant GUI parts accessible or setting up
+	 * the slider at the bottom. 
+	 * @param newScene Well prepared simulation data and settings
+	 * @param min Starting simulation time
+	 * @param max Ending simulation time
 	 */
-	public void setScene(MapScene scene) {
-		this.scene = scene;
+	public void setScene(final MapScene newScene, double min, double max) {
+		if (newScene == null){
+			showNoMap();
+			controlsBar.setDisable(true);
+			graphicsColumn.setDisable(true);
+			timelineSlider.setDisable(true);
+			if ((scene != null) && (scene.getTimeLine() != null)){
+				scene.getTimeLine().stop();
+				scene.getTimeLine().currentTimeProperty().removeListener(timelineToSliderListener);
+				timelineSlider.valueProperty().removeListener(sliderToTimelineListener);
+			}
+		} else {
+			ScrollPane mapScrollPane = newScene.getMapPane();
+			mapPane.getChildren().clear();
+			mapPane.getChildren().add(mapScrollPane);
+			controlsBar.setDisable(false);
+			graphicsColumn.setDisable(false);
+			timelineSlider.setDisable(false);
+			setSliderParameters(min, max);
+			timelineToSliderListener = new ChangeListener<Duration>() {
+
+				@Override
+				public void changed(ObservableValue<? extends Duration> arg0,
+						Duration oldValue, Duration newValue) {
+					double millis = newValue.toMillis();
+					timelineSlider.setValue(newScene.convertToSimulationTime(millis));
+				}
+			};
+			newScene.getTimeLine().currentTimeProperty().addListener(timelineToSliderListener);
+			sliderToTimelineListener = new ChangeListener<Number>() {
+
+				@Override
+				public void changed(ObservableValue<? extends Number> arg0,
+						Number oldValue, Number newValue) {
+					Duration time = new Duration(newScene.convertToVisualizationTime(newValue.doubleValue()));
+					newScene.getTimeLine().jumpTo(time);
+				}
+			};
+			timelineSlider.valueProperty().addListener(sliderToTimelineListener);
+		}
+		this.scene = newScene;
+	}
+	
+	/**
+	 * Sets the parameters of the slider appearing in the bottom of the application window.
+	 * @param min Starting simulation time
+	 * @param max Ending simulation time
+	 */
+	private void setSliderParameters(double min, double max){
+		double diff = max - min;
+		timelineSlider.setMin(min);
+		timelineSlider.setMax(max);
+		timelineSlider.setValue(0);
+		timelineSlider.setShowTickLabels(true);
+		timelineSlider.setShowTickMarks(true);
+		timelineSlider.setMajorTickUnit(diff/4);
+		timelineSlider.setMinorTickCount(6);
+		timelineSlider.setBlockIncrement(diff/10);
 	}
 	
 	/**
@@ -176,27 +244,11 @@ public class Visualizer extends Application {
 	 * The {@link Node} that is shown whenever no map scene is open.
 	 */
 	private final Pane noMapNode = new VBox();
-	
-	/**
-	 * @return The {@link Node} that is shown whenever no map scene is open.
-	 * @see {@link Visualizer#noMapNode}
-	 */
-	public Pane getNoMapNode() {
-		return noMapNode;
-	}
 
 	/**
 	 * Contains the controls where users can specify input XML files for the visualization. 
 	 */
 	private final GridPane importSceneGrid;
-
-	/**
-	 * @return Grid that contains the controls where users can specify input XML files for the visualization.
-	 * @see {@link Visualizer#importSceneGrid}
-	 */
-	public GridPane getImportSceneGrid() {
-		return importSceneGrid;
-	}
 
 	/**
 	 * Container for map view, or if no map is currently view, for a dialog for loading a map.
@@ -218,14 +270,24 @@ public class Visualizer extends Application {
 	double getMapHeight() {
 		return mapHeight;
 	}
-
+	
 	/**
-	 * @return Container for map view, or if no map is currently view, for a dialog for loading a map.
-	 * @see {@link Visualizer#mapPane}
+	 * Shows the "import scene" menu in the central part of the application window
+	 * @see {@link Visualizer#importSceneGrid}
 	 */
-	public Pane getMapPane() {
-		return mapPane;
-	}		
+	public void showImportScene(){
+		mapPane.getChildren().clear();
+		mapPane.getChildren().add(importSceneGrid);
+	}
+	
+	/**
+	 * Shows the "empty" panel (which actually contains a few basic instructions) in the
+	 * central part of the application window
+	 */
+	public void showNoMap(){
+		mapPane.getChildren().clear();
+		mapPane.getChildren().add(noMapNode);
+	}
 	
 	/**
 	 * Sets up the drag&drop functionality for the input fields where user defines the input files
@@ -314,13 +376,9 @@ public class Visualizer extends Application {
 		}
 		
 		Label durationLabel = new Label("Target duration (seconds):");
-		ComboBox<Integer> durationsBox = new ComboBox<>();
-		durationsBox.setEditable(true);
-		durationsBox.setConverter(new IntegerStringConverter());
-		durationsBox.getItems().addAll(15, 30, 50, 100, 200, 500, 1000, 2000);
-		durationsBox.setValue(60);
+		TextField durationField = new TextField();
 		pane.add(durationLabel, 0, row);
-		pane.add(durationsBox, 1, row);		
+		pane.add(durationField, 1, row);		
 		row += 1;
 		
 		Label onlyComponentsLabel = new Label("Show only the injected JDEECo components:");
@@ -328,8 +386,21 @@ public class Visualizer extends Application {
 		onlyComponentsBox.setSelected(true);
 		pane.add(onlyComponentsLabel, 0, row);
 		pane.add(onlyComponentsBox, 1, row);
-		row += 2;
+		row += 1;
 		
+		Label startAtLabel = new Label("Start at time (seconds):");
+		TextField startAtField = new TextField();
+		pane.add(startAtLabel, 0, row);
+		pane.add(startAtField, 1, row);
+		row += 1;
+		
+		Label endAtLabel = new Label("End at time (seconds):");
+		TextField endAtField = new TextField();
+		pane.add(endAtLabel, 0, row);
+		pane.add(endAtField, 1, row);
+		row += 1;
+		
+		row += 1;
 		String line = "----------";
 		Label orLabel = new Label(line + " OR " + line);
 		pane.add(orLabel, 0, row, 2, 1);
@@ -348,7 +419,7 @@ public class Visualizer extends Application {
 		configFileSelect.setOnMouseClicked(new ButtonXmlChooserHandler(stage, configFileField));
 		Button configFileLoad = new Button("Load!");
 		configFileLoad.setOnAction(new ConfigFileLoader(configFileField, configFileCharsets, fields, 
-				charsets, durationsBox));
+				charsets, durationField));
 		pane.add(configFileLabel, 0, row);
 		pane.add(configFileField, 1, row);
 		pane.add(configFileCharsets, 2, row);
@@ -362,7 +433,7 @@ public class Visualizer extends Application {
 		
 		Button okButton = new Button("OK");
 		okButton.setOnMouseClicked(new SceneBuilder(fields, okButton, onlyComponentsBox, pane, 
-				Visualizer.this, durationsBox, timeLineStatus, timeLineRate));
+				Visualizer.this, durationField, timeLineStatus, timeLineRate, startAtField, endAtField));
 		pane.add(okButton, 1, row);
 		pane.setAlignment(Pos.CENTER);
 		pane.setHgap(importSceneGridHGap);
@@ -502,14 +573,14 @@ public class Visualizer extends Application {
 	/**
 	 * The root element of the main {@link Scene} of the application.
 	 */
-	private final VBox vbox = new VBox();
+	private final VBox rootPane = new VBox();
 	
 	/**
 	 * @return The root element of the main {@link Scene} of the application.
-	 * @see {@link Visualizer#vbox}
+	 * @see {@link Visualizer#rootPane}
 	 */
-	public VBox getVBox(){
-		return vbox;
+	public VBox getRootPane(){
+		return rootPane;
 	}
 	
 	/**
@@ -607,11 +678,34 @@ public class Visualizer extends Application {
 	private final double graphicsItemsMargin = 10;
 	
 	/**
+	 * Shows the current position on a timeline, like any slider in most media players.
+	 */
+	private final Slider timelineSlider = new Slider();
+	
+	/**
+	 * Parent container for {@link Visualizer#timelineSlider}
+	 */
+	private final Pane sliderWrapper;
+	
+	/**
+	 * Initializer for {@link Visualizer#sliderWrapper}.
+	 * @return A {@link Pane} holding the {@link Visualizer#sliderWrapper} and, 
+	 * possibly, some belonging controls 
+	 */
+	private Pane createSliderWrapper(){
+		HBox res =  new HBox(timelineSlider);
+		HBox.setHgrow(timelineSlider, Priority.ALWAYS);
+		HBox.setMargin(timelineSlider, new Insets(0, 50, 0, 50));
+		return res;
+	}
+	
+	/**
 	 * Builds the GUI, should only be called by the JavaFX runtime.
 	 */
 	@Override
 	public void start(Stage stage) throws IOException {	
 		this.stage = stage;
+		timelineSlider.setDisable(true);
 		noMapNode.setPrefSize(mapWidth, mapHeight);
 		controlsBar.setDisable(true);
 		Label helpLabel = new Label("To import new simulation data, click File -> Import Scene");
@@ -621,9 +715,9 @@ public class Visualizer extends Application {
 		graphicsColumn.setPrefWidth(graphicsColumnWidth);
 		graphicsColumn.setMinWidth(graphicsColumnWidth);
 		middleRow.getChildren().addAll(graphicsColumn, mapPane);		
-		vbox.getChildren().clear();
-		vbox.getChildren().addAll(menuBar, middleRow, controlsBar);
-		Scene fxScene = new Scene(vbox, Color.WHITE);
+		rootPane.getChildren().clear();
+		rootPane.getChildren().addAll(menuBar, middleRow, sliderWrapper, controlsBar);
+		Scene fxScene = new Scene(rootPane, Color.WHITE);
 		fxScene.heightProperty().addListener(new ChangeListener<Number>() {
 
 			@Override
@@ -681,6 +775,7 @@ public class Visualizer extends Application {
 		controlsBar = createControlsBar();
 		graphicsColumn = createGraphicsColumn();
 		importSceneGrid = createImportSceneGrid(timeLineStatus, timeLineRate);
+		sliderWrapper = createSliderWrapper();
 	}			
 	
 }

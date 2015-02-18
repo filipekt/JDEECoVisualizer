@@ -58,6 +58,53 @@ public class EnsembleHandler extends DefaultHandler {
 	public List<EnsembleEvent> getEvents() {
 		return events;
 	}
+	
+	/**
+	 * If true, only the events starting after time {@link EnsembleHandler#startAtLimit}
+	 * are taken into account 
+	 */
+	private final boolean startAtConstraint;
+	
+	/**
+	 * If {@link EnsembleHandler#startAtConstraint} holds, only events starting from
+	 * this time on are taken into account
+	 */
+	private final int startAtLimit;
+	
+	/**
+	 * If true, only the events ending before time {@link EnsembleHandler#endAtLimit}
+	 * are taken into account
+	 */
+	private final boolean endAtConstraint;
+	
+	/**
+	 * If {@link EnsembleHandler#endAtConstraint} holds, only the events ending before this
+	 * time are taken into account
+	 */
+	private final int endAtLimit;
+	
+	/**
+	 * @param startAt Only events starting from this time on are taken into account. If null,
+	 * no such constraint is applied.
+	 * @param endAt Only the events ending before this time are taken into account. If null,
+	 * no such constraint is applied.
+	 */
+	public EnsembleHandler(Integer startAt, Integer endAt){
+		if (startAt == null){
+			startAtConstraint = false;
+			startAtLimit = -1;
+		} else {
+			startAtConstraint = true;
+			startAtLimit = startAt;
+		}
+		if (endAt == null){
+			endAtConstraint = false;
+			endAtLimit = -1;
+		} else {
+			endAtConstraint = true;
+			endAtLimit = endAt;
+		}
+	}
 
 	/**
 	 * Makes sure that when an ensemble event element is encountered, it contains all the 
@@ -68,6 +115,20 @@ public class EnsembleHandler extends DefaultHandler {
 	public void startElement(String uri, String localName, String qName,
 			Attributes attributes) throws SAXException {
 		if (qName.equals(eventName)){
+			String timeVal = attributes.getValue(timeName);
+			Utils.ensureNonNullAndNonEmpty(timeVal);
+			double time;
+			try {
+				time = Double.parseDouble(timeVal);
+			} catch (NumberFormatException ex){
+				throw new SAXException(new InvalidAttributeValueException());
+			}
+			if (startAtConstraint && (startAtLimit > time)){
+				return;
+			}
+			if (endAtConstraint && (endAtLimit < time)){
+				return;
+			}
 			String coordinatorVal = attributes.getValue(coordinatorName);
 			Utils.ensureNonNullAndNonEmpty(coordinatorVal);
 			String memberVal = attributes.getValue(memberName);
@@ -76,8 +137,6 @@ public class EnsembleHandler extends DefaultHandler {
 			Utils.ensureNonNullAndNonEmpty(membershipVal);
 			String ensembleVal = attributes.getValue(ensembleName);
 			Utils.ensureNonNullAndNonEmpty(ensembleVal);
-			String timeVal = attributes.getValue(timeName);
-			Utils.ensureNonNullAndNonEmpty(timeVal);
 			boolean membership;
 			switch(membershipVal){
 				case "true":
@@ -88,12 +147,6 @@ public class EnsembleHandler extends DefaultHandler {
 					break;
 				default:
 					throw new SAXException(new InvalidAttributeValueException());
-			}
-			double time;
-			try {
-				time = Double.parseDouble(timeVal);
-			} catch (NumberFormatException ex){
-				throw new SAXException(new InvalidAttributeValueException());
 			}
 			EnsembleEvent eev = new EnsembleEvent(coordinatorVal, memberVal, membership, ensembleVal, time);
 			events.add(eev);

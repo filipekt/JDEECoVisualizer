@@ -75,10 +75,12 @@ public class Dialog {
 	/**
 	 * Shows a simple dialog to the user, containing a text message. 
 	 * User only has to click the OK button.
+	 * <b>Warning</b>: this method must be called inside the JavaFX thread
 	 * @param type Type of the dialog, i.e. error, success etc.
+	 * @param onClicked Code to be invoked when the OK button is clicked
 	 * @param messages Each message will we shown as a single line in the dialog
 	 */
-	public static void show(Dialog.Type type, String... messages){
+	public static void show(Dialog.Type type, final Runnable onClicked, String... messages){
 		if ((type == null) || (messages == null) || (messages.length == 0)){
 			return;
 		}
@@ -110,6 +112,9 @@ public class Dialog {
 			@Override
 			public void handle(Event arg0) {
 				dialog.close();
+				if (onClicked != null){
+					onClicked.run();
+				}
 			}
 		});
 		dialog.initStyle(StageStyle.UTILITY);
@@ -117,6 +122,16 @@ public class Dialog {
 		dialog.setScene(scene);
 		dialog.sizeToScene();
 		dialog.show();
+	}
+	
+	/**
+	 * Wrapper for {@link Dialog#show(Type, Runnable, String...).
+	 * It works exactly the same as calling {@code Dialog.show(type, null, messages)} 
+	 * @param type Type of the dialog, i.e. error, success etc.
+	 * @param messages Each message will we shown as a single line in the dialog
+	 */
+	public static void show(Dialog.Type type, String... messages){
+		Dialog.show(type, null, messages);
 	}
 	
 	/**

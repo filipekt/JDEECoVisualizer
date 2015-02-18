@@ -1,12 +1,10 @@
 package cz.filipekt.jdcv.gui_logic;
 
-import cz.filipekt.jdcv.MapScene;
-import cz.filipekt.jdcv.Visualizer;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.scene.control.MenuItem;
-import javafx.scene.layout.Pane;
+import cz.filipekt.jdcv.Visualizer;
 
 /**
  * Listener for the {@link Event} that user clicks the "close this scene" option in the menu.
@@ -47,19 +45,10 @@ public class CloseSceneHandler implements EventHandler<ActionEvent>{
 	 */
 	@Override
 	public void handle(ActionEvent arg0) {
-		Pane mapPane = visualizer.getMapPane();
-		MapScene scene = visualizer.getScene();
-		mapPane.getChildren().clear();
-		mapPane.getChildren().add(visualizer.getNoMapNode());
-		if (scene != null){
-			scene.getTimeLine().stop();
-			visualizer.setScene(null);
-		}
+		visualizer.setScene(null, 0, 0);
+		visualizer.setGraphicsColumnDefaults();
 		closeThisSceneItem.setDisable(true);
 		importSceneItem.setDisable(false);	
-		visualizer.getControlsBar().setDisable(true);
-		visualizer.getGraphicsColumn().setDisable(true);
-		visualizer.setGraphicsColumnDefaults();
 	}
 	
 }

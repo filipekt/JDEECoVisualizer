@@ -92,15 +92,57 @@ public class EventWithPersonHandler extends DefaultHandler {
 	 * taken into account. If false, all of the events will be parsed.
 	 */
 	private final boolean onlyComponents;
+	
+	/**
+	 * If true, only the events starting after time {@link EnsembleHandler#startAtLimit}
+	 * are taken into account 
+	 */
+	private final boolean startAtConstraint;
+	
+	/**
+	 * If {@link EnsembleHandler#startAtConstraint} holds, only events starting from
+	 * this time on are taken into account
+	 */
+	private final int startAtLimit;
+	
+	/**
+	 * If true, only the events ending before time {@link EnsembleHandler#endAtLimit}
+	 * are taken into account
+	 */
+	private final boolean endAtConstraint;
+	
+	/**
+	 * If {@link EnsembleHandler#endAtConstraint} holds, only the events ending before this
+	 * time are taken into account
+	 */
+	private final int endAtLimit;
 
 	/**
 	 * @param links Collection of parsed link elements, as extracted from a network source file.
 	 * @param onlyComponents If true, only the events of the people corresponding to the injected JDEECo components will be
 	 * taken into account. If false, all of the events will be parsed.
+	 * @param startAt Only events starting from this time on are taken into account. If null,
+	 * no such constraint is applied.
+	 * @param endAt Only the events ending before this time are taken into account. If null,
+	 * no such constraint is applied.
 	 */
-	public EventWithPersonHandler(Map<String, MyLink> links, boolean onlyComponents) {		
+	public EventWithPersonHandler(Map<String, MyLink> links, boolean onlyComponents, Integer startAt, Integer endAt) {		
 		this.links = links;
 		this.onlyComponents = onlyComponents;
+		if (startAt == null){
+			startAtConstraint = false;
+			startAtLimit = -1;
+		} else {
+			startAtConstraint = true;
+			startAtLimit = startAt;
+		}
+		if (endAt == null){
+			endAtConstraint = false;
+			endAtLimit = -1;
+		} else {
+			endAtConstraint = true;
+			endAtLimit = endAt;
+		}
 	}
 	
 	/**
@@ -117,41 +159,52 @@ public class EventWithPersonHandler extends DefaultHandler {
 	 * For each event type, the parsing work is done by specialized methods.
 	 */
 	@Override
-	public void startElement(String uri, String localName, String qName,
-			Attributes attributes) throws SAXException {
+	public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
 		if (qName.equals(eventName)){
+			String timeVal = attributes.getValue(timeName);
+			Utils.ensureNonNullAndNonEmpty(timeVal);
+			double time;
+			try {
+				time = Double.parseDouble(timeVal);
+			} catch (NumberFormatException ex){
+				throw new SAXException(new InvalidAttributeValueException());
+			}
+			if (startAtConstraint && (startAtLimit > time)){
+				return;
+			}
+			if (endAtConstraint && (endAtLimit < time)){
+				return;
+			}
 			String typeVal = attributes.getValue(typeName);
 			EventType type = EventType.from(typeVal);
 			if (type != null){
-				String timeVal = attributes.getValue(timeName);
-				Utils.ensureNonNullAndNonEmpty(timeVal);
 				String personVal = attributes.getValue(personName);
 				Utils.ensureNonNullAndNonEmpty(personVal);
 				if (!onlyComponents || isInjectedComponent(personVal)){
 					switch(type){
 						case PERSON_ENTERS_VEHICLE:
-							processEnteredOrLVehicle(attributes, timeVal, personVal, true);						
+							processEnteredOrLVehicle(attributes, time, personVal, true);						
 							break;
 						case PERSON_LEAVES_VEHICLE:
-							processEnteredOrLVehicle(attributes, timeVal, personVal, false);
+							processEnteredOrLVehicle(attributes, time, personVal, false);
 							break;
 						case ENTERED_LINK:
-							processEorLLink(attributes, timeVal, personVal, true);
+							processEorLLink(attributes, time, personVal, true);
 							break;
 						case LEFT_LINK:
-							processEorLLink(attributes, timeVal, personVal, false);
+							processEorLLink(attributes, time, personVal, false);
 							break;
 						case ARRIVAL:
-							processArrivalDeparture(attributes, timeVal, personVal, false);
+							processArrivalDeparture(attributes, time, personVal, false);
 							break;
 						case DEPARTURE:
-							processArrivalDeparture(attributes, timeVal, personVal, true);
+							processArrivalDeparture(attributes, time, personVal, true);
 							break;
 						case ACT_START:
-							processActStartEnd(attributes, timeVal, personVal, true);
+							processActStartEnd(attributes, time, personVal, true);
 							break;
 						case ACT_END:
-							processActStartEnd(attributes, timeVal, personVal, false);
+							processActStartEnd(attributes, time, personVal, false);
 							break;
 						default:
 							return;
@@ -164,92 +217,84 @@ public class EventWithPersonHandler extends DefaultHandler {
 	/**
 	 * Parses the PersonEntersVehicle and PersonLeavesVehicle events.
 	 * @param attributes Attributes of the event element. Usually provided by the SAX engine.
+	 * @param time Simulation time at which the processed event occurred
+	 * @param personVal This person is associated with the processed event
 	 * @param entered When true, the event type is PersonEntersVehicle. 
 	 * When false, the event type is PersonLeavesVehicle.
 	 * @throws SAXException When a mandatory attribute is missing or has an invalid value.
 	 */
-	private void processEnteredOrLVehicle(Attributes attributes, String timeVal, String personVal, boolean entered) throws SAXException{
+	private void processEnteredOrLVehicle(Attributes attributes, double time, String personVal, boolean entered) 
+			throws SAXException{
 		String vehicleVal = attributes.getValue(vehicleName);
 		Utils.ensureNonNullAndNonEmpty(vehicleVal);
-		try {
-			double time = Double.parseDouble(timeVal);
-			EntersOrLeavesVehicle elv = new EntersOrLeavesVehicle(entered, time, personVal, vehicleVal);
-			events.add(elv);
-		} catch (NumberFormatException | NullPointerException ex){
-			throw new SAXException(new InvalidAttributeValueException());
-		}
+		EntersOrLeavesVehicle elv = new EntersOrLeavesVehicle(entered, time, personVal, vehicleVal);
+		events.add(elv);
 	}
 	
 	/**
 	 * Parses the "entered link" and "left link" events.
 	 * @param attributes Attributes of the event element. Usually provided by the SAX engine.
+	 * @param time Simulation time at which the processed event occurred
+	 * @param personVal This person is associated with the processed event
 	 * @param entered When true, the event type is "entered link".
 	 * When false, the event type is "left link".
 	 * @throws SAXException When a mandatory attribute is missing or has an invalid value.
 	 */
-	private void processEorLLink(Attributes attributes, String timeVal, String personVal, boolean entered) throws SAXException{
+	private void processEorLLink(Attributes attributes, double time, String personVal, boolean entered) 
+			throws SAXException{
 		String linkVal = attributes.getValue(linkName);
 		Utils.ensureNonNullAndNonEmpty(linkVal);
 		String vehicleVal = attributes.getValue(vehicleName);
-		try {
-			double time = Double.parseDouble(timeVal);
-			MyLink link = links.get(linkVal);
-			if (link == null){
-				throw new SAXException(new LinkNotFoundException());
-			}			
-			EnteredOrLeftLink ell = new EnteredOrLeftLink(entered, time, personVal, link, vehicleVal);
-			events.add(ell);
-		} catch (NumberFormatException ex){
-			throw new SAXException(new InvalidAttributeValueException());
-		}
+		MyLink link = links.get(linkVal);
+		if (link == null){
+			throw new SAXException(new LinkNotFoundException());
+		}			
+		EnteredOrLeftLink ell = new EnteredOrLeftLink(entered, time, personVal, link, vehicleVal);
+		events.add(ell);
 	}
 	
 	/**
 	 * Parses the arrival and departure events.
 	 * @param attributes Attributes of the event element. Usually provided by the SAX engine.
+	 * @param time Simulation time at which the processed event occurred
+	 * @param personVal This person is associated with the processed event
 	 * @param departure When true, the event type is departure. When false, the event type is arrival.
 	 * @throws SAXException When a mandatory attribute is missing or has an invalid value.
 	 */
-	private void processArrivalDeparture(Attributes attributes, String timeVal, String personVal, boolean departure) throws SAXException{
+	private void processArrivalDeparture(Attributes attributes, double time, String personVal, boolean departure) 
+			throws SAXException{
 		String linkVal = attributes.getValue(linkName);
 		Utils.ensureNonNullAndNonEmpty(linkVal);
 		String legModeVal = attributes.getValue(legModeName);
 		Utils.ensureNonNullAndNonEmpty(legModeVal);
-		try {
-			double time = Double.parseDouble(timeVal);
-			MyLink link = links.get(linkVal);
-			if (link == null){
-				throw new SAXException(new LinkNotFoundException());
-			}
-			ArrivalOrDeparture aod = new ArrivalOrDeparture(departure, time, personVal, link, legModeVal);
-			events.add(aod);
-		} catch (NumberFormatException ex){
-			throw new SAXException(new InvalidAttributeValueException());
+		MyLink link = links.get(linkVal);
+		if (link == null){
+			throw new SAXException(new LinkNotFoundException());
 		}
+		ArrivalOrDeparture aod = new ArrivalOrDeparture(departure, time, personVal, link, legModeVal);
+		events.add(aod);
 	}
 	
 	/**
 	 * Parses the actstart and actend events.
 	 * @param attributes Attributes of the event element. Usually provided by the SAX engine.
+	 * @param time Simulation time at which the processed event occurred
+	 * @param personVal This person is associated with the processed event
 	 * @param start When true, the event type is actstart. When false, the event type is actend.
 	 * @throws SAXException When a mandatory attribute is missing or has an invalid value.
 	 */
-	private void processActStartEnd(Attributes attributes, String timeVal, String personVal, boolean start) throws SAXException{
+	private void processActStartEnd(Attributes attributes, double time, String personVal, boolean start) 
+			throws SAXException{
 		String linkVal = attributes.getValue(linkName);
 		Utils.ensureNonNullAndNonEmpty(linkVal);
 		String facilityVal = attributes.getValue(facilityName);
 		String actTypeVal = attributes.getValue(actTypeName);
-		try {
-			double time = Double.parseDouble(timeVal);
-			MyLink link = links.get(linkVal);
-			if (link == null){
-				throw new SAXException(new LinkNotFoundException());
-			}
-			ActStartOrEnd ase = new ActStartOrEnd(start, time, personVal, link, facilityVal, actTypeVal);
-			events.add(ase);
-		} catch (NumberFormatException ex){
-			throw new SAXException(new InvalidAttributeValueException());
+		MyLink link = links.get(linkVal);
+		if (link == null){
+			throw new SAXException(new LinkNotFoundException());
 		}
+		ActStartOrEnd ase = new ActStartOrEnd(start, time, personVal, link, facilityVal, actTypeVal);
+		events.add(ase);
 	}
 	
 }

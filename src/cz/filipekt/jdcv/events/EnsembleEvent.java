@@ -95,4 +95,11 @@ public class EnsembleEvent implements Event{
 		this.time = time;
 	}
 
+	@Override
+	public String toString() {
+		return "EnsembleEvent [coordinator=" + coordinator + ", member="
+				+ member + ", membership=" + membership + ", ensemble="
+				+ ensemble + ", time=" + time + "]";
+	}
+
 }

@@ -62,9 +62,9 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 	private final ComboBox<String> ensembleCharsets;
 	
 	/**
-	 * The editable combo-box for specifying the duration of the visualization
+	 * The field specifying the duration of the visualization
 	 */
-	private final ComboBox<Integer> durationBox;
+	private final TextField durationField;
 
 	/**
 	 * @param configFileField The text field containing the config file path
@@ -74,10 +74,10 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 	 * @param durationBox The editable combo-box for specifying the duration of the visualization
 	 */
 	public ConfigFileLoader(TextField configFileField, ComboBox<String> configFileCharsets, 
-			List<TextField> fields, List<ComboBox<String>> charsetBoxes, ComboBox<Integer> durationBox) {
+			List<TextField> fields, List<ComboBox<String>> charsetBoxes, TextField durationField) {
 		this.configFileField = configFileField;
 		this.configFileCharsets = configFileCharsets;
-		this.durationBox = durationBox;
+		this.durationField = durationField;
 		this.networkField = fields.get(0);
 		this.networkCharsets = charsetBoxes.get(0);
 		this.eventField = fields.get(1);
@@ -190,7 +190,7 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 								processPathDef(blocks, ensembleField, ensembleCharsets, lineNo);
 								break;
 							case timePreamble:
-								processTimeDef(blocks, durationBox, lineNo);
+								processTimeDef(blocks, durationField, lineNo);
 								break;
 							case agentsPreamble:
 								break;
@@ -240,18 +240,19 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 	}
 	
 	/**
-	 * Processed the line of the config file that specifies the duration of the visualization
+	 * Processes the lines of the config file that specify numeric aspects of the visualization, 
+	 * i.e. its duration or starting time
 	 * @param blocks Line from the config file, parsed by the delimiter {@link ConfigFileLoader#delimiter}
-	 * @param timeBox The editable combo-box where the loaded duration will be recorded to
+	 * @param timeBox The field where the loaded number will be recorded to
 	 * @param lineNo Number of the line, whose contents are given in the first parameter
 	 * @throws ConfigFileLoader.ConfigFileFormatException When the line does not have a valid structure
 	 */
-	private void processTimeDef(String[] blocks, ComboBox<Integer> timeBox, 
+	private void processTimeDef(String[] blocks, TextField timeField, 
 			int lineNo) throws ConfigFileLoader.ConfigFileFormatException{
-		if ((blocks != null) && (blocks.length == 2) && (timeBox != null)){
+		if ((blocks != null) && (blocks.length == 2) && (timeField != null)){
 			try {
 				Integer value = Integer.valueOf(blocks[1]);
-				timeBox.getSelectionModel().select(value);
+				timeField.setText(value.toString());
 			} catch (NumberFormatException ex){
 				throw new ConfigFileFormatException("[Line " + (lineNo+1) + "]: the duration definition " + 
 						"line must contain precisely two blocks delimeted by \"" + "\"");
