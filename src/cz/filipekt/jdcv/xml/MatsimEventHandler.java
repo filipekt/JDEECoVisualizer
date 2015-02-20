@@ -22,7 +22,7 @@ import cz.filipekt.jdcv.network.MyLink;
  * SAX handler used to parse the XML file containing the events.
  * Collects the "event" elements. 
  */
-public class EventWithPersonHandler extends DefaultHandler {
+public class MatsimEventHandler extends DefaultHandler {
 	
 	/**
 	 * Local name of the event element
@@ -41,7 +41,7 @@ public class EventWithPersonHandler extends DefaultHandler {
 	
 	/**
 	 * @return The parsed event elements from the source file
-	 * @see {@link EventWithPersonHandler#events}
+	 * @see {@link MatsimEventHandler#events}
 	 */
 	public List<MatsimEvent> getEvents() {
 		return events;
@@ -126,7 +126,7 @@ public class EventWithPersonHandler extends DefaultHandler {
 	 * @param endAt Only the events ending before this time are taken into account. If null,
 	 * no such constraint is applied.
 	 */
-	public EventWithPersonHandler(Map<String, MyLink> links, boolean onlyComponents, Integer startAt, Integer endAt) {		
+	public MatsimEventHandler(Map<String, MyLink> links, boolean onlyComponents, Integer startAt, Integer endAt) {		
 		this.links = links;
 		this.onlyComponents = onlyComponents;
 		if (startAt == null){

@@ -1,20 +1,16 @@
 package cz.filipekt.jdcv;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import javafx.animation.Animation.Status;
-import javafx.animation.KeyFrame;
-import javafx.animation.KeyValue;
-import javafx.animation.Timeline;
 import javafx.application.Platform;
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.DoubleProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.event.EventHandler;
 import javafx.scene.Node;
@@ -22,17 +18,17 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
+import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
-import javafx.scene.shape.Shape;
-import javafx.util.Duration;
 
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
 
 import cz.filipekt.jdcv.CheckPoint.Type;
-import cz.filipekt.jdcv.events.EnsembleEvent;
 import cz.filipekt.jdcv.events.EnteredOrLeftLink;
 import cz.filipekt.jdcv.events.EntersOrLeavesVehicle;
 import cz.filipekt.jdcv.events.EventType;
@@ -40,9 +36,10 @@ import cz.filipekt.jdcv.events.MatsimEvent;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;
 import cz.filipekt.jdcv.util.Dialog;
+import cz.filipekt.jdcv.util.Resources;
 import cz.filipekt.jdcv.xml.EnsembleHandler;
-import cz.filipekt.jdcv.xml.EventWithPersonHandler;
 import cz.filipekt.jdcv.xml.LinkHandler;
+import cz.filipekt.jdcv.xml.MatsimEventHandler;
 import cz.filipekt.jdcv.xml.NodeHandler;
 
 /**
@@ -259,7 +256,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 				return;
 			}
 		}
-		final boolean onlyAgents = onlyAgentsBox.isSelected();
+		boolean onlyAgents = onlyAgentsBox.isSelected();
 		List<String> problems = new ArrayList<>();
 		String startAtText = startAtField.getText();
 		Integer startAtVal = null;
@@ -271,7 +268,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		} catch (NumberFormatException ex){
 			problems.add("The \"Start at\" field may only contain an integer number or nothing.");
 		}
-		final Integer startAt = startAtVal;
+		Integer startAt = startAtVal;
 		String endAtText = endAtField.getText();
 		Integer endAtVal = null;
 		try {
@@ -281,7 +278,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		} catch (NumberFormatException ex) {
 			problems.add("The \"End at\" field may only contain an integer number or nothing.");
 		}
-		final Integer endAt = endAtVal;
+		Integer endAt = endAtVal;
 		String durationText = durationField.getText();
 		int durationVal = -1;
 		try {
@@ -289,7 +286,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		} catch (NumberFormatException ex){
 			problems.add("The \"Duration\" field must contain an integer number.");
 		}
-		final int duration = durationVal;
+		int duration = durationVal;
 		reportProblemsForScene(problems, onlyAgents, startAt, endAt, duration);
 	}
 	
@@ -325,21 +322,16 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		XMLextractor.run(networkFile, linkHandler);	
 		EnsembleHandler ensembleHandler = new EnsembleHandler(startAt, endAt);
 		XMLextractor.run(ensembleFile, ensembleHandler);
-		EventWithPersonHandler eventWithPersonHandler = new EventWithPersonHandler(linkHandler.getLinks(), onlyAgents, startAt, endAt);
+		MatsimEventHandler eventWithPersonHandler = new MatsimEventHandler(linkHandler.getLinks(), onlyAgents, startAt, endAt);
 		XMLextractor.run(eventsFile, eventWithPersonHandler);
 		final CheckPointDatabase cdb = buildCheckPointDatabase(eventWithPersonHandler.getEvents());
-		Map<String,Node> personShapes = new HashMap<>();
-		Map<MembershipRelation,Node> ensembleShapes = new HashMap<>();
 		double minTime = startAt==null ? cdb.getMinTime() : (startAt * 1.0);
 		double maxTime = endAt==null ? cdb.getMaxTime() : (endAt * 1.0);
 		final MapScene scene = new MapScene(nodeHandler.getNodes(), linkHandler.getLinks(), visualizer.getMapWidth(), 
-				visualizer.getMapHeight(), personShapes, ensembleShapes, timeLineStatus, timeLineRate, minTime, maxTime, duration);
-		final List<KeyFrame> keyFrames = buildKeyFrames(cdb, personShapes, scene, duration);
-		scene.getTimeLine().getKeyFrames().addAll(keyFrames);
-		final List<KeyFrame> keyFrames2 = buildKeyFrames2(ensembleHandler.getEvents(), personShapes, scene, ensembleShapes);
-		scene.getTimeLine().getKeyFrames().addAll(keyFrames2);
-		scene.addRecordingFrames();
-		scene.update();
+				visualizer.getMapHeight(), timeLineStatus, timeLineRate, minTime, 
+				maxTime, duration, cdb, ensembleHandler.getEvents());
+		ShapeProvider circleProvider = new CircleProvider(scene.getPersonCircleRadius(), scene.getPersonCircleColor());
+		scene.update(circleProvider, false);
 		Platform.runLater(new Runnable() {
 			
 			@Override
@@ -351,128 +343,115 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	}
 	
 	/**
-	 * Given all the ensemble events, this method creates their graphical representations in the form of 
-	 * JavaFX nodes and prepares the correct movements of these nodes by binding them in the right way
-	 * to the movements of the corresponding coordinators and members.  
-	 * @param events All the ensemble events, as parsed from the input file
-	 * @param personShapes Maps each person's ID to the person's graphical representation
-	 * @param scene The simulated situation to be visualized
-	 * @param ensembleShapes Is cleared and filled by this method. The new contents map each ensemble 
-	 * membership relation to the graphical representation of this relation.
-	 * @return These key frames capture the varying visibility of the ensemble membership representations,
-	 * as they disappear whenever the membership condition ceases to hold.
+	 * Producer of {@link Node} instances, later used for visualizing persons or cars 
 	 */
-	private List<KeyFrame> buildKeyFrames2(List<EnsembleEvent> events, Map<String,Node> personShapes, 
-			MapScene scene, Map<MembershipRelation,Node> ensembleShapes){
-		List<KeyFrame> res = new ArrayList<>();
-		EnsembleDatabase edb = new EnsembleDatabase();
-		for (EnsembleEvent eev : events){
-			double timeVal = scene.convertToVisualizationTime(eev.getTime());
-			Duration time = new Duration(timeVal);
-			final String coord = eev.getCoordinator();
-			Node coordShape = personShapes.get(coord);
-			final String member = eev.getMember();
-			Node memberShape = personShapes.get(member);
-			if ((coordShape != null) && (memberShape != null)){  						
-				Node ensembleShape = edb.getEnsembleShape(eev.getEnsemble(), coord, member, coordShape, memberShape);				
-				KeyValue kv = new KeyValue(ensembleShape.visibleProperty(), eev.getMembership());
-				KeyFrame kf = new KeyFrame(time, kv);
-				res.add(kf);
+	public static interface ShapeProvider {
+		
+		/**
+		 * @return A new instance of {@link Node}, 
+		 * later used for visualizing persons or cars 
+		 * @throws IOException When the shape could not be loaded for any reason
+		 */
+		Node getNewShape() throws IOException;
+	}
+	
+	/**
+	 * Producer of {@link ImageView} instances,
+	 * later used for visualizing persons or cars 
+	 */
+	static class ImageProvider implements ShapeProvider {
+		
+		/**
+		 * Name of the resource file containing the image
+		 */
+		private final String image;
+		
+		/**
+		 * Width (a also height) of the provided image
+		 */
+		private final double imageWidth;
+		
+		/**
+		 * If true, the specified image is looked for in the application resources.
+		 * Otherwise the image is looked for in the filesystem. 
+		 */
+		private final boolean isResource;
+
+		/**
+		 * @param isResource If true, the image specified by the second parameter, is looked 
+		 * for in the application resources. 
+		 * @param image If the first parameter holds, this parameter specifies the resource name. Otherwise,
+		 * this parameter contains a full path to the specified image.
+		 * @param imageWidth Width (a also height) of the provided image
+		 * @throws FileNotFoundException When the image could not be found
+		 */
+		public ImageProvider(boolean isResource, String image, double imageWidth) throws FileNotFoundException {
+			this.image = image;
+			this.imageWidth = imageWidth;
+			this.isResource = isResource;
+			try {
+				getNewShape();
+			} catch (IOException ex){
+				throw new FileNotFoundException();
+			}
+		}
+
+		/**
+		 * @return The specified image, or null if the image was not found.
+		 * @throws IOException When the shape could not be loaded for any reason
+		 */
+		@Override
+		public Node getNewShape() throws IOException {
+			ImageView res;
+			if (isResource){
+				res = Resources.getImageView(image, imageWidth);
 			} else {
-				/*
-				Some of the agents had no corresponding event in the interval of matsim event log which 
-				we loaded so we don't know where the agent is on the map and we move on.
-				*/				 
+				InputStream stream = Files.newInputStream(Paths.get(image));
+				Image image = new Image(stream, imageWidth, imageWidth, true, false);
+				res = new ImageView(image);
 			}
+			res.setLayoutX(-(imageWidth/2));
+			res.setLayoutY(-(imageWidth/2));
+			return res;
 		}
-		ensembleShapes.clear();
-		ensembleShapes.putAll(edb.getEnsembleShapes());
-		for (Node line : ensembleShapes.values()){
-			KeyValue kv = new KeyValue(line.visibleProperty(), Boolean.FALSE);
-			KeyFrame kf = new KeyFrame(Duration.ZERO, kv);
-			res.add(kf);
-		}
-		return res;
+		
 	}
 	
 	/**
-	 * Given the {@link CheckPointDatabase}, this method converts its contents into the format
-	 * specified by JavaFX {@link Timeline} animation model. The {@code shapes} collection is 
-	 * filled with the individual nodes that represent the persons. 
-	 * @param cdb Contains positions of people on the map at specified times.
-	 * @param shapes Is cleared and filled by this method with {@link Node} instances representing individual people.
-	 * @param scene The new scene for which the key frames will be created
-	 * @param duration The total intended duration of the visualization 
-	 * @return {@link KeyFrame} instances corresponding to the positions and times contained in
-	 * the {@link CheckPointDatabase} given as a parameter.
+	 * Producer of {@link Circle} instances,
+	 * later used for visualizing persons or cars 
 	 */
-	private List<KeyFrame> buildKeyFrames(CheckPointDatabase cdb, Map<String,Node> shapes, MapScene scene, int duration){
-		List<KeyFrame> frames = new ArrayList<>();
-		shapes.clear();
-		for (final String personID : cdb.getKeys()){
-			List<CheckPoint> checkPoints = cdb.getList(personID);
-			Node personShape = buildPersonShape(checkPoints, scene);
-			if (personShape == null){
-				continue;
-			}
-			personShape.setVisible(false);
-			DoubleProperty xProperty = personShape.translateXProperty();
-			DoubleProperty yProperty = personShape.translateYProperty();
-			BooleanProperty visibleProperty = personShape.visibleProperty();
-			KeyValue initX = new KeyValue(xProperty, xProperty.get());
-			KeyValue initY = new KeyValue(yProperty, yProperty.get());
-			KeyValue initVis = new KeyValue(visibleProperty, false);
-			frames.add(new KeyFrame(Duration.ZERO, initX, initY, initVis));
-			for (CheckPoint cp : checkPoints){				
-				Duration actualTime = new Duration(scene.convertToVisualizationTime(cp.getTime()));
-				KeyFrame frame = null;
-				if (cp.getType().equals(Type.POSITION_DEF)){
-					double actualX = scene.transformX(cp.getX());
-					double actualY = scene.transformY(cp.getY());					
-					KeyValue xVal = new KeyValue(xProperty, actualX);
-					KeyValue yVal = new KeyValue(yProperty, actualY);
-					KeyValue visibleVal = new KeyValue(visibleProperty, true);
-					frame = new KeyFrame(actualTime, xVal, yVal, visibleVal);					
-				} else if (cp.getType().equals(Type.PERSON_ENTERS) || cp.getType().equals(Type.PERSON_LEAVES)){
-					boolean personEnters = cp.getType().equals(Type.PERSON_ENTERS);
-					KeyValue visibleVal = new KeyValue(visibleProperty, personEnters);
-					frame = new KeyFrame(actualTime, visibleVal);
-				} else {
-					throw new UnsupportedOperationException();
-				}
-				frames.add(frame);
-			}
-			shapes.put(personID, personShape);
+	static class CircleProvider implements ShapeProvider {
+		
+		/**
+		 * Radius of the circle
+		 */
+		private final double radius;
+		
+		/**
+		 * Color of the circle
+		 */
+		private final Paint color;
+
+		/**
+		 * @param radius Radius of the circle
+		 * @param color Color of the circle
+		 */
+		public CircleProvider(double radius, Paint color) {
+			this.radius = radius;
+			this.color = color;
 		}
-		return frames;
+		
+		/**
+		 * @return A new instance of {@link Circle}, 
+		 * later used for visualizing persons or cars 
+		 */
+		@Override
+		public Node getNewShape() {
+			return new Circle(0, 0, radius, color);					
+		}
+		
 	}
-	
-	/**
-	 * Builds a {@link Node} that represents a moving person/vehicle on the map.
-	 * @param checkPoints Checkpoints of the person/vehicle, parsed from the event log.
-	 * @param mapScene A {@link MapScene} instance that will hold the returned {@link Shape} instance.
-	 * @return A {@link Shape} that represents a moving person/vehicle on the map.
-	 */
-	private Node buildPersonShape(List<CheckPoint> checkPoints, MapScene mapScene){
-		double x = Double.MIN_VALUE;
-		double y = Double.MIN_VALUE;
-		for (CheckPoint cp : checkPoints){
-			if (cp.getType().equals(Type.POSITION_DEF)){
-				x = cp.getX();
-				y = cp.getY();
-				break;
-			}
-		}
-		if (x == Double.MIN_VALUE){
-			return null;
-		} else {
-			Circle shape = new Circle(0, 0, mapScene.getPersonRadius(), mapScene.getPersonColor());
-			shape.setTranslateX(mapScene.transformX(x));
-			shape.setTranslateY(mapScene.transformY(y));
-			return shape;
-		}
-	}
-	
 	
 	/**
 	 * Given the {@link MatsimEvent} instances parsed from the event log, this method extracts the

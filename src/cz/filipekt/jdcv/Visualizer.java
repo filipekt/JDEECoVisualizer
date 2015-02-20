@@ -32,6 +32,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -80,9 +81,6 @@ public class Visualizer extends Application {
 	 * Well prepared simulation data and settings, i.e. this is what will be visualized
 	 */
 	private MapScene scene;
-	
-	private ChangeListener<Duration> timelineToSliderListener;
-	private ChangeListener<Number> sliderToTimelineListener;
 	
 	/**
 	 * This method is used to specify what will be visualized. The {@link MapScene} instance
@@ -153,6 +151,18 @@ public class Visualizer extends Application {
 		timelineSlider.setMinorTickCount(6);
 		timelineSlider.setBlockIncrement(diff/10);
 	}
+	
+	/**
+	 * Makes sure the changes in visualization timeline current time are projected to
+	 * the position of the slider in the main window
+	 */
+	private ChangeListener<Duration> timelineToSliderListener;
+	
+	/**
+	 * Makes sure that the changes in the value of the slider (in the main window) are
+	 * projected to the value of the curren time of the visualization timeline
+	 */
+	private ChangeListener<Number> sliderToTimelineListener;
 	
 	/**
 	 * @return The map that is being visualized, coupled with some view parameters.
@@ -497,6 +507,15 @@ public class Visualizer extends Application {
 		playButton.setOnMouseClicked(new PlayButtonHandler(this));
 		timeLineStatus = new TimeLineStatusHandler(playButton, stopButton, playImage, pauseImage);
 		final Label speedLabel = new Label("Speed: 1.0x");
+		speedLabel.setOnMouseClicked(new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent arg0) {
+				if (scene != null){
+					
+				}
+			}
+		});
 		timeLineRate = new ChangeListener<Number>() {
 			
 			@Override

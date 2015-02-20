@@ -16,7 +16,10 @@ import java.util.Set;
 
 import javafx.animation.Animation.Status;
 import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.DoubleProperty;
 import javafx.beans.value.ChangeListener;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
@@ -36,6 +39,10 @@ import javafx.util.Duration;
 
 import javax.imageio.ImageIO;
 
+import cz.filipekt.jdcv.CheckPoint.Type;
+import cz.filipekt.jdcv.SceneBuilder.ImageProvider;
+import cz.filipekt.jdcv.SceneBuilder.ShapeProvider;
+import cz.filipekt.jdcv.events.EnsembleEvent;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;
 import cz.filipekt.jdcv.prefs.LinkPrefs;
@@ -169,7 +176,7 @@ public class MapScene {
 	 * Makes sure that the {@link KeyFrame} instances allowing for recording of
 	 * snapshots are added to the keyframe list of {@link MapScene#timeLine}.
 	 */
-	void addRecordingFrames(){
+	private void addRecordingFrames(){
 		if (!recordingFramesAdded){			
 			List<KeyFrame> frames = createRecordingFrames();
 			timeLine.getKeyFrames().addAll(frames);
@@ -329,21 +336,6 @@ public class MapScene {
 	}
 	
 	/**
-	 * @return The link preferences objects mapped the corresponding link IDs.
-	 */
-	public Map<String,LinkPrefs> getLinkPrefs(){
-		Map<String,LinkPrefs> res = new HashMap<>();
-		for (Shape shape : lines.keySet()){
-			MyLink link = lines.get(shape);
-			Line line = (Line)shape;
-			Writer writer = Console.getInstance().getWriter();
-			LinkPrefs prefs = new LinkPrefs(link.getId(), link.getFrom().getId(), link.getTo().getId(), line, writer);
-			res.put(link.getId(), prefs);
-		}
-		return res;
-	}
-	
-	/**
 	 * Width of the {@link Line} instances that represent links, in pixels.
 	 */
 	private final double linkWidth = 1.5;
@@ -358,7 +350,7 @@ public class MapScene {
 	 * @return The x-coordinate converted to the value used in the map visualization, where the
 	 * coordinates correspond to the actual pixels on the screen (before zooming). 
 	 */
-	double transformX(double x){
+	private double transformX(double x){
 		x -= minx;
 		x *= (widthFactor * zoom);
 		x += (constantMargin / 2);
@@ -370,7 +362,7 @@ public class MapScene {
 	 * @return The y-coordinate converted to the value used in the map visualization, where the
 	 * coordinates correspond to the actual pixels on the screen (before zooming). 
 	 */
-	double transformY(double y){
+	private double transformY(double y){
 		y -= miny;
 		y *= (heightFactor * zoom);
 		y += (constantMargin / 2);
@@ -414,34 +406,39 @@ public class MapScene {
 	}
 	
 	/**
-	 * {@link Shape} instances representing individual people (as they move through the map).
+	 * Maps each person's ID to the person's graphical representation
 	 */
-	private final Map<String,Node> personShapes;
+	private final Map<String,Node> personShapes = new HashMap<>();
 	
 	/**
-	 * Radius (in pixels) of the {@link Circle} objects representing the people on the map.
+	 * Radius of the circle representing a person in the visualization
 	 */
-	private final double personRadius = 2.5;
+	private final double personCircleRadius = 2.5;
 	
 	/**
-	 * @return Radius (in pixels) of the {@link Shape} objects representing the people on the map.
-	 * @see {@link MapScene#personRadius}
+	 * @return Radius of the circle representing a person in the visualization
+	 * @see {@link MapScene#personCircleRadius}
 	 */
-	double getPersonRadius() {
-		return personRadius;
+	double getPersonCircleRadius() {
+		return personCircleRadius;
 	}
 	
 	/**
-	 * Color of the {@link Shape} objects representing the people on the map.
+	 * Both width and height of the image that represents a person/car in the visualization
 	 */
-	private final Paint personColor = Color.LIME;
+	private final double personImageWidth = 8 * personCircleRadius;
 	
 	/**
-	 * @return Color of the {@link Shape} instances representing the people on the map.
-	 * @see {@link MapScene#personColor}
+	 * Color of the circle representing a person in the visualization
 	 */
-	Paint getPersonColor() {
-		return personColor;
+	private final Paint personCircleColor = Color.LIME;
+	
+	/**
+	 * @return Color of the circle representing a person in the visualization
+	 * @see {@link MapScene#personCircleColor}
+	 */
+	Paint getPersonCircleColor() {
+		return personCircleColor;
 	}
 
 	/**
@@ -458,24 +455,35 @@ public class MapScene {
 	}
 	
 	/**
-	 * Updates the collections of {@link Shape} instances that represent the map elements,
+	 * Updates the collections of node instances that represent the map elements,
 	 * both mobile (agents, ensemble memberships) and immobile (nodes,links).
 	 * Also, the {@link MapScene#mapContainer} holding these {@link Shape} instances for
 	 * visualizing purposes is updated with the new values.
+	 * 
+	 * @param shapeProvider Used for generating the visualizations of people
+	 * @param justMovables If true, only the moveable objects (people,ensembles) will be updated 
+	 * @throws IOException  When a person shape could not be loaded for any reason
 	 */
-	void update(){
-		Map<Shape,MyNode> newCircles = generateCircles();
-		Map<Shape,MyLink> newLines = generateLines();
-		circles.clear();
-		circles.putAll(newCircles);
-		lines.clear();
-		lines.putAll(newLines);
+	public void update(ShapeProvider shapeProvider, boolean justMovables) throws IOException{
+		timeLine.stop();
+		timeLine.getKeyFrames().clear();
 		mapContainer.getChildren().clear();
+		producePersonShapes(shapeProvider);
+		addRecordingFrames();
+		if (!justMovables){
+			Map<Shape,MyNode> newCircles = generateCircles();
+			Map<Shape,MyLink> newLines = generateLines();
+			circles.clear();
+			circles.putAll(newCircles);
+			lines.clear();
+			lines.putAll(newLines);
+		}
 		mapContainer.getChildren().addAll(lines.keySet());
 		mapContainer.getChildren().addAll(circles.keySet());
 		mapContainer.getChildren().addAll(personShapes.values());
 		mapContainer.getChildren().addAll(ensembleShapes.values());
-	    moveShapesToFront();	    
+	    moveShapesToFront();	  
+	    
 	}
 	
 	/**
@@ -553,21 +561,210 @@ public class MapScene {
 	private final double constantMargin = 25.0;
 	
 	/**
-	 * Each {@link Shape} instance represents an ensemble membership
+	 * Maps each ensemble membership relation to the graphical representation of this relation.
 	 */
-	private final Map<MembershipRelation,Node> ensembleShapes;
+	private final Map<MembershipRelation,Node> ensembleShapes = new HashMap<>();
 	
 	/**
-	 * @return The ensemble membership preferences objects
+	 * Fills the timeline with keyframes that enable the right movements of 
+	 * people and ensembles visualizations.
+	 * @param shapeProvider Used for generating the visualizations of people
+	 * @throws IOException When a person shape could not be loaded for any reason
 	 */
-	public Set<MembershipPrefs> getMembershipPrefs(){
-		Set<MembershipPrefs> res = new HashSet<>();
-		for (MembershipRelation mr : ensembleShapes.keySet()){
-			Line line = (Line)ensembleShapes.get(mr);
-			MembershipPrefs pref = new MembershipPrefs(mr.getEnsembleName(), mr.getCoordinator(), mr.getMember(), line);
-			res.add(pref);
+	private void producePersonShapes(ShapeProvider shapeProvider) throws IOException{
+		List<KeyFrame> keyFrames = buildKeyFramesForPeople(shapeProvider);
+		List<KeyFrame> keyFrames2 = buildKeyFrames2();
+		timeLine.getKeyFrames().addAll(keyFrames);
+		timeLine.getKeyFrames().addAll(keyFrames2);
+	}
+	
+	/**
+	 * Given the {@link CheckPointDatabase}, this method converts its contents into the format
+	 * specified by JavaFX {@link Timeline} animation model. The people shapes collection is 
+	 * filled with the individual nodes that represent the persons.  
+	 * @param shapeProvider Used for generating the visualizations of people
+	 * @return {@link KeyFrame} instances describing the movements of people on the map.
+	 * @throws IOException When a person shape could not be loaded for any reason
+	 */
+	private List<KeyFrame> buildKeyFramesForPeople(SceneBuilder.ShapeProvider shapeProvider) throws IOException{
+		List<KeyFrame> frames = new ArrayList<>();
+		personShapes.clear();
+		for (final String personID : checkpointDb.getKeys()){
+			List<CheckPoint> checkPoints = checkpointDb.getList(personID);
+			Node personShape = buildPersonShape(checkPoints, shapeProvider);
+			if (personShape == null){
+				continue;
+			}
+			personShape.setVisible(false);
+			DoubleProperty xProperty = personShape.translateXProperty();
+			DoubleProperty yProperty = personShape.translateYProperty();
+			BooleanProperty visibleProperty = personShape.visibleProperty();
+			KeyValue initX = new KeyValue(xProperty, xProperty.get());
+			KeyValue initY = new KeyValue(yProperty, yProperty.get());
+			KeyValue initVis = new KeyValue(visibleProperty, false);
+			frames.add(new KeyFrame(Duration.ZERO, initX, initY, initVis));
+			for (CheckPoint cp : checkPoints){				
+				Duration actualTime = new Duration(convertToVisualizationTime(cp.getTime()));
+				KeyFrame frame = null;
+				if (cp.getType().equals(Type.POSITION_DEF)){
+					double actualX = transformX(cp.getX());
+					double actualY = transformY(cp.getY());					
+					KeyValue xVal = new KeyValue(xProperty, actualX);
+					KeyValue yVal = new KeyValue(yProperty, actualY);
+					KeyValue visibleVal = new KeyValue(visibleProperty, true);
+					frame = new KeyFrame(actualTime, xVal, yVal, visibleVal);					
+				} else if (cp.getType().equals(Type.PERSON_ENTERS) || cp.getType().equals(Type.PERSON_LEAVES)){
+					boolean personEnters = cp.getType().equals(Type.PERSON_ENTERS);
+					KeyValue visibleVal = new KeyValue(visibleProperty, personEnters);
+					frame = new KeyFrame(actualTime, visibleVal);
+				} else {
+					throw new UnsupportedOperationException();
+				}
+				frames.add(frame);
+			}
+			personShapes.put(personID, personShape);
+		}
+		return frames;
+	}
+
+	/**
+	 * Builds a {@link Node} that represents a moving person/vehicle on the map.
+	 * @param checkPoints Checkpoints of the person/vehicle, parsed from the event log.
+	 * @param provider Used for generating the visualizations of people
+	 * @return A {@link Shape} that represents a moving person/vehicle on the map.
+	 * @throws IOException When the shape could not be loaded for any reason
+	 */
+	private Node buildPersonShape(List<CheckPoint> checkPoints, SceneBuilder.ShapeProvider provider) throws IOException{
+		double x = Double.MIN_VALUE;
+		double y = Double.MIN_VALUE;
+		for (CheckPoint cp : checkPoints){
+			if (cp.getType().equals(Type.POSITION_DEF)){
+				x = cp.getX();
+				y = cp.getY();
+				break;
+			}
+		}
+		if (x == Double.MIN_VALUE){
+			return null;
+		} else {
+			Node shape = provider.getNewShape();
+			if (shape != null){
+				shape.setTranslateX(transformX(x));
+				shape.setTranslateY(transformY(y));
+			}
+			return shape;
+		}
+	}
+	
+	//TODO implement a general interface, make it private then
+	class Preferences {
+		public Map<String,LinkPrefs> linkPrefs(){
+			Map<String,LinkPrefs> res = new HashMap<>();
+			for (Shape shape : lines.keySet()){
+				MyLink link = lines.get(shape);
+				Line line = (Line)shape;
+				Writer writer = Console.getInstance().getWriter();
+				LinkPrefs prefs = new LinkPrefs(link.getId(), link.getFrom().getId(), link.getTo().getId(), line, writer);
+				res.put(link.getId(), prefs);
+			}
+			return res;
+		}
+		public Set<MembershipPrefs> membershipPrefs(){
+			Set<MembershipPrefs> res = new HashSet<>();
+			for (MembershipRelation mr : ensembleShapes.keySet()){
+				Line line = (Line)ensembleShapes.get(mr);
+				MembershipPrefs pref = new MembershipPrefs(mr.getEnsembleName(), mr.getCoordinator(), mr.getMember(), line);
+				res.add(pref);
+			}
+			return res;
+		}
+	}
+	
+	private final Preferences preferences = new Preferences();
+	
+	public Preferences getPreferences(){
+		return preferences;
+	}
+
+	/**
+	 * Given all the ensemble events, this method creates their graphical representations in the form of 
+	 * JavaFX nodes and prepares the correct movements of these nodes by binding them in the right way
+	 * to the movements of the corresponding coordinators and members.  
+	 * @return These key frames capture the varying visibility of the ensemble membership representations,
+	 * as they disappear whenever the membership condition ceases to hold and vice versa.
+	 */
+	private List<KeyFrame> buildKeyFrames2(){
+		List<KeyFrame> res = new ArrayList<>();
+		EnsembleDatabase edb = new EnsembleDatabase();
+		for (EnsembleEvent eev : ensembleEvents){
+			double timeVal = convertToVisualizationTime(eev.getTime());
+			Duration time = new Duration(timeVal);
+			final String coord = eev.getCoordinator();
+			Node coordShape = personShapes.get(coord);
+			final String member = eev.getMember();
+			Node memberShape = personShapes.get(member);
+			if ((coordShape != null) && (memberShape != null)){  						
+				Node ensembleShape = edb.getEnsembleShape(eev.getEnsemble(), coord, member, coordShape, memberShape);				
+				KeyValue kv = new KeyValue(ensembleShape.visibleProperty(), eev.getMembership());
+				KeyFrame kf = new KeyFrame(time, kv);
+				res.add(kf);
+			} else {
+				/*
+				Some of the agents had no corresponding event in the interval of matsim event log which 
+				we loaded so we don't know where the agent is on the map and we move on.
+				*/				 
+			}
+		}
+		ensembleShapes.clear();
+		ensembleShapes.putAll(edb.getEnsembleShapes());
+		for (Node line : ensembleShapes.values()){
+			KeyValue kv = new KeyValue(line.visibleProperty(), Boolean.FALSE);
+			KeyFrame kf = new KeyFrame(Duration.ZERO, kv);
+			res.add(kf);
 		}
 		return res;
+	}
+
+	/**
+	 * The checkpoints (position of people) as encountered when 
+	 * parsing the input XML files. Contains positions of people 
+	 * on the map at specified times.
+	 */
+	private final CheckPointDatabase checkpointDb;
+	
+	/**
+	 * The ensemble events as parsed from the ensemble event log file.
+	 */
+	private final List<EnsembleEvent> ensembleEvents;
+	
+	/**
+	 * Changes the image which represents each person in the visualization
+	 * @param imageName Name of the new image, or (if the next parameter is false) a path to the image. 
+	 * @param isResource If true, the previous parameter specifies a resource name, else it specifies
+	 * a path to a file.
+	 * @throws IOException When the specified image couldn't be found or read from
+	 */
+	public void changePeopleImage(String imageName, boolean isResource) throws IOException{
+		if (timeLine != null){
+			Duration time = timeLine.getCurrentTime();
+			Status status = timeLine.getStatus();
+			timeLine.stop();
+			ShapeProvider provider;
+			if (imageName == null){
+				provider = new SceneBuilder.CircleProvider(personCircleRadius, personCircleColor);
+			} else {
+				provider = new ImageProvider(isResource, imageName, personImageWidth);
+			}
+			update(provider, false);
+			if (status == Status.RUNNING){
+				timeLine.playFrom(time);
+			} else if (status == Status.PAUSED){
+				timeLine.playFrom(time);
+				timeLine.pause();
+			} else {
+				timeLine.stop();			
+			}
+		}
 	}
 	
 	/**
@@ -575,20 +772,24 @@ public class MapScene {
 	 * @param links The network links. Keys = link IDs, values = {@link MyLink} link representations.
 	 * @param mapWidth Preferred width of the map view, in pixels
 	 * @param mapHeight Preferred height of the map view, in pixels
-	 * @param personShapes {@link Shape} instances representing individual people
-	 * @param ensembleShapes {@link Shape} instances representing ensemble membership
-	 * 
-	 * TODO dodelat javadoc
+	 * @param timeLineStatus Called whenever the visualization is started, paused or stopped
+	 * @param timeLineRate Called whenever the visualization is sped up or down
+	 * @param minTime The simulation time at which we start the visualization
+	 * @param maxTime The simulation time at which we end the visualization
+	 * @param duration The actual intended duration of the visualization (i.e. in visualization time)
+	 * @param checkpointDb The checkpoints (position of people) as encountered when 
+	 * parsing the input XML files. Contains positions of people on the map at specified times.
+	 * @param ensembleEvents The ensemble events as parsed from the ensemble event log file.
 	 */
-	MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight, 
-			Map<String,Node> personShapes, Map<MembershipRelation,Node> ensembleShapes, 
+	MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight,  
 			ChangeListener<? super Status> timeLineStatus, ChangeListener<? super Number> timeLineRate,
-			double minTime, double maxTime, int duration) {
+			double minTime, double maxTime, int duration, CheckPointDatabase checkpointDb, 
+			List<EnsembleEvent> ensembleEvents) {
+		this.checkpointDb = checkpointDb;
+		this.ensembleEvents = ensembleEvents;
 		this.minTime = minTime;
 		this.maxTime = maxTime;
 		this.duration = duration;
-		this.personShapes = personShapes;
-		this.ensembleShapes = ensembleShapes;
 		this.nodes = nodes;
 		this.links = links;
 		double[] borders = getMapBorders();
