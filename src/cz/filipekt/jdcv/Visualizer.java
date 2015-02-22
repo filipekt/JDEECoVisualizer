@@ -2,9 +2,14 @@ package cz.filipekt.jdcv;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import javafx.animation.Animation.Status;
 import javafx.animation.Timeline;
@@ -29,11 +34,14 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToolBar;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -56,6 +64,9 @@ import cz.filipekt.jdcv.gui_logic.ScreenShotHandler;
 import cz.filipekt.jdcv.gui_logic.TimeLineRateChanged;
 import cz.filipekt.jdcv.gui_logic.TimeLineStatusHandler;
 import cz.filipekt.jdcv.gui_logic.ZoomingHandler;
+import cz.filipekt.jdcv.plugins.FilterPanel;
+import cz.filipekt.jdcv.plugins.InfoPanel;
+import cz.filipekt.jdcv.plugins.Plugin;
 import cz.filipekt.jdcv.util.CharsetNames;
 import cz.filipekt.jdcv.util.Debug;
 import cz.filipekt.jdcv.util.Resources;
@@ -97,6 +108,7 @@ public class Visualizer extends Application {
 			showNoMap();
 			controlsBar.setDisable(true);
 			graphicsColumn.setDisable(true);
+			switchablePanel.setDisable(true);
 			timelineSlider.setDisable(true);
 			if ((scene != null) && (scene.getTimeLine() != null)){
 				scene.getTimeLine().stop();
@@ -109,6 +121,7 @@ public class Visualizer extends Application {
 			mapPane.getChildren().add(mapScrollPane);
 			controlsBar.setDisable(false);
 			graphicsColumn.setDisable(false);
+			switchablePanel.setDisable(false);
 			timelineSlider.setDisable(false);
 			setSliderParameters(min, max);
 			timelineToSliderListener = new ChangeListener<Duration>() {
@@ -642,6 +655,7 @@ public class Visualizer extends Application {
 		ImageView recordStartImage = Resources.getImageView("record.png", playIconSize);
 		ImageView recordStopImage = Resources.getImageView("stop.png", playIconSize);
 		Button recordButton = new Button("Record", recordStartImage);
+		recordButton.setDisable(true);	// TODO fix the recording functionality
 		recordButton.setOnMouseClicked(new RecordingHandler(recordButton, recordStartImage, recordStopImage, this));
 		panel.getChildren().add(recordButton);
 		for (Node node : panel.getChildren()){
@@ -719,42 +733,156 @@ public class Visualizer extends Application {
 	}
 	
 	/**
+	 * The panel on the right side of the window, allowing various sub-panels to be viewed.
+	 * The panel which has been selected by clicking the corresponding button is viewed.
+	 */
+	private final Node switchablePanel;
+	
+	/**
+	 * Preferred width of the side panel
+	 */
+	private final double sidePanelWidth = 300.0;
+	
+	/**
+	 * Initializes the {@link Visualizer#switchablePanel}. 
+	 * @return Newly constructed switchable side-panel
+	 */
+	private Node createSwitchablePanel(){	
+//		plugins.add(new PluginExpl());
+		plugins.add(InfoPanel.getInstance());
+		plugins.add(FilterPanel.getInstance());
+		
+		final Pane mainPanel = new StackPane();
+		final ToolBar toolBar = new ToolBar();
+		toolBar.setPrefWidth(sidePanelWidth);
+		mainPanel.setPrefWidth(sidePanelWidth);
+		VBox pane = new VBox(toolBar, mainPanel);
+		VBox.setVgrow(toolBar, Priority.NEVER);
+		VBox.setVgrow(mainPanel, Priority.ALWAYS);
+		pane.setFillWidth(true);
+		
+		plugins2.clear();
+		for (Plugin plugin : plugins){
+			Button button = createPluginButton(plugin);
+			plugins2.put(button, plugin.getPanel());
+		}
+		for (final Button button : plugins2.keySet()){
+			button.setStyle("-fx-background-color: white");
+			button.setOnAction(new EventHandler<ActionEvent>() {
+				
+				@Override
+				public void handle(ActionEvent arg0) {
+					for (Button button : plugins2.keySet()){
+						button.setStyle("-fx-background-color: white");
+					}
+					button.setStyle("-fx-background-color: grey");
+					mainPanel.getChildren().clear();
+					mainPanel.getChildren().add(plugins2.get(button));
+				}
+			});			
+			toolBar.getItems().add(button);
+		}
+		return pane;
+	}
+	
+	/**
+	 * Width (and height) of the images shown inside the panel-switching buttons
+	 */
+	private final double pluginButtonImageWidth = 20;
+	
+	/**
+	 * For the given plugin, creates the corresponding button used for switching the plugin on.
+	 * @param plugin Plugin to be turned on/off by switching the returned button
+	 * @return Button for switching on/off the specified plugin
+	 */
+	private Button createPluginButton(Plugin plugin){
+		InputStream imageStream = plugin.getThumbnail();
+		ImageView thumbNail;
+		try {
+			Image image = new Image(imageStream, pluginButtonImageWidth, pluginButtonImageWidth, false, false);
+			thumbNail = new ImageView(image);
+		} catch (Exception ex){
+			thumbNail = new ImageView();
+		}
+		Button res = new Button(plugin.getName(), thumbNail);		
+		return res;
+	}
+	
+	/**
+	 * The plugins available for the application
+	 */
+	private final Collection<Plugin> plugins = new HashSet<>();
+	
+	/**
+	 * Each button is associated with a plugin (contained in {@link Visualizer#plugins}).
+	 * The button is mapped here to the main panel of the associated plugin.
+	 */
+	private final Map<Button,Node> plugins2 = new HashMap<>();
+	
+	/**
+	 * A simple dummy implementation of {@link Plugin}
+	 */
+	static class PluginExpl implements Plugin {
+		
+		@Override
+		public InputStream getThumbnail() {
+			return Resources.getResourceInputStream("success.png");
+		}
+		
+		@Override
+		public Node getPanel() {
+			return new FlowPane(new Label("Lorem ipsum"));
+		}
+		
+		@Override
+		public String getName() {
+			return "Test";
+		}
+	};
+	
+	/**
+	 * Selects the info-panel in the panel switching menu on the right side of the 
+	 * application window
+	 */
+	private void selectInfoPanel(){
+		for (Button button : plugins2.keySet()){
+			if (plugins2.get(button) == InfoPanel.getInstance().getPanel()){
+				button.fire();
+				break;
+			}
+		}
+	}
+	
+	/**
 	 * Builds the GUI, should only be called by the JavaFX runtime.
 	 */
 	@Override
 	public void start(Stage stage) throws IOException {	
 		this.stage = stage;
+		selectInfoPanel();
 		timelineSlider.setDisable(true);
 		noMapNode.setPrefSize(mapWidth, mapHeight);
+		importSceneGrid.setPrefSize(mapWidth, mapHeight);
 		controlsBar.setDisable(true);
+		switchablePanel.setDisable(true);
 		Label helpLabel = new Label("To import new simulation data, click File -> Import Scene");
 		helpLabel.setPadding(new Insets(10, 10, 10, 10));
 		noMapNode.getChildren().add(helpLabel);	
 		mapPane.getChildren().add(noMapNode);
 		graphicsColumn.setPrefWidth(graphicsColumnWidth);
 		graphicsColumn.setMinWidth(graphicsColumnWidth);
-		middleRow.getChildren().addAll(graphicsColumn, mapPane);		
+		middleRow.setFillHeight(true);
+		middleRow.getChildren().addAll(graphicsColumn, mapPane, switchablePanel);
+		VBox.setVgrow(menuBar, Priority.NEVER);
+		VBox.setVgrow(middleRow, Priority.ALWAYS);
+		VBox.setVgrow(sliderWrapper, Priority.NEVER);
+		VBox.setVgrow(controlsBar, Priority.NEVER);
+		HBox.setHgrow(graphicsColumn, Priority.NEVER);
+		HBox.setHgrow(mapPane, Priority.ALWAYS);
+		HBox.setHgrow(switchablePanel, Priority.NEVER);
 		rootPane.getChildren().clear();
 		rootPane.getChildren().addAll(menuBar, middleRow, sliderWrapper, controlsBar);
 		Scene fxScene = new Scene(rootPane, Color.WHITE);
-		fxScene.heightProperty().addListener(new ChangeListener<Number>() {
-
-			@Override
-			public void changed(ObservableValue<? extends Number> arg0,
-					Number arg1, Number arg2) {
-				double diff = arg2.doubleValue() - arg1.doubleValue();
-				mapPane.setPrefHeight(mapPane.getPrefHeight() + diff);			
-			}
-		});
-		fxScene.widthProperty().addListener(new ChangeListener<Number>() {
-
-			@Override
-			public void changed(ObservableValue<? extends Number> arg0,
-					Number arg1, Number arg2) {
-				double diff = arg2.doubleValue() - arg1.doubleValue();
-				mapPane.setPrefWidth(mapPane.getPrefWidth() + diff);
-			}
-		});
 		mapPane.heightProperty().addListener(new ChangeListener<Number>() {
 
 			@Override
@@ -795,6 +923,7 @@ public class Visualizer extends Application {
 		graphicsColumn = createGraphicsColumn();
 		importSceneGrid = createImportSceneGrid(timeLineStatus, timeLineRate);
 		sliderWrapper = createSliderWrapper();
+		switchablePanel = createSwitchablePanel();
 	}			
 	
 }

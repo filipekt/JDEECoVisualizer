@@ -45,7 +45,7 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
-import cz.filipekt.jdcv.prefs.GeneralPrefs;
+import cz.filipekt.jdcv.prefs.GlobalPrefs;
 import cz.filipekt.jdcv.prefs.LinkPrefs;
 import cz.filipekt.jdcv.prefs.MembershipPrefs;
 import cz.filipekt.jdcv.util.CharsetNames;
@@ -458,7 +458,7 @@ public class Console {
 			MapScene scene = visualizer.getScene();
 			Map<String,LinkPrefs> linkPrefs;
 			Set<MembershipPrefs> membershipPrefs;
-			GeneralPrefs generalPrefs = new GeneralPrefs(scene, writer);
+			GlobalPrefs generalPrefs = new GlobalPrefs(scene, writer);
 			if (scene == null){
 				linkPrefs = new HashMap<>();
 				membershipPrefs = new HashSet<>();

@@ -1,15 +1,21 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.ensembles;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
+import cz.filipekt.jdcv.plugins.InfoPanel;
+import javafx.event.EventHandler;
 import javafx.scene.Node;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Line;
 
 /**
  * Stores the shapes representing the ensemble membership relation.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class EnsembleDatabase {
 	
@@ -81,7 +87,7 @@ public class EnsembleDatabase {
 			Node coordinatorNode, Node memberNode){
 		MembershipRelation t = new MembershipRelation(ensembleName, coordinator, member);
 		if (!shapeMappings.containsKey(t) && (memberNode!=null)){
-			Line line = new Line();
+			final Line line = new Line();
 			line.setVisible(false);
 			line.startXProperty().bind(coordinatorNode.translateXProperty());
 			line.startYProperty().bind(coordinatorNode.translateYProperty());
@@ -90,6 +96,31 @@ public class EnsembleDatabase {
 			Paint color = getColor(ensembleName, coordinator);
 			line.setStroke(color);
 			line.setStrokeWidth(ensembleLineWidth);
+			final Map<String,String> data = new LinkedHashMap<>();
+			data.put("Ensemble Name", ensembleName);
+			data.put("Coordinator ID", coordinator);
+			data.put("Member ID", member);
+			line.setOnMouseEntered(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					line.setStrokeWidth(ensembleLineWidth * 3);
+				}
+			});
+			line.setOnMouseExited(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					line.setStrokeWidth(ensembleLineWidth);
+				}
+			});
+			line.setOnMouseClicked(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					InfoPanel.getInstance().setInfo("Ensemble Membership Selected", data);
+				}
+			});
 			shapeMappings.put(t, line);
 		}
 		return shapeMappings.get(t);

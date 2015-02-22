@@ -2,6 +2,8 @@ package cz.filipekt.jdcv.events;
 
 /**
  * Models an event of type "PersonEntersVehicle" or "PersonLeavesVehicle", which appears in the MATSIM event log
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class EntersOrLeavesVehicle implements MatsimEvent {
 	

@@ -21,6 +21,8 @@ import cz.filipekt.jdcv.network.MyLink;
 /**
  * SAX handler used to parse the XML file containing the events.
  * Collects the "event" elements. 
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class EventHandler extends DefaultHandler {
 	

@@ -2,6 +2,8 @@ package cz.filipekt.jdcv.events;
 
 /**
  * Represents an event element, either from the MATSIM output or from ensemble log output.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public interface Event {
 	

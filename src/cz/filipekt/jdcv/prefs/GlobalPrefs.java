@@ -5,7 +5,13 @@ import java.io.Writer;
 
 import cz.filipekt.jdcv.MapScene;
 
-public class GeneralPrefs {
+/**
+ * Provides the option to change some of the global preferences of the
+ * application or visualization.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
+ */
+public class GlobalPrefs {
 	
 	/**
 	 * The simulated situation 
@@ -21,7 +27,7 @@ public class GeneralPrefs {
 	 * @param scene The simulated situation 
 	 * @param writer Used to write to scripting console output
 	 */
-	public GeneralPrefs(MapScene scene, Writer writer) {
+	public GlobalPrefs(MapScene scene, Writer writer) {
 		this.scene = scene;
 		this.outputWriter = writer;
 	}
@@ -52,7 +58,7 @@ public class GeneralPrefs {
 	}
 	
 	/**
-	 * Writes the specified text to the console output, defined by {@link GeneralPrefs#outputWriter}
+	 * Writes the specified text to the console output, defined by {@link GlobalPrefs#outputWriter}
 	 * @param text The text to be written
 	 */
 	private void write(String text){

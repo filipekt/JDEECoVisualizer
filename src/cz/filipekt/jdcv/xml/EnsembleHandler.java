@@ -13,6 +13,8 @@ import cz.filipekt.jdcv.exceptions.InvalidAttributeValueException;
 /**
  * SAX handler used to parse the XML file containing the ensemble events.
  * Collects the "event" elements. 
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class EnsembleHandler extends DefaultHandler {
 

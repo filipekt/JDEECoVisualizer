@@ -3,12 +3,17 @@ package cz.filipekt.jdcv.prefs;
 import java.util.HashMap;
 import java.util.Map;
 
-import cz.filipekt.jdcv.MembershipRelation;
+import cz.filipekt.jdcv.ensembles.MembershipRelation;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Line;
 
+/**
+ * Preferences object associated with a given ensemble membership relation
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
+ */
 public class MembershipPrefs {
 	
 	/**

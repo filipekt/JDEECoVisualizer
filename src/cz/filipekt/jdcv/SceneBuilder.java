@@ -20,6 +20,7 @@ import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
@@ -41,6 +42,7 @@ import cz.filipekt.jdcv.xml.EnsembleHandler;
 import cz.filipekt.jdcv.xml.LinkHandler;
 import cz.filipekt.jdcv.xml.MatsimEventHandler;
 import cz.filipekt.jdcv.xml.NodeHandler;
+import cz.filipekt.jdcv.xml.XMLextractor;
 
 /**
  * Listener for the event that the user requests a visualization scene to be
@@ -402,7 +404,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		 */
 		@Override
 		public Node getNewShape() throws IOException {
-			ImageView res;
+			final ImageView res;
 			if (isResource){
 				res = Resources.getImageView(image, imageWidth);
 			} else {
@@ -412,6 +414,22 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 			}
 			res.setLayoutX(-(imageWidth/2));
 			res.setLayoutY(-(imageWidth/2));
+			res.setOnMouseEntered(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					res.setScaleX(1.5);
+					res.setScaleY(1.5);
+				}
+			});
+			res.setOnMouseExited(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					res.setScaleX(1);
+					res.setScaleY(1);
+				}
+			});
 			return res;
 		}
 		
@@ -448,7 +466,22 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		 */
 		@Override
 		public Node getNewShape() {
-			return new Circle(0, 0, radius, color);					
+			final Circle circle = new Circle(0, 0, radius, color);
+			circle.setOnMouseEntered(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					circle.setRadius(radius * 2);
+				}
+			});
+			circle.setOnMouseExited(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					circle.setRadius(radius);
+				}
+			});
+			return circle;
 		}
 		
 	}

@@ -3,16 +3,14 @@ package cz.filipekt.jdcv;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.io.Writer;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javafx.animation.Animation.Status;
 import javafx.animation.KeyFrame;
@@ -28,6 +26,7 @@ import javafx.scene.Node;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.effect.BoxBlur;
 import javafx.scene.image.WritableImage;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
@@ -42,11 +41,13 @@ import javax.imageio.ImageIO;
 import cz.filipekt.jdcv.CheckPoint.Type;
 import cz.filipekt.jdcv.SceneBuilder.ImageProvider;
 import cz.filipekt.jdcv.SceneBuilder.ShapeProvider;
+import cz.filipekt.jdcv.ensembles.EnsembleDatabase;
+import cz.filipekt.jdcv.ensembles.MembershipRelation;
 import cz.filipekt.jdcv.events.EnsembleEvent;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;
-import cz.filipekt.jdcv.prefs.LinkPrefs;
-import cz.filipekt.jdcv.prefs.MembershipPrefs;
+import cz.filipekt.jdcv.plugins.InfoPanel;
+import cz.filipekt.jdcv.prefs.Preferences;
 
 /**
  * The scene that the {@link Visualizer} makes a graphic view of. 
@@ -73,10 +74,9 @@ public class MapScene {
 	private final Map<Shape,MyNode> circles = new HashMap<>();
 	
 	/**
-	 * Maps each {@link Shape} to the corresponding {@link MyLink} instance. Each key represents the 
-	 * corresponding {@link MyLink} in the visualization.
+	 * Maps visual representations of links to the corresponding parsed link XML elements.
 	 */
-	private final Map<Shape,MyLink> lines = new HashMap<>();
+	private final Map<Node,MyLink> lines = new HashMap<>();
 	
 	/**
 	 * Minimal value of x-coordinate among all the nodes in {@link MapScene#nodes}
@@ -303,9 +303,35 @@ public class MapScene {
 			y -= miny;
 			y *= (heightFactor * zoom);
 			y += (constantMargin / 2);
-			Circle circle = new Circle(x, y, nodeRadius, nodeColor);
+			final Circle circle = new Circle(x, y, nodeRadius, nodeColor);
 			circle.setEffect(new BoxBlur());
 			res.put(circle, node);
+			
+			final Map<String,String> data = new LinkedHashMap<>();
+			data.put("Node ID", node.getId());
+			data.put("x-coordinate", node.getX() + "");
+			data.put("y-coordinate", node.getY() + "");
+			circle.setOnMouseClicked(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					InfoPanel.getInstance().setInfo("Node selected:", data);
+				}
+			});
+			circle.setOnMouseEntered(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					circle.setRadius(nodeRadius * 2);
+				}
+			});
+			circle.setOnMouseExited(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					circle.setRadius(nodeRadius);
+				}
+			});
 		}
 		return res;
 	}
@@ -327,10 +353,40 @@ public class MapScene {
 			tox = transformX(tox);
 			double toy = link.getTo().getY();
 			toy = transformY(toy);
-			Line line = new Line(fromx, fromy, tox, toy);
+			final Line line = new Line(fromx, fromy, tox, toy);
 			line.setStroke(linkDefaultColor);
 			line.setStrokeWidth(linkWidth);		
 			res.put(line, link);
+			
+			final Map<String,String> data = new LinkedHashMap<>();
+			data.put("Link ID", link.getId());
+			data.put("From Node", link.getFrom().getId());
+			data.put("From x-coordinate", Double.toString(link.getFrom().getX()));
+			data.put("From y-coordinate", Double.toString(link.getFrom().getY()));
+			data.put("To Node", link.getTo().getId());
+			data.put("To x-coordinate", Double.toString(link.getTo().getX()));
+			data.put("To y-coordinate", Double.toString(link.getTo().getY()));
+			line.setOnMouseClicked(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					InfoPanel.getInstance().setInfo("Link Selected:", data);
+				}
+			});
+			line.setOnMouseEntered(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					line.setStrokeWidth(linkWidth * 3);
+				}
+			});
+			line.setOnMouseExited(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					line.setStrokeWidth(linkWidth);
+				}
+			});
 		}
 		return res;
 	}
@@ -338,7 +394,7 @@ public class MapScene {
 	/**
 	 * Width of the {@link Line} instances that represent links, in pixels.
 	 */
-	private final double linkWidth = 1.5;
+	private final double linkWidth = 2.0;
 	
 	/**
 	 * Default color of the {@link Line} instances that represent links
@@ -505,7 +561,7 @@ public class MapScene {
 	 * Otherwise it makes them invisible.
 	 */
 	void setLinksVisible(boolean visible){
-		for (Shape link : lines.keySet()){
+		for (Node link : lines.keySet()){
 			link.setVisible(visible);
 		}
 	}
@@ -572,10 +628,42 @@ public class MapScene {
 	 * @throws IOException When a person shape could not be loaded for any reason
 	 */
 	private void producePersonShapes(ShapeProvider shapeProvider) throws IOException{
-		List<KeyFrame> keyFrames = buildKeyFramesForPeople(shapeProvider);
-		List<KeyFrame> keyFrames2 = buildKeyFrames2();
+		List<KeyFrame> keyFrames = buildFramesForPeople(shapeProvider);
+		List<KeyFrame> keyFrames2 = buildFramesForEnsembles();
 		timeLine.getKeyFrames().addAll(keyFrames);
 		timeLine.getKeyFrames().addAll(keyFrames2);
+	}
+	
+	/**
+	 * Given a person ID and the checkpoints associated with the person's movement, this method
+	 * creates a collection of key-value pairs for use by the info side-panel, with each pair
+	 * containing a piece of relevant information about the person.
+	 * @param personID ID of the person
+	 * @param checkPoints Checkpoints associated with the person, describing its movements
+	 * @return Collection of key-value pairs for use by the info side-panel
+	 */
+	private Map<String,String> getInfoForPerson(String personID, List<CheckPoint> checkPoints){
+		Map<String,String> res = new LinkedHashMap<>();
+		res.put("Person ID", personID);
+		for (CheckPoint cp : checkPoints){
+			String key = "Time " + cp.getTime();
+			String value = null;
+			switch (cp.getType()){
+				case PERSON_ENTERS:
+					value = "person enters vehicle";
+					break;
+				case PERSON_LEAVES:
+					value = "persons leaves vehicle";
+					break;
+				case POSITION_DEF:
+					value = "location is x=" + cp.getX() + ", y=" + cp.getY();
+					break;
+			}
+			if (value != null){
+				res.put(key, value);
+			}
+		}
+		return res;
 	}
 	
 	/**
@@ -586,7 +674,7 @@ public class MapScene {
 	 * @return {@link KeyFrame} instances describing the movements of people on the map.
 	 * @throws IOException When a person shape could not be loaded for any reason
 	 */
-	private List<KeyFrame> buildKeyFramesForPeople(SceneBuilder.ShapeProvider shapeProvider) throws IOException{
+	private List<KeyFrame> buildFramesForPeople(SceneBuilder.ShapeProvider shapeProvider) throws IOException{
 		List<KeyFrame> frames = new ArrayList<>();
 		personShapes.clear();
 		for (final String personID : checkpointDb.getKeys()){
@@ -595,6 +683,14 @@ public class MapScene {
 			if (personShape == null){
 				continue;
 			}
+			final Map<String,String> personInfo = getInfoForPerson(personID, checkPoints);
+			personShape.setOnMouseClicked(new EventHandler<MouseEvent>() {
+
+				@Override
+				public void handle(MouseEvent arg0) {
+					InfoPanel.getInstance().setInfo("Person/car selected:", personInfo);
+				}
+			});
 			personShape.setVisible(false);
 			DoubleProperty xProperty = personShape.translateXProperty();
 			DoubleProperty yProperty = personShape.translateYProperty();
@@ -656,32 +752,17 @@ public class MapScene {
 		}
 	}
 	
-	//TODO implement a general interface, make it private then
-	class Preferences {
-		public Map<String,LinkPrefs> linkPrefs(){
-			Map<String,LinkPrefs> res = new HashMap<>();
-			for (Shape shape : lines.keySet()){
-				MyLink link = lines.get(shape);
-				Line line = (Line)shape;
-				Writer writer = Console.getInstance().getWriter();
-				LinkPrefs prefs = new LinkPrefs(link.getId(), link.getFrom().getId(), link.getTo().getId(), line, writer);
-				res.put(link.getId(), prefs);
-			}
-			return res;
-		}
-		public Set<MembershipPrefs> membershipPrefs(){
-			Set<MembershipPrefs> res = new HashSet<>();
-			for (MembershipRelation mr : ensembleShapes.keySet()){
-				Line line = (Line)ensembleShapes.get(mr);
-				MembershipPrefs pref = new MembershipPrefs(mr.getEnsembleName(), mr.getCoordinator(), mr.getMember(), line);
-				res.add(pref);
-			}
-			return res;
-		}
-	}
+	/**
+	 * Contains methods to retrieve preferences objects for various elements of simulated situation
+	 * @see {@link Preferences}
+	 * @see {@link MapScene#getPreferences()}
+	 */
+	private final Preferences preferences = new Preferences(lines, ensembleShapes);
 	
-	private final Preferences preferences = new Preferences();
-	
+	/**
+	 * @return A valid instance of the object providing access to the preferences objects.
+	 * Contains methods to retrieve preferences objects for various elements of simulated situation.
+	 */
 	public Preferences getPreferences(){
 		return preferences;
 	}
@@ -693,7 +774,7 @@ public class MapScene {
 	 * @return These key frames capture the varying visibility of the ensemble membership representations,
 	 * as they disappear whenever the membership condition ceases to hold and vice versa.
 	 */
-	private List<KeyFrame> buildKeyFrames2(){
+	private List<KeyFrame> buildFramesForEnsembles(){
 		List<KeyFrame> res = new ArrayList<>();
 		EnsembleDatabase edb = new EnsembleDatabase();
 		for (EnsembleEvent eev : ensembleEvents){

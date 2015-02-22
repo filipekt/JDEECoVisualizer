@@ -2,6 +2,8 @@ package cz.filipekt.jdcv.events;
 
 /**
  * Models an event of type "ensemble", which appears in the JDEECo ensemble event log
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class EnsembleEvent implements Event{
 	

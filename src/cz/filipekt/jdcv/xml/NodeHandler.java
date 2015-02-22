@@ -14,6 +14,8 @@ import cz.filipekt.jdcv.network.MyNode;
 /**
  * SAX handler used to parse the XML file containing the network(map) description.
  * Collects the "node" elements.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class NodeHandler extends DefaultHandler {
 	

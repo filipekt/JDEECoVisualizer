@@ -4,6 +4,8 @@ import cz.filipekt.jdcv.network.MyLink;
 
 /**
  * Models an event of type "departure" or "arrival", which appears in the MATSIM event log
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class ArrivalOrDeparture implements MatsimEvent {
 	

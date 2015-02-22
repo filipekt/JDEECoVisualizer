@@ -1,4 +1,4 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.ensembles;
 
 /**
  * Represents a pair of type (ensemble,agent). Given one such pair (E,A) and one 

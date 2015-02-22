@@ -21,6 +21,8 @@ import cz.filipekt.jdcv.network.MyOpenTime;
 /**
  * SAX handler used to parse the XML file containing the facilities description.
  * Collects the "facility" XML elements.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class FacilitiesHandler extends DefaultHandler {
 	

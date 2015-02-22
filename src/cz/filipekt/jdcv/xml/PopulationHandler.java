@@ -25,6 +25,8 @@ import cz.filipekt.jdcv.network.MyPlan;
  * SAX handler used to parse the XML file containing the plans(population) description.
  * Collects the "person" elements. 
  * Can only be used after the "link" and "facility" elements have been collected.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class PopulationHandler extends DefaultHandler {
 	

@@ -1,4 +1,5 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.ensembles;
+
 
 /**
  * Represents a triplet of type (ensemble,agent,agent).

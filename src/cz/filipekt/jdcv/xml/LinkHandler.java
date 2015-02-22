@@ -18,6 +18,8 @@ import cz.filipekt.jdcv.network.MyNode;
  * SAX handler used to parse the XML file containing the network(map) description.
  * Collects the "link" elements. 
  * Can only be used after the "node" elements have been collected.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class LinkHandler extends DefaultHandler {
 	

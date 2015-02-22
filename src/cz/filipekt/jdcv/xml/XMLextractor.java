@@ -1,4 +1,4 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.xml;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -18,7 +18,7 @@ import org.xml.sax.XMLReader;
  * 
  * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
-class XMLextractor {
+public class XMLextractor {
 
 	/**
 	 * The input XML file

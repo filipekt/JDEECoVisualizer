@@ -3,6 +3,8 @@ package cz.filipekt.jdcv.events;
 /**
  * Defines the possible values of the "type" attribute of the "event" element 
  * appearing in the simulation output file.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public enum EventType {
 	

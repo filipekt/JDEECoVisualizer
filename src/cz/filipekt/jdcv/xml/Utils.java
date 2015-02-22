@@ -6,8 +6,10 @@ import cz.filipekt.jdcv.exceptions.MandatoryAttributeNotFoundException;
 
 /**
  * Contains static utility methods for use inside the package.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
-class Utils {
+public class Utils {
 	
 	/**
 	 * Ensures that the given String is not null and not empty.

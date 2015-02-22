@@ -6,6 +6,11 @@ import java.io.Writer;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Line;
 
+/**
+ * Preferences object associated with a given link element
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
+ */
 public class LinkPrefs {
 	
 	/**
