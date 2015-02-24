@@ -1,5 +1,7 @@
 package cz.filipekt.jdcv.prefs;
 
+import java.io.IOException;
+import java.io.Writer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -8,13 +10,14 @@ import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Line;
+import javafx.scene.shape.Shape;
 
 /**
  * Preferences object associated with a given ensemble membership relation
  * 
  * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
-public class MembershipPrefs {
+public class MembershipPrefs implements VisibilityChangeable{
 	
 	/**
 	 * Name of the ensemble
@@ -64,6 +67,11 @@ public class MembershipPrefs {
 	}
 	
 	/**
+	 * Used for producing logs
+	 */
+	private final Writer logWriter;
+	
+	/**
 	 * For each {@link Line} representing a membership relation, this map holds
 	 * a corresponding {@link ChangeListener} that ensures the {@link Line} is not
 	 * shown in the visualization.
@@ -84,13 +92,15 @@ public class MembershipPrefs {
 	 * @param coordinator ID of the coordinator
 	 * @param member ID of the member 
 	 * @param line The geometric shape representing the membership relation
+	 * @param logWriter Used for producing logs
 	 */
 	public MembershipPrefs(String ensembleName, String coordinator,
-			String member, Line line) {
+			String member, Line line, Writer logWriter) {
 		this.ensembleName = ensembleName;
 		this.coordinator = coordinator;
 		this.member = member;
 		this.line = line;
+		this.logWriter = logWriter;
 		initVisibilityListener();
 	}
 	
@@ -153,7 +163,11 @@ public class MembershipPrefs {
 	 * @return The current color of the membership relation visualization
 	 */
 	public Paint getColor(){
-		return line.getStroke();
+		if (line == null){
+			return null;
+		} else {
+			return line.getStroke();
+		}
 	}
 	
 	/**
@@ -161,25 +175,47 @@ public class MembershipPrefs {
 	 * @param color The new color
 	 */
 	public void setColor(Paint color){
-		line.setStroke(color);
+		if ((line != null) && (line instanceof Shape)){
+			line.setStroke(color);
+			log("Color of the specified ensemble membership was set to " + color);
+		}
+	}
+	
+	/**
+	 * Logs the specified text, using {@link MembershipPrefs#logWriter}
+	 * @param text The text to be logged
+	 */
+	private void log(String text){
+		if (logWriter != null){
+			try {
+				logWriter.append(text);
+				logWriter.append("\n");
+				logWriter.flush();
+			} catch (IOException ex) {}
+		}
 	}
 	
 	/**
 	 * Specifies, whether the membership relation should be shown in the visualization
-	 * @param enabled If false, the membership relation won't be shown in the visualization.
+	 * @param visible If false, the membership relation won't be shown in the visualization.
 	 */
-	public void setEnabled(boolean enabled){
-		ChangeListenerWithMemory listener = visibilityListeners.get(line);
-		line.visibleProperty().removeListener(listener);
-		if (!enabled){
-			boolean wasVisible = line.isVisible();
-			line.visibleProperty().addListener(listener);
-			line.setVisible(false);
-			listener.setLastValue(wasVisible);
-		} else {
-			if (!line.isVisible()){
-				line.setVisible(listener.getLastValue());
+	@Override
+	public void setVisible(boolean visible){
+		if (line != null){
+			ChangeListenerWithMemory listener = visibilityListeners.get(line);
+			line.visibleProperty().removeListener(listener);
+			if (!visible){
+				boolean wasVisible = line.isVisible();
+				line.visibleProperty().addListener(listener);
+				line.setVisible(false);
+				listener.setLastValue(wasVisible);
+			} else {
+				if (!line.isVisible()){
+					line.setVisible(listener.getLastValue());
+				}
 			}
+			log("Visibility of the specified ensemble membership was set to " + visible);
 		}
 	}
+
 }

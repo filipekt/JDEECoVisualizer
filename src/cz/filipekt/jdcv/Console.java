@@ -291,8 +291,7 @@ public class Console {
 		outputArea.setEditable(false);
 		fillButtonsBox(buttonsBox, inputArea, outputArea, visualizer, stage);
 		pane.getChildren().addAll(buttonsBox, inputLabel, inputAreaPane, outputLabel, outputAreaPane);
-		stage.setScene(scene);
-		stage.initModality(Modality.NONE);
+		stage.setScene(scene);		
 		decorateConsoleWindow(stage);
 		clearWriterBuffer();
 		stage.show();
@@ -303,13 +302,16 @@ public class Console {
 	 * @param stage The main {@link Stage} of the scripting console
 	 */
 	private void decorateConsoleWindow(Stage stage){
-		stage.initStyle(StageStyle.DECORATED);
-		stage.sizeToScene();
-		stage.setTitle("Scripting Console");
-		InputStream consoleIconStream = Resources.getResourceInputStream("console.png");
-		if (consoleIconStream != null){
-			Image consoleIcon = new Image(consoleIconStream);
-			stage.getIcons().add(consoleIcon);
+		if (stage != null){
+			stage.initModality(Modality.NONE);
+			stage.initStyle(StageStyle.DECORATED);
+			stage.sizeToScene();
+			stage.setTitle("Scripting Console");
+			InputStream consoleIconStream = Resources.getResourceInputStream("console.png");
+			if (consoleIconStream != null){
+				Image consoleIcon = new Image(consoleIconStream);
+				stage.getIcons().add(consoleIcon);
+			}
 		}
 	}
 	
@@ -463,8 +465,8 @@ public class Console {
 				linkPrefs = new HashMap<>();
 				membershipPrefs = new HashSet<>();
 			} else {
-				linkPrefs = scene.getPreferences().linkPrefs();
-				membershipPrefs = scene.getPreferences().membershipPrefs();
+				linkPrefs = scene.getPreferences().linkPrefs(Console.getInstance().getWriter());
+				membershipPrefs = scene.getPreferences().membershipPrefs(Console.getInstance().getWriter());
 			}
 			engine.put("links", linkPrefs);
 			engine.put("memberships", membershipPrefs);

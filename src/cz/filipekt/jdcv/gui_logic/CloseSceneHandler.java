@@ -9,6 +9,8 @@ import cz.filipekt.jdcv.Visualizer;
 /**
  * Listener for the {@link Event} that user clicks the "close this scene" option in the menu.
  * Makes sure that the current visualization is stopped and the map scene is closed.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class CloseSceneHandler implements EventHandler<ActionEvent>{
 	

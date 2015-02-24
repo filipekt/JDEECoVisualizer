@@ -10,6 +10,8 @@ import javafx.event.EventHandler;
  * Listener for the {@link Event} that the user clicks a fast forward or
  * rewind button. Makes sure that the visualization is accordingly
  * sped up or down.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class TimeLineRateChanged implements EventHandler<Event>{
 

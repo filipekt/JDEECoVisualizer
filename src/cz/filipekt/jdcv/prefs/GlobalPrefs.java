@@ -19,13 +19,13 @@ public class GlobalPrefs {
 	private final MapScene scene;
 	
 	/**
-	 * Used to write to scripting console output
+	 * Used for logging of the carried out operations
 	 */
 	private final Writer outputWriter;
 	
 	/**
 	 * @param scene The simulated situation 
-	 * @param writer Used to write to scripting console output
+	 * @param writer Used for logging of the carried out operations
 	 */
 	public GlobalPrefs(MapScene scene, Writer writer) {
 		this.scene = scene;
@@ -58,18 +58,16 @@ public class GlobalPrefs {
 	}
 	
 	/**
-	 * Writes the specified text to the console output, defined by {@link GlobalPrefs#outputWriter}
-	 * @param text The text to be written
+	 * Logs the specified text, using {@link GlobalPrefs#outputWriter}
+	 * @param text The text to be logged
 	 */
 	private void write(String text){
-		try {
-			if (outputWriter != null){
+		if ((outputWriter != null) && (text != null)){
+			try {
 				outputWriter.append(text);
 				outputWriter.append("\n");
-				outputWriter.flush();
-			}
-		} catch (IOException ex){
-			System.out.println("Couldn't write to the console output.");
+				outputWriter.flush();			
+			} catch (IOException ex) {}
 		}
 	}
 }

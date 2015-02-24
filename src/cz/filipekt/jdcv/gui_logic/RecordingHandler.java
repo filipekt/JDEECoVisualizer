@@ -16,6 +16,8 @@ import javafx.stage.Stage;
 /**
  * Listener for the {@link Event} that user clicks the "record video" button.
  * Makes sure that the recording is started or stopped accordingly.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class RecordingHandler implements EventHandler<Event>{
 	

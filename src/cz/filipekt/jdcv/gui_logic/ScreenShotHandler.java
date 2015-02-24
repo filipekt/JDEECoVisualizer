@@ -23,6 +23,8 @@ import cz.filipekt.jdcv.util.Dialog;
 /**
  * Listener for the {@link Event} that user clicks the "screenshot" button.
  * Makes sure that the screenshot is made and saved correctly.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class ScreenShotHandler implements EventHandler<Event>{
 	

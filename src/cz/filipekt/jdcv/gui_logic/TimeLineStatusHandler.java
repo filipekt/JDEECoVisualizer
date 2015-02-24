@@ -10,6 +10,8 @@ import javafx.scene.image.ImageView;
 /**
  * Listener for the event that the status of the {@link Timeline} has changed.
  * When fired, the buttons in the controls panel are enabled/disabled accordingly.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class TimeLineStatusHandler implements ChangeListener<Status> {
 	

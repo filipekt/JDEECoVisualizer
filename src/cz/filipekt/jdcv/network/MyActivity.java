@@ -5,6 +5,8 @@ import java.util.List;
 /**
  * Defines spatial and temporal properties for a specific 
  * activity to be performed in a zone.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class MyActivity {
 	

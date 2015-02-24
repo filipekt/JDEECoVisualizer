@@ -1,4 +1,5 @@
-package cz.filipekt.jdcv.plugins;
+package cz.filipekt.jdcv.plugins.filter;
+
 
 /**
  * A simple filter as used by {@link FilterPanel}.

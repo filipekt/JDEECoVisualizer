@@ -18,6 +18,8 @@ import cz.filipekt.jdcv.util.Dialog.Type;
 
 /**
  * Loads the configuration of a new scene from a configuration file.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class ConfigFileLoader implements EventHandler<ActionEvent> {
 	

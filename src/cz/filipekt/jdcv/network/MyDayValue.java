@@ -3,6 +3,8 @@ package cz.filipekt.jdcv.network;
 /**
  * Represents either a single day of week, or a certain subset of days in week. 
  * @see {@link MyOpenTime}
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public enum MyDayValue {
 	

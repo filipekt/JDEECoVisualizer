@@ -12,6 +12,8 @@ import javafx.stage.Stage;
  * Listener for the {@link Event} that the user clicks a button that allows to choose a
  * file from the local filesystem. Shows the standard {@link FileChooser} and records the
  * selected file into a {@link TextField} specified by {@link ButtonXmlChooserHandler#field}. 
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class ButtonXmlChooserHandler implements EventHandler<Event>{
 

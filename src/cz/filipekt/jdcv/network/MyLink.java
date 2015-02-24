@@ -7,6 +7,8 @@ import java.util.Set;
 
 /**
  * Represents a "link" XML element in the network source file
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class MyLink {
 	

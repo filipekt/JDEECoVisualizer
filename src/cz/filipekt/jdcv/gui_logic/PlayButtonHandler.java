@@ -10,6 +10,8 @@ import javafx.event.EventHandler;
 /**
  * Listener for the {@link Event} that user clicks the "play/pause visualization" button in the controls panel.
  * Makes sure that the visualization is started/paused accordingly.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class PlayButtonHandler implements EventHandler<Event> {
 	

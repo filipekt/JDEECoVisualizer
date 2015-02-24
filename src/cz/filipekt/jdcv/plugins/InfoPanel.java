@@ -103,14 +103,18 @@ public class InfoPanel implements Plugin {
 	 */
 	private void putInfoInPanel(){
 		StringBuilder sb = new StringBuilder();
-		sb.append(title);
-		sb.append("\n");
-		for (String key : pairs.keySet()){
-			sb.append("[");
-			sb.append(key);
-			sb.append("] ");
-			sb.append(pairs.get(key));
+		if (title != null){
+			sb.append(title);
 			sb.append("\n");
+		}
+		if (pairs != null){
+			for (String key : pairs.keySet()){
+				sb.append("[");
+				sb.append(key);
+				sb.append("] ");
+				sb.append(pairs.get(key));
+				sb.append("\n");
+			}
 		}
 		area.clear();
 		area.setText(sb.toString());

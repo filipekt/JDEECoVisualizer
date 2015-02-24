@@ -4,14 +4,14 @@ import java.io.IOException;
 import java.io.Writer;
 
 import javafx.scene.paint.Paint;
-import javafx.scene.shape.Line;
+import javafx.scene.shape.Shape;
 
 /**
  * Preferences object associated with a given link element
  * 
  * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
-public class LinkPrefs {
+public class LinkPrefs implements VisibilityChangeable {
 	
 	/**
 	 * Identification of the link
@@ -55,7 +55,7 @@ public class LinkPrefs {
 	/**
 	 * The geometric shape that represents the link in the visualization
 	 */
-	private final Line line;
+	private final Shape line;
 	
 	/**
 	 * Used for logging of the carried out operations
@@ -69,7 +69,7 @@ public class LinkPrefs {
 	 * @param line The geometric shape that represents the link in the visualization
 	 * @param writer Used for logging of the carried out operations 
 	 */
-	public LinkPrefs(String id, String fromNode, String toNode, Line line, Writer writer) {
+	public LinkPrefs(String id, String fromNode, String toNode, Shape line, Writer writer) {
 		this.id = id;
 		this.fromNode = fromNode;
 		this.toNode = toNode;
@@ -81,7 +81,11 @@ public class LinkPrefs {
 	 * @return The current color of the link visualization
 	 */
 	public Paint getColor(){
-		return line.getStroke();
+		if (line == null){
+			return null;
+		} else {
+			return line.getStroke();
+		}
 	}
 	
 	/**
@@ -89,17 +93,21 @@ public class LinkPrefs {
 	 * @param paint The new color
 	 */
 	public void setColor(Paint paint){
-		line.setStroke(paint);
-		try {
-			writer.append("Color of the link " + id + " set to " + paint);
-		} catch (IOException e) {}
+		if (line != null){
+			line.setStroke(paint);
+			log("Color of the link " + id + " set to " + paint);
+		}
 	}
 	
 	/**
 	 * @return The current width of the link visualization
 	 */
 	public double getWidth(){
-		return line.getStrokeWidth();
+		if (line == null){
+			return 0;
+		} else {
+			return line.getStrokeWidth();
+		}
 	}
 	
 	/**
@@ -107,9 +115,31 @@ public class LinkPrefs {
 	 * @param val The new width
 	 */
 	public void setWidth(double val){
-		line.setStrokeWidth(val);
-		try {
-			writer.append("Width of the link " + id + " set to " + val);
-		} catch (IOException e) {}
+		if (line != null){
+			line.setStrokeWidth(val);
+			log("Width of the link " + id + " set to " + val);
+		}
+	}
+	
+	/**
+	 * Logs the specified text, using {@link LinkPrefs#writer}
+	 * @param text The text to be logged
+	 */
+	private void log(String text){
+		if (writer != null){
+			try {
+				writer.append(text);
+				writer.append("\n");
+				writer.flush();
+			} catch (IOException ex) {}
+		}
+	}
+
+	@Override
+	public void setVisible(boolean visible) {
+		if (line != null){
+			line.setVisible(visible);
+			log("Visibility of link " + id + " set to " + visible);
+		}
 	}
 }

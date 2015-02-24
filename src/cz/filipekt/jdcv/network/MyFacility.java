@@ -5,6 +5,8 @@ import java.util.List;
 
 /**
  * Represents a facility, which allows certain activities.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class MyFacility {
 

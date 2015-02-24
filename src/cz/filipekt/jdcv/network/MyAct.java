@@ -7,6 +7,8 @@ import java.util.Date;
  * An activity is placed on a defined coordinate/link of the given network
  * NOTE: Either (x,y) or link must be defined, otherwise the activity cannot 
  * be matched on the given network (see network_v1.dtd on matsim.org). 
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class MyAct {
 

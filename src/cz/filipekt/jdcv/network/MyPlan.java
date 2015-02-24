@@ -9,6 +9,8 @@ import java.util.List;
  * the activities and legs separately in respective lists. The correct
  * order of the elements can be then reconstructed using the mentioned
  * act-leg-act-leg... rule.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class MyPlan {
 	

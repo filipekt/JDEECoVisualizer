@@ -9,6 +9,8 @@ import cz.filipekt.jdcv.Visualizer;
 /**
  * Listener for the {@link Event} that user clicks the "import new scene" option in the menu.
  * Makes sure that the menu specifying importing options is shown.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class ImportSceneHandler implements EventHandler<ActionEvent> {
 	

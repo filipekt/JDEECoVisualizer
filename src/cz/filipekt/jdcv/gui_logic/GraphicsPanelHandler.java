@@ -12,6 +12,8 @@ import javafx.scene.layout.VBox;
 /**
  * Listener for the {@link Event} that user clicks the "show graphics panel" option in the menu.
  * Makes sure that the graphics panel is shown/hidden appropriately.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class GraphicsPanelHandler implements EventHandler<ActionEvent> {
 	

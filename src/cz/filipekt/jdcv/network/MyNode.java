@@ -2,6 +2,8 @@ package cz.filipekt.jdcv.network;
 
 /**
  * Represents a "node" XML element in the network source file.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class MyNode {
 	

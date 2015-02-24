@@ -9,6 +9,8 @@ import java.util.Locale;
  * times describing on what times the facility is open and therefore 
  * accessible. The opening times are specified on a daily basis for maximum 
  * week periods.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class MyOpenTime {
 

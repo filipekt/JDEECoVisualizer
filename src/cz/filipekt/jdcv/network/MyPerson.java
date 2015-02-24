@@ -4,6 +4,8 @@ import java.util.List;
 
 /**
  * Represents a "person" XML element from the source XML file containing plans
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class MyPerson {
 	

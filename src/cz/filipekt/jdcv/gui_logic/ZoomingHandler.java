@@ -8,6 +8,8 @@ import javafx.event.EventHandler;
 /**
  * Handler for the event that the user changes the zoom level.
  * Makes sure that the visualization is zoomed in/out properly.
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class ZoomingHandler implements EventHandler<Event> {
 	

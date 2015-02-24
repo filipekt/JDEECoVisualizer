@@ -47,7 +47,7 @@ import cz.filipekt.jdcv.events.EnsembleEvent;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;
 import cz.filipekt.jdcv.plugins.InfoPanel;
-import cz.filipekt.jdcv.prefs.Preferences;
+import cz.filipekt.jdcv.prefs.PreferencesBuilder;
 
 /**
  * The scene that the {@link Visualizer} makes a graphic view of. 
@@ -68,10 +68,9 @@ public class MapScene {
 	private final Map<String,MyLink> links;
 	
 	/**
-	 * Maps each {@link Shape} to the corresponding {@link MyNode} instance. Each key represents the 
-	 * corresponding {@link MyNode} in the visualization.
+	 * Maps visual representations of nodes to the corresponding parsed node XML elements.
 	 */
-	private final Map<Shape,MyNode> circles = new HashMap<>();
+	private final Map<Node,MyNode> circles = new HashMap<>();
 	
 	/**
 	 * Maps visual representations of links to the corresponding parsed link XML elements.
@@ -549,7 +548,7 @@ public class MapScene {
 	 * Otherwise it makes them invisible.
 	 */
 	void setNodesVisible(boolean visible){
-		for (Shape node : circles.keySet()){
+		for (Node node : circles.keySet()){
 			node.setVisible(visible);
 		}
 	}
@@ -571,7 +570,7 @@ public class MapScene {
 	 * background-foreground manner, for example that there is no incorrect overlapping 
 	 */
 	private void moveShapesToFront(){
-		for (Shape node : circles.keySet()){	
+		for (Node node : circles.keySet()){	
 			node.toFront();
 		}
 		for (Node person : personShapes.values()){
@@ -754,16 +753,16 @@ public class MapScene {
 	
 	/**
 	 * Contains methods to retrieve preferences objects for various elements of simulated situation
-	 * @see {@link Preferences}
+	 * @see {@link PreferencesBuilder}
 	 * @see {@link MapScene#getPreferences()}
 	 */
-	private final Preferences preferences = new Preferences(lines, ensembleShapes);
+	private final PreferencesBuilder preferences = new PreferencesBuilder(circles, lines, ensembleShapes);
 	
 	/**
 	 * @return A valid instance of the object providing access to the preferences objects.
 	 * Contains methods to retrieve preferences objects for various elements of simulated situation.
 	 */
-	public Preferences getPreferences(){
+	public PreferencesBuilder getPreferences(){
 		return preferences;
 	}
 

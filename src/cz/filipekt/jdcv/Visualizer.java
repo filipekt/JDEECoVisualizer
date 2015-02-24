@@ -64,9 +64,11 @@ import cz.filipekt.jdcv.gui_logic.ScreenShotHandler;
 import cz.filipekt.jdcv.gui_logic.TimeLineRateChanged;
 import cz.filipekt.jdcv.gui_logic.TimeLineStatusHandler;
 import cz.filipekt.jdcv.gui_logic.ZoomingHandler;
-import cz.filipekt.jdcv.plugins.FilterPanel;
 import cz.filipekt.jdcv.plugins.InfoPanel;
+import cz.filipekt.jdcv.plugins.PluginWithPreferences;
 import cz.filipekt.jdcv.plugins.Plugin;
+import cz.filipekt.jdcv.plugins.filter.FilterPanel;
+import cz.filipekt.jdcv.prefs.GlobalPrefs;
 import cz.filipekt.jdcv.util.CharsetNames;
 import cz.filipekt.jdcv.util.Debug;
 import cz.filipekt.jdcv.util.Resources;
@@ -146,6 +148,26 @@ public class Visualizer extends Application {
 			timelineSlider.valueProperty().addListener(sliderToTimelineListener);
 		}
 		this.scene = newScene;
+		providePreferencesToPlugins();
+	}
+	
+	/**
+	 * Provides the preferences objects to all available plugins that 
+	 * extend {@link PluginWithPreferences} 
+	 */
+	private void providePreferencesToPlugins(){
+		for (Plugin plugin : plugins){
+			if (plugin instanceof PluginWithPreferences){
+				PluginWithPreferences plugin2 = (PluginWithPreferences)plugin;
+				if (scene == null){
+					plugin2.setPreferences(null);
+					plugin2.setGlobalPrefs(null);
+				} else {
+					plugin2.setPreferences(scene.getPreferences());					
+					plugin2.setGlobalPrefs(new GlobalPrefs(scene, null));
+				}
+			}
+		}
 	}
 	
 	/**
@@ -748,7 +770,6 @@ public class Visualizer extends Application {
 	 * @return Newly constructed switchable side-panel
 	 */
 	private Node createSwitchablePanel(){	
-//		plugins.add(new PluginExpl());
 		plugins.add(InfoPanel.getInstance());
 		plugins.add(FilterPanel.getInstance());
 		
@@ -909,6 +930,11 @@ public class Visualizer extends Application {
 		});
 	    stage.setScene(fxScene);
 	    stage.setTitle("JDEECo Visualizer");
+	    InputStream iconStream = Resources.getResourceInputStream("java.png");
+	    if (iconStream != null){
+	    	Image icon = new Image(iconStream);
+	    	stage.getIcons().add(icon);
+	    }
 	    stage.show();
 	}
 

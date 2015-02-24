@@ -7,6 +7,8 @@ import java.util.List;
  * Defines one part of the trip between two activities. (I.e. a route with the car, 
  * a walk by foot, a change of the mode, a time where it has to wait for the bus, 
  * and so on.)  At the moment, MATSim provides only 'car mode' legs. (Oct. 2004)
+ * 
+ * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
 public class MyLeg {
 	
