@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -517,13 +519,14 @@ public class MapScene {
 	 * 
 	 * @param shapeProvider Used for generating the visualizations of people
 	 * @param justMovables If true, only the moveable objects (people,ensembles) will be updated 
+	 * @param selectedPeople People whose visualizations will be updated
 	 * @throws IOException  When a person shape could not be loaded for any reason
 	 */
-	public void update(ShapeProvider shapeProvider, boolean justMovables) throws IOException{
+	public void update(ShapeProvider shapeProvider, boolean justMovables, String[] selectedPeople) throws IOException{
 		timeLine.stop();
 		timeLine.getKeyFrames().clear();
 		mapContainer.getChildren().clear();
-		producePersonShapes(shapeProvider);
+		producePersonShapes(shapeProvider, selectedPeople);
 		addRecordingFrames();
 		if (!justMovables){
 			Map<Shape,MyNode> newCircles = generateCircles();
@@ -622,13 +625,15 @@ public class MapScene {
 	
 	/**
 	 * Fills the timeline with keyframes that enable the right movements of 
-	 * people and ensembles visualizations.
+	 * people and ensembles visualizations. On top of that, it updates the 
+	 * collections containing the visualizations of the map elements
 	 * @param shapeProvider Used for generating the visualizations of people
+	 * @param selectedPeople People whose visualizations will be updated
 	 * @throws IOException When a person shape could not be loaded for any reason
 	 */
-	private void producePersonShapes(ShapeProvider shapeProvider) throws IOException{
-		List<KeyFrame> keyFrames = buildFramesForPeople(shapeProvider);
-		List<KeyFrame> keyFrames2 = buildFramesForEnsembles();
+	private void producePersonShapes(ShapeProvider shapeProvider, String[] selectedPeople) throws IOException{
+		Collection<KeyFrame> keyFrames = buildFramesForPeople(shapeProvider, selectedPeople);
+		Collection<KeyFrame> keyFrames2 = buildFramesForEnsembles();
 		timeLine.getKeyFrames().addAll(keyFrames);
 		timeLine.getKeyFrames().addAll(keyFrames2);
 	}
@@ -666,61 +671,78 @@ public class MapScene {
 	}
 	
 	/**
-	 * Given the {@link CheckPointDatabase}, this method converts its contents into the format
+	 * Using the {@link MapScene#checkpointDb}, this method converts its contents into the format
 	 * specified by JavaFX {@link Timeline} animation model. The people shapes collection is 
 	 * filled with the individual nodes that represent the persons.  
 	 * @param shapeProvider Used for generating the visualizations of people
+	 * @param selectedPeople People whose visualizations will be updated
 	 * @return {@link KeyFrame} instances describing the movements of people on the map.
 	 * @throws IOException When a person shape could not be loaded for any reason
 	 */
-	private List<KeyFrame> buildFramesForPeople(SceneBuilder.ShapeProvider shapeProvider) throws IOException{
-		List<KeyFrame> frames = new ArrayList<>();
-		personShapes.clear();
-		for (final String personID : checkpointDb.getKeys()){
-			List<CheckPoint> checkPoints = checkpointDb.getList(personID);
-			Node personShape = buildPersonShape(checkPoints, shapeProvider);
-			if (personShape == null){
-				continue;
-			}
-			final Map<String,String> personInfo = getInfoForPerson(personID, checkPoints);
-			personShape.setOnMouseClicked(new EventHandler<MouseEvent>() {
-
-				@Override
-				public void handle(MouseEvent arg0) {
-					InfoPanel.getInstance().setInfo("Person/car selected:", personInfo);
+	private Collection<KeyFrame> buildFramesForPeople(SceneBuilder.ShapeProvider shapeProvider, String[] selectedPeople) throws IOException{
+		Collection<KeyFrame> frames = new ArrayList<>();
+		Collection<String> selectedPeopleCol = null;
+		if (selectedPeople != null){
+			selectedPeopleCol = Arrays.<String>asList(selectedPeople);
+		}
+		for (String personID : checkpointDb.getKeys()){
+			if ((selectedPeople == null) || (selectedPeopleCol.contains(personID))){
+				Collection<KeyFrame> personFrames = new ArrayList<>();
+				List<CheckPoint> checkPoints = checkpointDb.getList(personID);
+				Node personShape = buildPersonShape(checkPoints, shapeProvider);
+				if (personShape == null){
+					continue;
 				}
-			});
-			personShape.setVisible(false);
-			DoubleProperty xProperty = personShape.translateXProperty();
-			DoubleProperty yProperty = personShape.translateYProperty();
-			BooleanProperty visibleProperty = personShape.visibleProperty();
-			KeyValue initX = new KeyValue(xProperty, xProperty.get());
-			KeyValue initY = new KeyValue(yProperty, yProperty.get());
-			KeyValue initVis = new KeyValue(visibleProperty, false);
-			frames.add(new KeyFrame(Duration.ZERO, initX, initY, initVis));
-			for (CheckPoint cp : checkPoints){				
-				Duration actualTime = new Duration(convertToVisualizationTime(cp.getTime()));
-				KeyFrame frame = null;
-				if (cp.getType().equals(Type.POSITION_DEF)){
-					double actualX = transformX(cp.getX());
-					double actualY = transformY(cp.getY());					
-					KeyValue xVal = new KeyValue(xProperty, actualX);
-					KeyValue yVal = new KeyValue(yProperty, actualY);
-					KeyValue visibleVal = new KeyValue(visibleProperty, true);
-					frame = new KeyFrame(actualTime, xVal, yVal, visibleVal);					
-				} else if (cp.getType().equals(Type.PERSON_ENTERS) || cp.getType().equals(Type.PERSON_LEAVES)){
-					boolean personEnters = cp.getType().equals(Type.PERSON_ENTERS);
-					KeyValue visibleVal = new KeyValue(visibleProperty, personEnters);
-					frame = new KeyFrame(actualTime, visibleVal);
-				} else {
-					throw new UnsupportedOperationException();
+				final Map<String,String> personInfo = getInfoForPerson(personID, checkPoints);
+				personShape.setOnMouseClicked(new EventHandler<MouseEvent>() {
+	
+					@Override
+					public void handle(MouseEvent arg0) {
+						InfoPanel.getInstance().setInfo("Person/car selected:", personInfo);
+					}
+				});
+				personShape.setVisible(false);
+				DoubleProperty xProperty = personShape.translateXProperty();
+				DoubleProperty yProperty = personShape.translateYProperty();
+				BooleanProperty visibleProperty = personShape.visibleProperty();
+				KeyValue initX = new KeyValue(xProperty, xProperty.get());
+				KeyValue initY = new KeyValue(yProperty, yProperty.get());
+				KeyValue initVis = new KeyValue(visibleProperty, false);
+				personFrames.add(new KeyFrame(Duration.ZERO, initX, initY, initVis));
+				for (CheckPoint cp : checkPoints){				
+					Duration actualTime = new Duration(convertToVisualizationTime(cp.getTime()));
+					KeyFrame frame = null;
+					if (cp.getType().equals(Type.POSITION_DEF)){
+						double actualX = transformX(cp.getX());
+						double actualY = transformY(cp.getY());					
+						KeyValue xVal = new KeyValue(xProperty, actualX);
+						KeyValue yVal = new KeyValue(yProperty, actualY);
+						KeyValue visibleVal = new KeyValue(visibleProperty, true);
+						frame = new KeyFrame(actualTime, xVal, yVal, visibleVal);					
+					} else if (cp.getType().equals(Type.PERSON_ENTERS) || cp.getType().equals(Type.PERSON_LEAVES)){
+						boolean personEnters = cp.getType().equals(Type.PERSON_ENTERS);
+						KeyValue visibleVal = new KeyValue(visibleProperty, personEnters);
+						frame = new KeyFrame(actualTime, visibleVal);
+					} else {
+						throw new UnsupportedOperationException();
+					}
+					personFrames.add(frame);
 				}
-				frames.add(frame);
+				personShapes.put(personID, personShape);
+				frames.addAll(personFrames);
+				keyFramesForPeople.put(personID, personFrames);
+			} else {
+				frames.addAll(keyFramesForPeople.get(personID));
 			}
-			personShapes.put(personID, personShape);
 		}
 		return frames;
 	}
+	
+	/**
+	 * For each person ID, stores a collection of all the key frames that capture the
+	 * movements of the person visualization
+	 */
+	private final Map<String,Collection<KeyFrame>> keyFramesForPeople = new HashMap<>();
 
 	/**
 	 * Builds a {@link Node} that represents a moving person/vehicle on the map.
@@ -773,8 +795,8 @@ public class MapScene {
 	 * @return These key frames capture the varying visibility of the ensemble membership representations,
 	 * as they disappear whenever the membership condition ceases to hold and vice versa.
 	 */
-	private List<KeyFrame> buildFramesForEnsembles(){
-		List<KeyFrame> res = new ArrayList<>();
+	private Collection<KeyFrame> buildFramesForEnsembles(){
+		Collection<KeyFrame> res = new ArrayList<>();
 		EnsembleDatabase edb = new EnsembleDatabase();
 		for (EnsembleEvent eev : ensembleEvents){
 			double timeVal = convertToVisualizationTime(eev.getTime());
@@ -822,9 +844,10 @@ public class MapScene {
 	 * @param imageName Name of the new image, or (if the next parameter is false) a path to the image. 
 	 * @param isResource If true, the previous parameter specifies a resource name, else it specifies
 	 * a path to a file.
+	 * @param selectedPeople People whose visualizations will be updated
 	 * @throws IOException When the specified image couldn't be found or read from
 	 */
-	public void changePeopleImage(String imageName, boolean isResource) throws IOException{
+	public void changePeopleImage(String imageName, boolean isResource, String[] selectedPeople) throws IOException{
 		if (timeLine != null){
 			Duration time = timeLine.getCurrentTime();
 			Status status = timeLine.getStatus();
@@ -835,7 +858,7 @@ public class MapScene {
 			} else {
 				provider = new ImageProvider(isResource, imageName, personImageWidth);
 			}
-			update(provider, false);
+			update(provider, false, selectedPeople);
 			if (status == Status.RUNNING){
 				timeLine.playFrom(time);
 			} else if (status == Status.PAUSED){

@@ -3,16 +3,94 @@
 <head>
 	<title>Manual Page for JDEECo Visualizer Scripting Console</title>
 	<meta charset="utf-8">
+	<style type="text/css">
+		.example_title {
+			font-weight: bold;	
+		}
+	</style>
 </head>
-
 <body>
-<p>The manual page for JDEECoVisualizer scripting console will be here.</p>
-<div>Example script (show/hide all ensemble memberships):
-<pre>
-for each (var el in memberships){
-	el.setVisible(true)
-}
-</pre>
-</div>
+	<h3>Example Usage of the Scripting Console</h3>
+	
+	<div id="ex_01">
+	<span class="example_title">Example 1:</span> hide all ensemble memberships
+	<pre>
+	for each (var el in memberships){
+		el.setVisible(false)
+	}
+	</pre>
+	</div>
+	
+	<div id="ex_02">
+	<span class="example_title">Example 2:</span> show only ensemble memberships with coordinator V7
+	<pre>
+	for each (var el in memberships){
+		if (el.getCoordinator().equals("V7")){
+			el.setVisible(true)
+		} else {
+			el.setVisible(false)		
+		}
+	}
+	</pre>
+	</div>
+	
+	<div id="ex_03">
+	<span class="example_title">Example 3:</span> print info about ensemble memberships
+	<pre>
+	var count = 0;
+	for each (var el in memberships){
+		print("Item " + count + ": ")
+		print("Ensemble name=" + el.getEnsembleName() + ", ")
+		print("Coordinator=" + el.getCoordinator() + ", ")
+		print("Member=" + el.getMember())
+		print()
+		count += 1
+	}
+	</pre>
+	</div>
+	
+	<div id="ex_04">
+	<span class="example_title">Example 4:</span> set image representing all people
+	<pre>
+	general.setPersonImage("C:/image.png")
+	</pre>
+	</div>
+	
+	<div id="ex_05">
+	<span class="example_title">Example 5:</span> set image representing persons V7, V11
+	<pre>
+	general.setPersonImage("C:/image.png", "V7", "V11")
+	</pre>
+	</div>
+	
+	<div id="ex_06">
+	<span class="example_title">Example 6:</span> set image representing persons V7, V11 - variant II
+	<pre>
+	var jsArr = ["V7","V11"]
+	var strArrType = Java.type("java.lang.String[]")
+	var javaArr = Java.to(jsArr, strArrType)
+	general.setPersonImage("C:/image.png", javaArr)
+	</pre>
+	</div>
+	
+	<div id="ex_07">
+	<span class="example_title">Example 7:</span> set image representing persons V7,V11 back to the original circles
+	<pre>
+	general.setPersonImage(null, "V7", "V11")
+	</pre>
+	</div>
+	
+	<div id="ex_08">
+	<span class="example_title">Example 8:</span> set color of the ensemble memberships with coordinator V7 to red, others to green
+	<pre>
+	for each (var el in memberships){
+		if (el.getCoordinator().equals("V7")){
+			el.setColor(Color.RED)
+		} else {
+			el.setColor(Color.GREEN)
+		}
+	}
+	</pre>
+	</div>
 </body>
 </html>

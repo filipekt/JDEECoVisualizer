@@ -333,7 +333,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 				visualizer.getMapHeight(), timeLineStatus, timeLineRate, minTime, 
 				maxTime, duration, cdb, ensembleHandler.getEvents());
 		ShapeProvider circleProvider = new CircleProvider(scene.getPersonCircleRadius(), scene.getPersonCircleColor());
-		scene.update(circleProvider, false);
+		scene.update(circleProvider, false, null);
 		Platform.runLater(new Runnable() {
 			
 			@Override

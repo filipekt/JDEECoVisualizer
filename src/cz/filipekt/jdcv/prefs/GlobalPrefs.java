@@ -36,13 +36,14 @@ public class GlobalPrefs {
 	 * Given a path to an image, each person will be represented by this
 	 * image in the visualization.
 	 * @param path The image to use for visualizing people
+	 * @param selectedPeople People whose visualizations will be updated
 	 */
-	public void setPersonImage(String path) {
+	public void setPersonImage(String path, String... selectedPeople) {
 		if (scene == null){
 			printNoOp();
 		} else {
 			try {
-				scene.changePeopleImage(path, false);
+				scene.changePeopleImage(path, false, selectedPeople);
 				write("Image for persons has been successfully changed.");
 			} catch (Exception ex){
 				write("Image for persons couldn't be changed.");
