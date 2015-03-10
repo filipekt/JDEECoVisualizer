@@ -1,4 +1,4 @@
-network;C:/diplomka/JDEECoVisualizer-master/example_data/network.xml;UTF-8
-events;C:/diplomka/JDEECoVisualizer-master/example_data/events.xml
-ensembles;C:/diplomka/JDEECoVisualizer-master/example_data/ensembles.xml;US-ASCII
+network;example_data/network.xml;UTF-8
+events;example_data/events.xml
+ensembles;example_data/ensembles.xml;US-ASCII
 time;56

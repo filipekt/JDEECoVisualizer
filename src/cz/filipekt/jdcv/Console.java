@@ -1,13 +1,9 @@
 package cz.filipekt.jdcv;
 
-import java.awt.Desktop;
-import java.awt.Desktop.Action;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -35,7 +31,10 @@ import javafx.scene.control.TextArea;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -50,8 +49,8 @@ import cz.filipekt.jdcv.prefs.LinkPrefs;
 import cz.filipekt.jdcv.prefs.MembershipPrefs;
 import cz.filipekt.jdcv.util.CharsetNames;
 import cz.filipekt.jdcv.util.Dialog;
-import cz.filipekt.jdcv.util.Resources;
 import cz.filipekt.jdcv.util.Dialog.Type;
+import cz.filipekt.jdcv.util.Resources;
 
 /**
  * A console providing the user with the option to change some of the
@@ -328,70 +327,70 @@ public class Console {
 		private final String helpFileName = "scriptingHelp.html";
 		
 		/**
-		 * The temporary file that the manual page has been copied to.
-		 * This file is created so that the manual page is contained in a regular file
-		 * present in the local filesystem - while the resources bundled with the
-		 * applications are not, as they are packed inside a jar file. 
+		 * Contents of the HTML help file
 		 */
-		private final File tempHelpFile;
+		private final String helpFileContents;
 		
 		/**
-		 * Creates the new temporary file to be stored at {@link HelpButtonHandler#tempHelpFile}
-		 * @return A reference to the newly created temporary file
-		 * @see {@link HelpButtonHandler#tempHelpFile}
+		 * Encoding of the help html file
 		 */
-		private File initializeHelpFile() {
+		private final Charset charset = Charset.forName("UTF-8");
+		
+		/**
+		 * The icon for the help window
+		 */
+		private final Image windowIcon;
+		
+		/**
+		 * Title of the help window
+		 */
+		private final String windowTitle = "Manual Pages";
+		
+		/**
+		 * The integrated browser used for viewing the help file
+		 */
+		private final WebView browser = new WebView();
+		
+		/**
+		 * Loads the help file contents. Loads the help window icon.
+		 */
+		public HelpButtonHandler() {
+			InputStream helpStream = Resources.getResourceInputStream(helpFileName);
+			String contents = null;
 			try {
-				File temp = File.createTempFile("ManPage", ".html");
-				InputStream fromStream = Resources.getResourceInputStream(helpFileName);
-				OutputStream toStream = new FileOutputStream(temp);
-				try {
-					copy(fromStream, toStream);
-				} finally {
-					if (fromStream != null){
-						fromStream.close();
-					}
-					if (toStream != null){
-						toStream.close();
-					}
-				}
-				temp.deleteOnExit();
-				return temp;
-			} catch (IOException ex){
-				return null;
+				contents = readTextFrom(helpStream);
+			} catch (IOException ex) {}
+			helpFileContents = contents;
+			InputStream iconStream = Resources.getResourceInputStream("help.png");
+			if (iconStream == null){
+				windowIcon = null;
+			} else {
+				windowIcon = new Image(iconStream);
+			}
+			if (helpFileContents != null){
+				WebEngine engine = browser.getEngine();
+				engine.loadContent(helpFileContents);
 			}
 		}
 		
 		/**
-		 * Copies all the bytes from the source input stream to the target output stream
-		 * using a 4kB buffer.
-		 * @param fromStream The source input stream
-		 * @param toStream The target output stream
-		 * @throws IOException Thrown when the copying went wrong
+		 * Reads the whole input stream and returns its contents as a text encoded in 
+		 * {@link HelpButtonHandler#charset}
+		 * @param input The input stream to be read
+		 * @return Contents of the given input stream encoded as text
+		 * @throws IOException When an error occured reading from the input stream
 		 */
-		private void copy(InputStream fromStream, OutputStream toStream) throws IOException{
+		private String readTextFrom(InputStream input) throws IOException{
 			int bufferSize = 4096;
 			byte[] buffer = new byte[bufferSize];
 			int count;
-			while ((count=fromStream.read(buffer)) > 0){
-				toStream.write(buffer, 0, count);
+			StringBuilder sb = new StringBuilder();
+			while ((count=input.read(buffer)) > 0){
+				String value = new String(buffer, 0, count, charset);				
+				sb.append(value);
 			}
+			return sb.toString();
 		}
-		
-		/**
-		 * Just initializes the {@link HelpButtonHandler#tempHelpFile}
-		 */
-		public HelpButtonHandler() {
-			tempHelpFile = initializeHelpFile();
-		}
-		
-		/**
-		 * When thrown, it means that the platform default web browser could not
-		 * be found or started.
-		 */
-		@SuppressWarnings("serial") 
-		private static class BrowserNotAvailableException extends Exception {}
-		
 
 		/**
 		 * Makes sure that when clicked, the platform default browser is 
@@ -399,20 +398,19 @@ public class Console {
 		 */
 		@Override
 		public void handle(ActionEvent arg0) {
-			try {
-				if ((tempHelpFile != null) && (tempHelpFile.exists())){
-					if (!Desktop.isDesktopSupported()){
-						throw new BrowserNotAvailableException();
-					}
-					Desktop desktop = Desktop.getDesktop();
-					if ((desktop == null) || (!desktop.isSupported(Action.BROWSE))){
-						throw new BrowserNotAvailableException();
-					}
-					desktop.browse(tempHelpFile.toURI());	
+			if (helpFileContents == null){
+				Dialog.show(Type.ERROR, "Help file contents could not be loaded.");
+			} else {
+				Stage stage = new Stage();
+				StackPane pane = new StackPane(browser);
+				Scene scene = new Scene(pane);
+				stage.setScene(scene);
+				if (windowIcon != null){
+					stage.getIcons().add(windowIcon);
 				}
-			} catch (IOException | BrowserNotAvailableException ex){
-				Dialog.show(Type.ERROR, "Browser could not be started.", 
-						"You can find the manual pages on the GitHub repository of this application.");
+				stage.setTitle(windowTitle);
+				stage.initStyle(StageStyle.DECORATED);
+				stage.show();
 			}
 		}
 	}

@@ -172,17 +172,6 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	}
 	
 	/**
-	 * When run, this piece of code stops the JVM.
-	 */
-	private final Runnable exit = new Runnable() {
-		
-		@Override
-		public void run() {
-			System.exit(1);
-		}
-	};
-	
-	/**
 	 * Reports any problems encountered by the {@link SceneBuilder#handle} method and then tries to
 	 * create a new {@link MapScene} by calling {@link SceneBuilder#prepareNewScene}. If any problem
 	 * is encountered, details are shown to the user and the application is terminated.
@@ -213,7 +202,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 							
 							@Override
 							public void run() {
-								Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.ERROR, exit,
+								Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.ERROR,
 										"Could not read from one of the input files:",
 										ex.getMessage());								
 							}
@@ -223,7 +212,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 							
 							@Override
 							public void run() {
-								Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.ERROR, exit,
+								Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.ERROR,
 										"A problem with XML parser configuration has been encountered:",
 										ex.getMessage());								
 							}
@@ -233,8 +222,8 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 							
 							@Override
 							public void run() {
-								Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.ERROR, exit,
-										"A problem in one of the XML input files has been encountered:",
+								Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.ERROR,
+										"A problem in syntax of one of the XML input files has been encountered:",
 										ex.getMessage());								
 							}
 						});
@@ -314,34 +303,46 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 			public void run() {								
 				openProgressIndicator();
 			}
-		});
-		Path networkFile = Paths.get(pathFields.get(0).getText());		
-		Path eventsFile = Paths.get(pathFields.get(1).getText());
-		Path ensembleFile = Paths.get(pathFields.get(2).getText());
-		NodeHandler nodeHandler = new NodeHandler();
-		XMLextractor.run(networkFile, nodeHandler);
-		LinkHandler linkHandler = new LinkHandler(nodeHandler.getNodes());
-		XMLextractor.run(networkFile, linkHandler);	
-		EnsembleHandler ensembleHandler = new EnsembleHandler(startAt, endAt);
-		XMLextractor.run(ensembleFile, ensembleHandler);
-		MatsimEventHandler eventWithPersonHandler = new MatsimEventHandler(linkHandler.getLinks(), onlyAgents, startAt, endAt);
-		XMLextractor.run(eventsFile, eventWithPersonHandler);
-		final CheckPointDatabase cdb = buildCheckPointDatabase(eventWithPersonHandler.getEvents());
-		double minTime = startAt==null ? cdb.getMinTime() : (startAt * 1.0);
-		double maxTime = endAt==null ? cdb.getMaxTime() : (endAt * 1.0);
-		final MapScene scene = new MapScene(nodeHandler.getNodes(), linkHandler.getLinks(), visualizer.getMapWidth(), 
-				visualizer.getMapHeight(), timeLineStatus, timeLineRate, minTime, 
-				maxTime, duration, cdb, ensembleHandler.getEvents());
-		ShapeProvider circleProvider = new CircleProvider(scene.getPersonCircleRadius(), scene.getPersonCircleColor());
-		scene.update(circleProvider, false, null);
-		Platform.runLater(new Runnable() {
+		});		
+		try {
+			Console.getInstance().getWriter().write(Paths.get(".").toAbsolutePath().toString());
+			Path networkFile = Paths.get(pathFields.get(0).getText());		
+			Path eventsFile = Paths.get(pathFields.get(1).getText());
+			Path ensembleFile = Paths.get(pathFields.get(2).getText());
+			NodeHandler nodeHandler = new NodeHandler();
+			XMLextractor.run(networkFile, nodeHandler);
+			LinkHandler linkHandler = new LinkHandler(nodeHandler.getNodes());
+			XMLextractor.run(networkFile, linkHandler);	
+			EnsembleHandler ensembleHandler = new EnsembleHandler(startAt, endAt);
+			XMLextractor.run(ensembleFile, ensembleHandler);
+			MatsimEventHandler eventWithPersonHandler = new MatsimEventHandler(linkHandler.getLinks(), onlyAgents, startAt, endAt);
+			XMLextractor.run(eventsFile, eventWithPersonHandler);
+			final CheckPointDatabase cdb = buildCheckPointDatabase(eventWithPersonHandler.getEvents());
+			double minTime = startAt==null ? cdb.getMinTime() : (startAt * 1.0);
+			double maxTime = endAt==null ? cdb.getMaxTime() : (endAt * 1.0);
+			final MapScene scene = new MapScene(nodeHandler.getNodes(), linkHandler.getLinks(), visualizer.getMapWidth(), 
+					visualizer.getMapHeight(), timeLineStatus, timeLineRate, minTime, 
+					maxTime, duration, cdb, ensembleHandler.getEvents());
+			ShapeProvider circleProvider = new CircleProvider(scene.getPersonCircleRadius(), scene.getPersonCircleColor());
+			scene.update(circleProvider, false, null);
+			Platform.runLater(new Runnable() {
+				
+				@Override
+				public void run() {					
+					visualizer.setScene(scene, cdb.getMinTime(), cdb.getMaxTime());										
+				}
+			});		
+		} finally {
 			
-			@Override
-			public void run() {
-				visualizer.setScene(scene, cdb.getMinTime(), cdb.getMaxTime());
-				closeProgressIndiciator();
-			}
-		});				
+			Platform.runLater(new Runnable() {
+				
+				@Override
+				public void run() {
+					closeProgressIndiciator();
+				}
+			});
+		}
+				
 	}
 	
 	/**

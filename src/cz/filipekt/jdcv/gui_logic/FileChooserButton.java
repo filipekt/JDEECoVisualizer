@@ -11,11 +11,11 @@ import javafx.stage.Stage;
 /**
  * Listener for the {@link Event} that the user clicks a button that allows to choose a
  * file from the local filesystem. Shows the standard {@link FileChooser} and records the
- * selected file into a {@link TextField} specified by {@link ButtonXmlChooserHandler#field}. 
+ * selected file into a {@link TextField} specified by {@link FileChooserButton#field}. 
  * 
  * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
-public class ButtonXmlChooserHandler implements EventHandler<Event>{
+public class FileChooserButton implements EventHandler<Event>{
 
 	/**
 	 * The main {@link Stage} of the application
@@ -29,13 +29,26 @@ public class ButtonXmlChooserHandler implements EventHandler<Event>{
 	private final TextField field;
 	
 	/**
+	 * Directory containing the file selected the last time, 
+	 * in any instance of this class
+	 */
+	private static File lastDirectory = new File(".");
+	
+	/**
+	 * The title of the file choosing window
+	 */
+	private final String windowTitle;
+	
+	/**
 	 * @param stage The main {@link Stage} of the application
 	 * @param field After the file selection process is completed, the absolute path to the
 	 * selected file is put inside this {@link TextField}.
+	 * @param windowTitle The title of the file choosing window
 	 */
-	public ButtonXmlChooserHandler(Stage stage, TextField field) {
+	public FileChooserButton(Stage stage, TextField field, String windowTitle) {
 		this.stage = stage;
 		this.field = field;
+		this.windowTitle = windowTitle;
 	}
 
 	/**
@@ -45,10 +58,13 @@ public class ButtonXmlChooserHandler implements EventHandler<Event>{
 	@Override
 	public void handle(Event arg0) {
 		FileChooser fileChooser = new FileChooser();
-		fileChooser.setTitle("Open XML File");
+		fileChooser.setInitialDirectory(FileChooserButton.lastDirectory);
+		fileChooser.setTitle(windowTitle);
 		File res = fileChooser.showOpenDialog(stage);
 		if (res != null){
 			field.setText(res.toPath().toAbsolutePath().toString());
+			File dir = res.getAbsoluteFile().getParentFile();
+			FileChooserButton.lastDirectory = dir.getAbsoluteFile();
 		}
 	}
 	

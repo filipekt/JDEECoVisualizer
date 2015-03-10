@@ -52,7 +52,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import cz.filipekt.jdcv.gui_logic.ButtonXmlChooserHandler;
+import cz.filipekt.jdcv.gui_logic.FileChooserButton;
 import cz.filipekt.jdcv.gui_logic.CloseSceneHandler;
 import cz.filipekt.jdcv.gui_logic.ConfigFileLoader;
 import cz.filipekt.jdcv.gui_logic.ControlsBarItemHandler;
@@ -405,7 +405,7 @@ public class Visualizer extends Application {
 		for (int i = 0; i < chooserButtons.size(); i++){
 			Button button = chooserButtons.get(i);
 			TextField field = fields.get(i);
-			button.setOnMouseClicked(new ButtonXmlChooserHandler(stage, field));
+			button.setOnMouseClicked(new FileChooserButton(stage, field, "Select XML file"));
 		}
 		int row = 0;
 		for (int i = 0; i < labels.size(); i++){
@@ -461,7 +461,7 @@ public class Visualizer extends Application {
 		configFileCharsets.getSelectionModel().select(preferredEncoding);
 		configFileCharsets.setPrefWidth(encodingBoxWidth);
 		Button configFileSelect = new Button("Select..");
-		configFileSelect.setOnMouseClicked(new ButtonXmlChooserHandler(stage, configFileField));
+		configFileSelect.setOnMouseClicked(new FileChooserButton(stage, configFileField, "Select Configuration File"));
 		Button configFileLoad = new Button("Load!");
 		configFileLoad.setOnAction(new ConfigFileLoader(configFileField, configFileCharsets, fields, 
 				charsets, durationField));
