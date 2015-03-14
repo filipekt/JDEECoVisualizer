@@ -682,11 +682,11 @@ public class MapScene {
 	private Collection<KeyFrame> buildFramesForPeople(SceneBuilder.ShapeProvider shapeProvider, String[] selectedPeople) throws IOException{
 		Collection<KeyFrame> frames = new ArrayList<>();
 		Collection<String> selectedPeopleCol = null;
-		if (selectedPeople != null){
+		if ((selectedPeople != null) && (selectedPeople.length != 0)){
 			selectedPeopleCol = Arrays.<String>asList(selectedPeople);
 		}
 		for (String personID : checkpointDb.getKeys()){
-			if ((selectedPeople == null) || (selectedPeopleCol.contains(personID))){
+			if ((selectedPeople == null) || (selectedPeople.length == 0) || (selectedPeopleCol.contains(personID))){
 				Collection<KeyFrame> personFrames = new ArrayList<>();
 				List<CheckPoint> checkPoints = checkpointDb.getList(personID);
 				Node personShape = buildPersonShape(checkPoints, shapeProvider);

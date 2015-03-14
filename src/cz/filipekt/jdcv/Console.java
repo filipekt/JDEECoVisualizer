@@ -31,6 +31,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebEngine;
@@ -39,6 +40,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import javafx.stage.WindowEvent;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -266,11 +268,19 @@ public class Console {
 	}
 	
 	/**
+	 * Marks whether a console window is now open
+	 */
+	private boolean isOpen = false;
+	
+	/**
 	 * Opens a console providing the user with the option to change some of 
 	 * the settings and parameters of the visualization with an ECMA script.
 	 * @param visualizer The parent application
 	 */
 	public void showScriptingConsole(final Visualizer visualizer){
+		if (isOpen){
+			return;
+		}
 		if (visualizer == null){
 			return;
 		}
@@ -282,17 +292,32 @@ public class Console {
 		TextArea inputArea = new TextArea();
 		ScrollPane inputAreaPane = new ScrollPane(inputArea);
 		inputAreaPane.setFitToWidth(true);
+		inputAreaPane.setFitToHeight(true);
 		Label outputLabel = new Label("OUTPUT:");
 		TextArea outputArea = new TextArea();
 		ScrollPane outputAreaPane = new ScrollPane(outputArea);
 		outputAreaPane.setFitToWidth(true);
+		outputAreaPane.setFitToHeight(true);
 		outputArea.setText(writer.toString());
 		outputArea.setEditable(false);
 		fillButtonsBox(buttonsBox, inputArea, outputArea, visualizer, stage);
+		VBox.setVgrow(buttonsBox, Priority.NEVER);
+		VBox.setVgrow(inputLabel, Priority.NEVER);
+		VBox.setVgrow(inputAreaPane, Priority.ALWAYS);
+		VBox.setVgrow(outputLabel, Priority.NEVER);
+		VBox.setVgrow(outputAreaPane, Priority.ALWAYS);
 		pane.getChildren().addAll(buttonsBox, inputLabel, inputAreaPane, outputLabel, outputAreaPane);
 		stage.setScene(scene);		
 		decorateConsoleWindow(stage);
 		clearWriterBuffer();
+		stage.setOnHidden(new EventHandler<WindowEvent>() {
+			
+			@Override
+			public void handle(WindowEvent arg0) {
+				isOpen = false;
+			}
+		});
+		isOpen = true;
 		stage.show();
 	}
 	
