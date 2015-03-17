@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 
 import javafx.animation.Animation.Status;
 import javafx.animation.Timeline;
@@ -52,10 +53,10 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import cz.filipekt.jdcv.gui_logic.FileChooserButton;
 import cz.filipekt.jdcv.gui_logic.CloseSceneHandler;
 import cz.filipekt.jdcv.gui_logic.ConfigFileLoader;
 import cz.filipekt.jdcv.gui_logic.ControlsBarItemHandler;
+import cz.filipekt.jdcv.gui_logic.FileChooserButton;
 import cz.filipekt.jdcv.gui_logic.GraphicsPanelHandler;
 import cz.filipekt.jdcv.gui_logic.ImportSceneHandler;
 import cz.filipekt.jdcv.gui_logic.PlayButtonHandler;
@@ -65,9 +66,8 @@ import cz.filipekt.jdcv.gui_logic.TimeLineRateChanged;
 import cz.filipekt.jdcv.gui_logic.TimeLineStatusHandler;
 import cz.filipekt.jdcv.gui_logic.ZoomingHandler;
 import cz.filipekt.jdcv.plugins.InfoPanel;
-import cz.filipekt.jdcv.plugins.PluginWithPreferences;
 import cz.filipekt.jdcv.plugins.Plugin;
-import cz.filipekt.jdcv.plugins.filter.FilterPanel;
+import cz.filipekt.jdcv.plugins.PluginWithPreferences;
 import cz.filipekt.jdcv.prefs.GlobalPrefs;
 import cz.filipekt.jdcv.util.CharsetNames;
 import cz.filipekt.jdcv.util.Debug;
@@ -766,12 +766,26 @@ public class Visualizer extends Application {
 	private final double sidePanelWidth = 300.0;
 	
 	/**
+	 * @return Plugins loaded from the plugins directory
+	 */
+	private Collection<Plugin> loadPlugins(){
+		Collection<Plugin> res = new HashSet<>();
+		ServiceLoader<Plugin> loader = ServiceLoader.load(Plugin.class);
+		for (Plugin plugin : loader){
+			res.add(plugin);
+		}
+		return res;
+	}
+	
+	/**
 	 * Initializes the {@link Visualizer#switchablePanel}. 
 	 * @return Newly constructed switchable side-panel
 	 */
 	private Node createSwitchablePanel(){	
 		plugins.add(InfoPanel.getInstance());
-		plugins.add(FilterPanel.getInstance());
+//		plugins.add(FilterPanel.getInstance());
+		Collection<Plugin> loadedPlugins = loadPlugins();
+		plugins.addAll(loadedPlugins);
 		
 		final Pane mainPanel = new StackPane();
 		final ToolBar toolBar = new ToolBar();
@@ -930,7 +944,7 @@ public class Visualizer extends Application {
 		});
 	    stage.setScene(fxScene);
 	    stage.setTitle("JDEECo Visualizer");
-	    InputStream iconStream = Resources.getResourceInputStream("java.png");
+	    InputStream iconStream = Resources.getResourceInputStream("cup.png");
 	    if (iconStream != null){
 	    	Image icon = new Image(iconStream);
 	    	stage.getIcons().add(icon);

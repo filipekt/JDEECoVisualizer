@@ -1,0 +1,37 @@
+<project name="FilterPanel" default="dist">
+
+	<description>
+		A plugin for the JDEECoVisualizer application - the Filter-Panel.
+		Allows for basic filtering of the visualized elements.
+	</description>
+	
+	<property name="src" value="src" />
+	<property name="bin" value="bin" />
+	<property name="build" value="build" />
+	<property name="dist"  value="dist" />
+	<property name="res"  value="resources" />
+	<property name="jdcv-dir" value="../../" />
+	
+	<!-- Cleans up mess -->
+	<target name="clean">
+		<delete dir="${bin}" />
+		<delete dir="${build}" />
+		<delete dir="${dist}" />
+	</target>
+	
+	<!-- Compiles the java source files -->
+	<target name="build" depends="clean">
+		<mkdir dir="${build}" />
+		<javac srcdir="${src}" destdir="${build}" classpath="${jdcv-dir}/build" />
+	</target>
+	
+	<!-- Packages the compiled classes into a JAR file -->
+	<target name="dist" depends="build">
+		<mkdir dir="${dist}" />
+		<jar jarfile="${dist}/${ant.project.name}.jar">
+			<fileset dir="${build}" />
+			<service type="cz.filipekt.jdcv.plugins.Plugin" provider="cz.filipekt.jdcv.plugins.filter.FilterPanel" />
+		</jar>
+	</target>
+
+</project>

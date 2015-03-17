@@ -18,6 +18,7 @@
 	<property name="build" value="build" />
 	<property name="dist"  value="dist" />
 	<property name="res"  value="resources" />
+	<property name="plugins" value="plugins" />
 	
 	<target name="clean" description="clean up" >
 		<!-- Delete the ${build}, ${dist} and ${bin} directory trees -->
@@ -57,7 +58,7 @@
 	  
 	<target name="run" depends="dist">
 		<!-- Run the jar file previously built in the dist target. -->
-		<java jar="${dist}/${ant.project.name}.jar" fork="true" failonerror="true" />
+		<java classname="cz.filipekt.jdcv.Visualizer" classpath="${dist}/${ant.project.name}.jar;${plugins}/*" fork="true" failonerror="true" />
 	</target>
 	  
 	<target name="run_and_clean" depends="run">

@@ -83,22 +83,9 @@ public class FilterPanel extends PluginWithPreferences {
 	 * This is a singleton class, so uncontrolled instantiation is forbidden.
 	 * Initializes the main panel.
 	 */
-	private FilterPanel() {
+	public FilterPanel() {
 		panel = createPanel();
 		initializeAttributes();
-	}
-	
-	/**
-	 * The singleton instance of this class
-	 */
-	private static final FilterPanel INSTANCE = new FilterPanel();
-	
-	/**
-	 * @return The singleton instance of this class
-	 * @see {@link FilterPanel#INSTANCE}
-	 */
-	public static FilterPanel getInstance(){
-		return INSTANCE;
 	}
 	
 	/**

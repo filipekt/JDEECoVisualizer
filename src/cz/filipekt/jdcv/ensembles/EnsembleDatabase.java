@@ -4,13 +4,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import cz.filipekt.jdcv.plugins.InfoPanel;
 import javafx.event.EventHandler;
 import javafx.scene.Node;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Line;
+import cz.filipekt.jdcv.plugins.InfoPanel;
 
 /**
  * Stores the shapes representing the ensemble membership relation.
@@ -39,8 +39,19 @@ public class EnsembleDatabase {
 	 * for shapes visualizing the membership relations including these
 	 * two (ensemble,coordinator).
 	 */
-	private final Map<CoordinatorRelation,Paint> colors = new HashMap<>();
+	private final Map<CoordinatorRelation,Paint> colors;
 	
+	/** 
+	 * @param colors Holds the colors used for ensemble memberships
+	 */
+	public EnsembleDatabase(Map<CoordinatorRelation, Paint> colors) {
+		if (colors == null){
+			this.colors = new HashMap<>();
+		} else {
+			this.colors = colors;
+		}
+	}
+
 	/**
 	 * Given an ensemble name and coordinator ID, this method gives a color
 	 * which will be used to visualize the ensemble memberships including

@@ -43,6 +43,7 @@ import javax.imageio.ImageIO;
 import cz.filipekt.jdcv.CheckPoint.Type;
 import cz.filipekt.jdcv.SceneBuilder.ImageProvider;
 import cz.filipekt.jdcv.SceneBuilder.ShapeProvider;
+import cz.filipekt.jdcv.ensembles.CoordinatorRelation;
 import cz.filipekt.jdcv.ensembles.EnsembleDatabase;
 import cz.filipekt.jdcv.ensembles.MembershipRelation;
 import cz.filipekt.jdcv.events.EnsembleEvent;
@@ -526,7 +527,7 @@ public class MapScene {
 		timeLine.stop();
 		timeLine.getKeyFrames().clear();
 		mapContainer.getChildren().clear();
-		producePersonShapes(shapeProvider, selectedPeople);
+		produceShapes(shapeProvider, selectedPeople);
 		addRecordingFrames();
 		if (!justMovables){
 			Map<Shape,MyNode> newCircles = generateCircles();
@@ -631,7 +632,7 @@ public class MapScene {
 	 * @param selectedPeople People whose visualizations will be updated
 	 * @throws IOException When a person shape could not be loaded for any reason
 	 */
-	private void producePersonShapes(ShapeProvider shapeProvider, String[] selectedPeople) throws IOException{
+	private void produceShapes(ShapeProvider shapeProvider, String[] selectedPeople) throws IOException{
 		Collection<KeyFrame> keyFrames = buildFramesForPeople(shapeProvider, selectedPeople);
 		Collection<KeyFrame> keyFrames2 = buildFramesForEnsembles();
 		timeLine.getKeyFrames().addAll(keyFrames);
@@ -787,6 +788,11 @@ public class MapScene {
 	public PreferencesBuilder getPreferences(){
 		return preferences;
 	}
+	
+	/**
+	 * Holds the colors used for ensemble memberships
+	 */
+	private final Map<CoordinatorRelation,Paint> ensembleColors = new HashMap<>();
 
 	/**
 	 * Given all the ensemble events, this method creates their graphical representations in the form of 
@@ -797,7 +803,7 @@ public class MapScene {
 	 */
 	private Collection<KeyFrame> buildFramesForEnsembles(){
 		Collection<KeyFrame> res = new ArrayList<>();
-		EnsembleDatabase edb = new EnsembleDatabase();
+		EnsembleDatabase edb = new EnsembleDatabase(ensembleColors);
 		for (EnsembleEvent eev : ensembleEvents){
 			double timeVal = convertToVisualizationTime(eev.getTime());
 			Duration time = new Duration(timeVal);
