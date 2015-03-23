@@ -433,6 +433,20 @@ public class Visualizer extends Application {
 		pane.add(onlyComponentsBox, 1, row);
 		row += 1;
 		
+		Label showOffCorridorsLabel = new Label("Show off the corridor functionality:");
+		final CheckBox showOffCorridorsBox = new CheckBox();
+		showOffCorridorsBox.setSelected(false);
+		showOffCorridorsBox.setOnAction(new EventHandler<ActionEvent>() {
+			
+			@Override
+			public void handle(ActionEvent arg0) {
+				Visualizer.decorateCorridors = showOffCorridorsBox.isSelected();
+			}
+		});
+		pane.add(showOffCorridorsLabel, 0, row);
+		pane.add(showOffCorridorsBox, 1, row);
+		row += 1;
+		
 		Label startAtLabel = new Label("Start at time (seconds):");
 		TextField startAtField = new TextField();
 		pane.add(startAtLabel, 0, row);
@@ -743,6 +757,11 @@ public class Visualizer extends Application {
 	private final Pane sliderWrapper;
 	
 	/**
+	 * If true, the application will show off the corridor functionality.
+	 */
+	static boolean decorateCorridors;
+	
+	/**
 	 * Initializer for {@link Visualizer#sliderWrapper}.
 	 * @return A {@link Pane} holding the {@link Visualizer#sliderWrapper} and, 
 	 * possibly, some belonging controls 
@@ -766,15 +785,15 @@ public class Visualizer extends Application {
 	private final double sidePanelWidth = 300.0;
 	
 	/**
-	 * @return Plugins loaded from the plugins directory
+	 * Loads plugins from the plugins directory. In addition, it also loads
+	 * the plugin {@link InfoPanel}, which does not have to be loaded from a jar
 	 */
-	private Collection<Plugin> loadPlugins(){
-		Collection<Plugin> res = new HashSet<>();
+	private void loadPlugins(){
 		ServiceLoader<Plugin> loader = ServiceLoader.load(Plugin.class);
 		for (Plugin plugin : loader){
-			res.add(plugin);
+			plugins.add(plugin);
 		}
-		return res;
+		plugins.add(InfoPanel.getInstance());
 	}
 	
 	/**
@@ -782,20 +801,15 @@ public class Visualizer extends Application {
 	 * @return Newly constructed switchable side-panel
 	 */
 	private Node createSwitchablePanel(){	
-		plugins.add(InfoPanel.getInstance());
-//		plugins.add(FilterPanel.getInstance());
-		Collection<Plugin> loadedPlugins = loadPlugins();
-		plugins.addAll(loadedPlugins);
-		
+		loadPlugins();
 		final Pane mainPanel = new StackPane();
-		final ToolBar toolBar = new ToolBar();
+		ToolBar toolBar = new ToolBar();
 		toolBar.setPrefWidth(sidePanelWidth);
 		mainPanel.setPrefWidth(sidePanelWidth);
 		VBox pane = new VBox(toolBar, mainPanel);
 		VBox.setVgrow(toolBar, Priority.NEVER);
 		VBox.setVgrow(mainPanel, Priority.ALWAYS);
 		pane.setFillWidth(true);
-		
 		plugins2.clear();
 		for (Plugin plugin : plugins){
 			Button button = createPluginButton(plugin);

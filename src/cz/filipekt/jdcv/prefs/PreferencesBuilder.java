@@ -4,10 +4,13 @@ import java.io.Writer;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import javafx.scene.Node;
 import javafx.scene.shape.Line;
+import javafx.scene.shape.Shape;
+import cz.filipekt.jdcv.LinkCorridor;
 import cz.filipekt.jdcv.ensembles.MembershipRelation;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;
@@ -25,9 +28,14 @@ public class PreferencesBuilder {
 	private final Map<Node,MyNode> nodes;
 	
 	/**
-	 * Maps visual representations of links to the corresponding parsed link XML elements.
+	 * Maps each link ID to the corresponding parsed link XML element
 	 */
-	private final Map<Node,MyLink> lines;
+	private final Map<String,MyLink> links;
+	
+	/**
+	 * Maps each link ID to the corresponding link visualization
+	 */
+	private final Map<String,LinkCorridor> linkCorridors;
 	
 	/**
 	 * Maps each ensemble membership relation to the graphical representation of this relation.
@@ -54,12 +62,16 @@ public class PreferencesBuilder {
 	 */
 	public Map<String,LinkPrefs> linkPrefs(Writer logWriter){
 		Map<String,LinkPrefs> res = new HashMap<>();
-		for (Node shape : lines.keySet()){
-			MyLink link = lines.get(shape);
-			Line line = (Line)shape;
-			LinkPrefs prefs = new LinkPrefs(link.getId(), link.getFrom().getId(), 
-					link.getTo().getId(), line, logWriter);
-			res.put(link.getId(), prefs);
+		for (Entry<String,MyLink> entry : links.entrySet()){
+			String linkID = entry.getKey();
+			MyLink link = entry.getValue();
+			Node visual = linkCorridors.get(linkID).getVisualization();
+			if (visual instanceof Shape){
+				Shape visualAsShape = (Shape)visual;
+				LinkPrefs prefs = new LinkPrefs(link.getId(), link.getFrom().getId(), 
+						link.getTo().getId(), visualAsShape, logWriter);
+				res.put(link.getId(), prefs);
+			}			
 		}
 		return res;
 	}
@@ -80,14 +92,16 @@ public class PreferencesBuilder {
 
 	/**
 	 * @param nodes Maps visual representations of nodes to the corresponding parsed link XML elements.
-	 * @param lines Maps visual representations of links to the corresponding parsed link XML elements.
+	 * @param links Maps each link ID to the corresponding parsed link XML element
+	 * @param linkCorridors Maps each link ID to the corresponding link visualization
 	 * @param ensembleShapes Maps each ensemble membership relation to the graphical representation 
 	 * of this relation.
 	 */
-	public PreferencesBuilder(Map<Node,MyNode> nodes, Map<Node, MyLink> lines,
+	public PreferencesBuilder(Map<Node,MyNode> nodes, Map<String,MyLink> links, Map<String,LinkCorridor> linkCorridors,
 			Map<MembershipRelation, Node> ensembleShapes) {
 		this.nodes = nodes;
-		this.lines = lines;
+		this.links = links;
+		this.linkCorridors = linkCorridors;
 		this.ensembleShapes = ensembleShapes;
 	}
 }

@@ -35,7 +35,6 @@ import cz.filipekt.jdcv.events.EntersOrLeavesVehicle;
 import cz.filipekt.jdcv.events.EventType;
 import cz.filipekt.jdcv.events.MatsimEvent;
 import cz.filipekt.jdcv.network.MyLink;
-import cz.filipekt.jdcv.network.MyNode;
 import cz.filipekt.jdcv.util.Dialog;
 import cz.filipekt.jdcv.util.Resources;
 import cz.filipekt.jdcv.xml.EnsembleHandler;
@@ -305,7 +304,6 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 			}
 		});		
 		try {
-			Console.getInstance().getWriter().write(Paths.get(".").toAbsolutePath().toString());
 			Path networkFile = Paths.get(pathFields.get(0).getText());		
 			Path eventsFile = Paths.get(pathFields.get(1).getText());
 			Path ensembleFile = Paths.get(pathFields.get(2).getText());
@@ -500,49 +498,42 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		for (MatsimEvent event : events){
 			String personID = event.getPerson();
 			double time = event.getTime();
-			if (event.getType().equals(EventType.PERSON_ENTERS_VEHICLE)){	
+			if (event.getType() == EventType.PERSON_ENTERS_VEHICLE){	
 				EntersOrLeavesVehicle elv = (EntersOrLeavesVehicle)event;
 				String vehicleID = elv.getVehicleId();
 				CheckPoint cp = new CheckPoint(time, personID, vehicleID, Type.PERSON_ENTERS);
 				db.add(personID, cp);
 				db.setInVehicle(personID, vehicleID);
-			} else if (event.getType().equals(EventType.PERSON_LEAVES_VEHICLE)){
+			} else if (event.getType() == EventType.PERSON_LEAVES_VEHICLE){
 				EntersOrLeavesVehicle elv = (EntersOrLeavesVehicle)event;
 				String vehicleID = elv.getVehicleId();
 				CheckPoint cp = new CheckPoint(time, personID, vehicleID, Type.PERSON_LEAVES);
 				db.add(personID, cp);
 				db.setInVehicle(personID, null);
-			} else if (event.getType().equals(EventType.ENTERED_LINK)){
+			} else if ((event.getType() == EventType.ENTERED_LINK) || 
+					(event.getType() == EventType.LEFT_LINK)){
+				Type type;
+				if (event.getType() == EventType.ENTERED_LINK){
+					type = Type.LINK_ENTERED;
+				} else {
+					type = Type.LINK_LEFT;
+				}
 				String vehicleID = db.getInVehicle(personID);
 				EnteredOrLeftLink ell = (EnteredOrLeftLink)event;					
 				MyLink link = ell.getLink();
 				boolean justDeparted = db.getJustDeparted(personID);
-				if (justDeparted && (vehicleID==null)){
+				if (justDeparted && (vehicleID == null)){
+					vehicleID = ell.getVehicleId();
 					CheckPoint cp = new CheckPoint(time, personID, vehicleID, Type.PERSON_ENTERS);
 					db.add(personID, cp);
+					db.setInVehicle(personID, vehicleID);
 				}
-				MyNode node;
-				if (justDeparted){
-					node = link.getTo();
-				} else {
-					node = link.getFrom();
-				}
-				double x = node.getX();
-				double y = node.getY();
-				CheckPoint cp = new CheckPoint(x, y, time, personID, vehicleID, Type.POSITION_DEF);
+				CheckPoint cp = new CheckPoint(link.getId(), time, personID, vehicleID, type);
 				db.add(personID, cp);
 				db.setJustDeparted(personID, false);
-			} else if (event.getType().equals(EventType.DEPARTURE)){
+			} else if (event.getType() == EventType.DEPARTURE){
 				db.setJustDeparted(personID, true);
-			} else if (event.getType().equals(EventType.LEFT_LINK)){
-				String vehicleID = db.getInVehicle(personID);
-				EnteredOrLeftLink ell = (EnteredOrLeftLink)event;
-				MyNode node = ell.getLink().getTo();
-				double x = node.getX();
-				double y = node.getY();
-				CheckPoint cp = new CheckPoint(x, y, time, personID, vehicleID, Type.POSITION_DEF);
-				db.add(personID, cp);
-			} else if (event.getType().equals(EventType.ARRIVAL)){
+			} else if (event.getType() == EventType.ARRIVAL){
 				CheckPoint cp = new CheckPoint(time, personID, null, Type.PERSON_LEAVES);
 				db.add(personID, cp);
 			}

@@ -24,6 +24,7 @@ import javafx.beans.value.ChangeListener;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.effect.BoxBlur;
@@ -34,6 +35,9 @@ import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
+import javafx.scene.shape.LineTo;
+import javafx.scene.shape.MoveTo;
+import javafx.scene.shape.Path;
 import javafx.scene.shape.Shape;
 import javafx.scene.transform.Scale;
 import javafx.util.Duration;
@@ -68,17 +72,12 @@ public class MapScene {
 	/**
 	 * Contains the network links. Keys = link IDs, values = {@link MyLink} link representations.
 	 */
-	private final Map<String,MyLink> links;
+	private final Map<String,MyLink> links = new HashMap<>();
 	
 	/**
 	 * Maps visual representations of nodes to the corresponding parsed node XML elements.
 	 */
 	private final Map<Node,MyNode> circles = new HashMap<>();
-	
-	/**
-	 * Maps visual representations of links to the corresponding parsed link XML elements.
-	 */
-	private final Map<Node,MyLink> lines = new HashMap<>();
 	
 	/**
 	 * Minimal value of x-coordinate among all the nodes in {@link MapScene#nodes}
@@ -339,58 +338,107 @@ public class MapScene {
 	}
 	
 	/**
-	 * Constructs the visualizations of the map links. Makes sure that proper
-	 * magnification and metric is used.
-	 * @return The visualizations of the map links mapped to corresponding link 
-	 * element representations.
+	 * Makes sure that when the user clicks on the visualization of the link,
+	 * detailed info about the link is shown in the info-panel.
+	 * @param link Detailed info about this link will be shown
+	 * @param visual Visualization of the link given in the first parameter
 	 */
-	private Map<Shape,MyLink> generateLines(){
-		Map<Shape,MyLink> res = new HashMap<>();
+	private void connectLinkWithInfoPanel(MyLink link, Node visual){
+		final Map<String,String> data = new LinkedHashMap<>();
+		data.put("Link ID", link.getId());
+		data.put("From Node", link.getFrom().getId());
+		data.put("From x-coordinate", Double.toString(link.getFrom().getX()));
+		data.put("From y-coordinate", Double.toString(link.getFrom().getY()));
+		data.put("To Node", link.getTo().getId());
+		data.put("To x-coordinate", Double.toString(link.getTo().getX()));
+		data.put("To y-coordinate", Double.toString(link.getTo().getY()));
+		visual.setOnMouseClicked(new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent arg0) {
+				InfoPanel.getInstance().setInfo("Link Selected:", data);
+			}
+		});
+	}
+	
+	/**
+	 * Creates the visualizations of all links. 
+	 * @return Mapping of link IDs to their corresponding visualizations
+	 */
+	private Map<String,LinkCorridor> generateLinkCorridors(){
+		Map<String,LinkCorridor> res = new HashMap<>();
 		for (MyLink link : links.values()){
-			double fromx = link.getFrom().getX();
-			fromx = transformX(fromx);
-			double fromy = link.getFrom().getY();
-			fromy = transformY(fromy);
-			double tox = link.getTo().getX();
-			tox = transformX(tox);
-			double toy = link.getTo().getY();
-			toy = transformY(toy);
-			final Line line = new Line(fromx, fromy, tox, toy);
-			line.setStroke(linkDefaultColor);
-			line.setStrokeWidth(linkWidth);		
-			res.put(line, link);
-			
-			final Map<String,String> data = new LinkedHashMap<>();
-			data.put("Link ID", link.getId());
-			data.put("From Node", link.getFrom().getId());
-			data.put("From x-coordinate", Double.toString(link.getFrom().getX()));
-			data.put("From y-coordinate", Double.toString(link.getFrom().getY()));
-			data.put("To Node", link.getTo().getId());
-			data.put("To x-coordinate", Double.toString(link.getTo().getX()));
-			data.put("To y-coordinate", Double.toString(link.getTo().getY()));
-			line.setOnMouseClicked(new EventHandler<MouseEvent>() {
-
-				@Override
-				public void handle(MouseEvent arg0) {
-					InfoPanel.getInstance().setInfo("Link Selected:", data);
-				}
-			});
-			line.setOnMouseEntered(new EventHandler<MouseEvent>() {
-
-				@Override
-				public void handle(MouseEvent arg0) {
-					line.setStrokeWidth(linkWidth * 3);
-				}
-			});
-			line.setOnMouseExited(new EventHandler<MouseEvent>() {
-
-				@Override
-				public void handle(MouseEvent arg0) {
-					line.setStrokeWidth(linkWidth);
-				}
-			});
+			Point2D fromPoint = new Point2D(transformX(link.getFrom().getX()), 
+					transformY(link.getFrom().getY()));
+			Point2D toPoint = new Point2D(transformX(link.getTo().getX()), 
+					transformY(link.getTo().getY()));
+			List<Point2D> path;
+			if (Visualizer.decorateCorridors){
+				Point2D midPoint = getMidPoint(fromPoint, toPoint);
+				path = Arrays.asList(fromPoint, midPoint, toPoint);
+			} else {
+				path = Arrays.asList(fromPoint, toPoint);
+			}
+			Node visual = getVisualCorridor(fromPoint, toPoint);
+			connectLinkWithInfoPanel(link, visual);
+			LinkCorridor corridor = new LinkCorridor(link.getId(), visual, path);
+			res.put(link.getId(), corridor);
 		}
 		return res;
+	}
+	
+	/**
+	 * Returns the visualization of the link going between the given points.
+	 * @param fromPoint Link goes from this point
+	 * @param toPoint Link ends at this point
+	 * @return Visualization of the link going between the given points
+	 */
+	private Node getVisualCorridor(Point2D fromPoint, Point2D toPoint){
+		final Path visual = new Path();
+		MoveTo moveTo = new MoveTo(fromPoint.getX(), fromPoint.getY());
+		if (Visualizer.decorateCorridors){
+			Point2D midPoint = getMidPoint(fromPoint, toPoint);
+			LineTo lineTo1 = new LineTo(midPoint.getX(), midPoint.getY());
+			LineTo lineTo2 = new LineTo(toPoint.getX(), toPoint.getY());
+			visual.getElements().addAll(moveTo, lineTo1, lineTo2);
+		} else {
+			LineTo lineTo = new LineTo(toPoint.getX(), toPoint.getY());
+			visual.getElements().addAll(moveTo, lineTo);
+		}
+		visual.setStroke(linkDefaultColor);
+		visual.setStrokeWidth(linkWidth);
+		visual.setOnMouseEntered(new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent arg0) {
+				visual.setStrokeWidth(linkWidth * 3);
+			}
+		});
+		visual.setOnMouseExited(new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent arg0) {
+				visual.setStrokeWidth(linkWidth);
+			}
+		});
+		return visual;
+	}
+	
+	/**
+	 * Returns a point near the middle of the line (from-to). Exactly:
+	 * let L be the distance between (from,to). Let P be the line that is
+	 * perpendicular to (from,to) and crosses (from,to) in the middle.
+	 * Then the returned point lies on P at the distance L/4 from the crossing.
+	 */
+	private Point2D getMidPoint(Point2D from, Point2D to){
+		double x = (from.getX() + to.getX()) / 2;
+		double y = (from.getY() + to.getY()) / 2;
+		Point2D midPoint = new Point2D(x, y);
+		Point2D translated = to.subtract(from);
+		Point2D translatedOrthogonal = new Point2D(translated.getY(), -translated.getX());
+		Point2D transaltedOrthogonalSmall = new Point2D(translatedOrthogonal.getX() / 4, 
+				translatedOrthogonal.getY() / 4);
+		return transaltedOrthogonalSmall.add(midPoint);
 	}
 	
 	/**
@@ -513,6 +561,11 @@ public class MapScene {
 	}
 	
 	/**
+	 * Maps each link ID to the corresponding link visualization
+	 */
+	private final Map<String,LinkCorridor> linkCorridors = new HashMap<>();
+	
+	/**
 	 * Updates the collections of node instances that represent the map elements,
 	 * both mobile (agents, ensemble memberships) and immobile (nodes,links).
 	 * Also, the {@link MapScene#mapContainer} holding these {@link Shape} instances for
@@ -527,17 +580,19 @@ public class MapScene {
 		timeLine.stop();
 		timeLine.getKeyFrames().clear();
 		mapContainer.getChildren().clear();
-		produceShapes(shapeProvider, selectedPeople);
-		addRecordingFrames();
 		if (!justMovables){
 			Map<Shape,MyNode> newCircles = generateCircles();
-			Map<Shape,MyLink> newLines = generateLines();
 			circles.clear();
 			circles.putAll(newCircles);
-			lines.clear();
-			lines.putAll(newLines);
+			Map<String,LinkCorridor> newCorridors = generateLinkCorridors();
+			linkCorridors.clear();
+			linkCorridors.putAll(newCorridors);
 		}
-		mapContainer.getChildren().addAll(lines.keySet());
+		for (LinkCorridor corridor : linkCorridors.values()){
+			mapContainer.getChildren().add(corridor.getVisualization());
+		}
+		produceShapes(shapeProvider, selectedPeople);
+		addRecordingFrames();
 		mapContainer.getChildren().addAll(circles.keySet());
 		mapContainer.getChildren().addAll(personShapes.values());
 		mapContainer.getChildren().addAll(ensembleShapes.values());
@@ -564,8 +619,8 @@ public class MapScene {
 	 * Otherwise it makes them invisible.
 	 */
 	void setLinksVisible(boolean visible){
-		for (Node link : lines.keySet()){
-			link.setVisible(visible);
+		for (LinkCorridor corridor : linkCorridors.values()){
+			corridor.getVisualization().setVisible(visible);
 		}
 	}
 	
@@ -660,8 +715,11 @@ public class MapScene {
 				case PERSON_LEAVES:
 					value = "persons leaves vehicle";
 					break;
-				case POSITION_DEF:
-					value = "location is x=" + cp.getX() + ", y=" + cp.getY();
+				case LINK_ENTERED:
+					value = "enters link " + cp.getLinkID();
+					break;
+				case LINK_LEFT:
+					value = "leaves link " + cp.getLinkID();
 					break;
 			}
 			if (value != null){
@@ -673,65 +731,54 @@ public class MapScene {
 	
 	/**
 	 * Using the {@link MapScene#checkpointDb}, this method converts its contents into the format
-	 * specified by JavaFX {@link Timeline} animation model. The people shapes collection is 
-	 * filled with the individual nodes that represent the persons.  
+	 * specified by JavaFX {@link Timeline} animation model. The {@link MapScene#personShapes} is 
+	 * filled with the individual nodes that represent the persons. Additionally, 
+	 * {@link MapScene#keyFramesForPeople} is filled with keyframes mapped to the corresponding
+	 * people.  
 	 * @param shapeProvider Used for generating the visualizations of people
 	 * @param selectedPeople People whose visualizations will be updated
 	 * @return {@link KeyFrame} instances describing the movements of people on the map.
 	 * @throws IOException When a person shape could not be loaded for any reason
 	 */
-	private Collection<KeyFrame> buildFramesForPeople(SceneBuilder.ShapeProvider shapeProvider, String[] selectedPeople) throws IOException{
+	private Collection<KeyFrame> buildFramesForPeople(SceneBuilder.ShapeProvider shapeProvider, 
+			String[] selectedPeople) throws IOException{
 		Collection<KeyFrame> frames = new ArrayList<>();
 		Collection<String> selectedPeopleCol = null;
 		if ((selectedPeople != null) && (selectedPeople.length != 0)){
 			selectedPeopleCol = Arrays.<String>asList(selectedPeople);
 		}
 		for (String personID : checkpointDb.getKeys()){
-			if ((selectedPeople == null) || (selectedPeople.length == 0) || (selectedPeopleCol.contains(personID))){
-				Collection<KeyFrame> personFrames = new ArrayList<>();
-				List<CheckPoint> checkPoints = checkpointDb.getList(personID);
-				Node personShape = buildPersonShape(checkPoints, shapeProvider);
-				if (personShape == null){
-					continue;
-				}
-				final Map<String,String> personInfo = getInfoForPerson(personID, checkPoints);
-				personShape.setOnMouseClicked(new EventHandler<MouseEvent>() {
-	
-					@Override
-					public void handle(MouseEvent arg0) {
-						InfoPanel.getInstance().setInfo("Person/car selected:", personInfo);
+			if ((selectedPeople == null) || (selectedPeople.length == 0) || 
+					(selectedPeopleCol.contains(personID))){				
+				List<CheckPoint> positionCheckpoints = checkpointDb.getPositionsList(personID);
+				if ((positionCheckpoints != null) && (!positionCheckpoints.isEmpty())){
+					try {
+						Node personShape = buildPersonShape(positionCheckpoints, shapeProvider);
+						personShape.setOnMouseClicked(new InfoPanelSetter(personID));
+						personShape.setVisible(false);
+						Collection<KeyFrame> personFrames = new ArrayList<>();
+						prepareInitialFrame(personFrames, personShape);
+						for (int i = 0; i < positionCheckpoints.size(); i++){
+							CheckPoint cp = positionCheckpoints.get(i);
+							CheckPoint nextCp;
+							if ((i+1) < positionCheckpoints.size()){
+								nextCp = positionCheckpoints.get(i+1);
+							} else {
+								nextCp = null;
+							}
+							processPositionCheckPoint(cp, nextCp, personFrames, personShape);
+						}
+						List<CheckPoint> otherCheckpoints = checkpointDb.getOthersList(personID);
+						for (CheckPoint cp : otherCheckpoints){
+							processOtherCheckPoint(cp, personFrames, personShape);
+						}
+						personShapes.put(personID, personShape);
+						frames.addAll(personFrames);
+						keyFramesForPeople.put(personID, personFrames);
+					} catch (InitialPositionNotFoundException | IllegalArgumentException ex){
+//						should not happen; prevented by the "if" statement just before the "try" block
 					}
-				});
-				personShape.setVisible(false);
-				DoubleProperty xProperty = personShape.translateXProperty();
-				DoubleProperty yProperty = personShape.translateYProperty();
-				BooleanProperty visibleProperty = personShape.visibleProperty();
-				KeyValue initX = new KeyValue(xProperty, xProperty.get());
-				KeyValue initY = new KeyValue(yProperty, yProperty.get());
-				KeyValue initVis = new KeyValue(visibleProperty, false);
-				personFrames.add(new KeyFrame(Duration.ZERO, initX, initY, initVis));
-				for (CheckPoint cp : checkPoints){				
-					Duration actualTime = new Duration(convertToVisualizationTime(cp.getTime()));
-					KeyFrame frame = null;
-					if (cp.getType().equals(Type.POSITION_DEF)){
-						double actualX = transformX(cp.getX());
-						double actualY = transformY(cp.getY());					
-						KeyValue xVal = new KeyValue(xProperty, actualX);
-						KeyValue yVal = new KeyValue(yProperty, actualY);
-						KeyValue visibleVal = new KeyValue(visibleProperty, true);
-						frame = new KeyFrame(actualTime, xVal, yVal, visibleVal);					
-					} else if (cp.getType().equals(Type.PERSON_ENTERS) || cp.getType().equals(Type.PERSON_LEAVES)){
-						boolean personEnters = cp.getType().equals(Type.PERSON_ENTERS);
-						KeyValue visibleVal = new KeyValue(visibleProperty, personEnters);
-						frame = new KeyFrame(actualTime, visibleVal);
-					} else {
-						throw new UnsupportedOperationException();
-					}
-					personFrames.add(frame);
 				}
-				personShapes.put(personID, personShape);
-				frames.addAll(personFrames);
-				keyFramesForPeople.put(personID, personFrames);
 			} else {
 				frames.addAll(keyFramesForPeople.get(personID));
 			}
@@ -740,37 +787,196 @@ public class MapScene {
 	}
 	
 	/**
+	 * Handler for the event that the user clicks on a person visualization.
+	 * It shows detailed info about that person in the info-panel.
+	 */
+	private class InfoPanelSetter implements EventHandler<MouseEvent>{
+		
+		/**
+		 * Pieces of information to be shown in the info-panel.
+		 */
+		private final Map<String,String> info;
+
+		/**
+		 * @param personID ID of the person whose info will be shown
+		 */
+		public InfoPanelSetter(String personID) {
+			List<CheckPoint> checkPoints = checkpointDb.getList(personID);
+			if (checkPoints == null){
+				throw new NullPointerException();
+			} else {
+				Map<String,String> personInfo = getInfoForPerson(personID, checkPoints);
+				if (personInfo == null){
+					throw new NullPointerException();
+				} else {
+					this.info = personInfo;
+				}
+			}
+		}
+
+		/**
+		 * Called when the user clicks on a person visualization.
+		 */
+		@Override
+		public void handle(MouseEvent arg0) {
+			InfoPanel.getInstance().setInfo("Person/car selected:", info);
+		}
+	}
+	
+	/**
+	 * Creates the keyframes that describe the initial position and visbility of the
+	 * person visualization given in the second parameter. The keyframes are added
+	 * to the collection provided in the first parameter.
+	 * @param personFrames Keyframes associated with a person
+	 * @param personShape Visualization of the (same) person 
+	 */
+	private void prepareInitialFrame(Collection<KeyFrame> personFrames, Node personShape){
+		DoubleProperty xProperty = personShape.translateXProperty();
+		DoubleProperty yProperty = personShape.translateYProperty();
+		BooleanProperty visibleProperty = personShape.visibleProperty();
+		KeyValue initX = new KeyValue(xProperty, xProperty.get());
+		KeyValue initY = new KeyValue(yProperty, yProperty.get());
+		KeyValue initVis = new KeyValue(visibleProperty, false);
+		personFrames.add(new KeyFrame(Duration.ZERO, initX, initY, initVis));
+	}
+	
+	/**
+	 * Given a checkpoint which determines a person's position, this method creates
+	 * corresponding keyframes (used by the JavaFX timeline) and adds them to the provided 
+	 * collection of keyframes.
+	 * @param cp Checkpoint to be processed. Determines a person's position.
+	 * @param nextCp The following checkpoint, presumably to be processed in the next call to this method.
+	 * @param personFrames Keyframes associated with the person to whom the checkpoint belongs to
+	 * @param personShape Visualization of the person to whom the checkpoint belongs to
+	 */
+	private void processPositionCheckPoint(CheckPoint cp, CheckPoint nextCp, 
+			Collection<KeyFrame> personFrames, Node personShape){
+		DoubleProperty xProperty = personShape.translateXProperty();
+		DoubleProperty yProperty = personShape.translateYProperty();
+		BooleanProperty visibleProperty = personShape.visibleProperty();
+		Duration actualTime = new Duration(convertToVisualizationTime(cp.getTime()));
+		LinkCorridor corridor = linkCorridors.get(cp.getLinkID());
+		Point2D point;
+		if (cp.getType() == Type.LINK_ENTERED){
+			point = corridor.getFromPoint();
+		} else {
+			point = corridor.getToPoint();
+		}
+		KeyValue xVal = new KeyValue(xProperty, point.getX());
+		KeyValue yVal = new KeyValue(yProperty, point.getY());
+		KeyValue visibleVal = new KeyValue(visibleProperty, true);
+		KeyFrame frame = new KeyFrame(actualTime, xVal, yVal, visibleVal);
+		personFrames.add(frame);
+		if ((nextCp != null) && (cp.getType() == Type.LINK_ENTERED)){
+			Duration nextCpTime = new Duration(convertToVisualizationTime(nextCp.getTime()));
+			double difference = nextCpTime.subtract(actualTime).toMillis();
+			double[] relativeDistances = corridor.getRelativeDistances();
+			List<Duration> intermediateTimes = new ArrayList<>();
+			for (int i = 0; i < relativeDistances.length; i++){
+				double time = (relativeDistances[i] * difference) + actualTime.toMillis();
+				intermediateTimes.add(new Duration(time));
+			}
+			List<Point2D> pathPoints = corridor.getPathPoints();
+			for (int i = 1; i < (pathPoints.size() - 1); i++){	// do not include start/end points
+				double x = pathPoints.get(i).getX();
+				xVal = new KeyValue(xProperty, x);
+				double y = pathPoints.get(i).getY();
+				yVal = new KeyValue(yProperty, y);
+				actualTime = intermediateTimes.get(i);
+				frame = new KeyFrame(actualTime, xVal, yVal);
+				personFrames.add(frame);
+			}
+		}
+	}
+	
+	/**
+	 * Given a checkpoint which does not determine a person's position, this method creates
+	 * corresponding keyframes (used by the JavaFX timeline) and adds them to the provided 
+	 * collection of keyframes.
+	 * @param cp Checkpoint to be processed. Does not determine a person's position.
+	 * @param personFrames Keyframes associated with the person to whom the checkpoint belongs to
+	 * @param personShape Visualization of the person to whom the checkpoint belongs to
+	 */
+	private void processOtherCheckPoint(CheckPoint cp, Collection<KeyFrame> personFrames,
+			Node personShape){
+		BooleanProperty visibleProperty = personShape.visibleProperty();
+		Duration actualTime = new Duration(convertToVisualizationTime(cp.getTime()));
+		KeyFrame frame;
+		if (cp.getType() == Type.PERSON_ENTERS){
+			KeyValue visibleVal = new KeyValue(visibleProperty, true);
+			frame = new KeyFrame(actualTime, visibleVal);
+		} else if (cp.getType() == Type.PERSON_LEAVES){
+			KeyValue visibleVal = new KeyValue(visibleProperty, false);
+			frame = new KeyFrame(actualTime, visibleVal);
+		} else {
+			throw new UnsupportedOperationException();
+		}
+		personFrames.add(frame);
+	}
+	
+	/**
 	 * For each person ID, stores a collection of all the key frames that capture the
 	 * movements of the person visualization
 	 */
 	private final Map<String,Collection<KeyFrame>> keyFramesForPeople = new HashMap<>();
+	
+	/**
+	 * It is thrown when the initial position of a person could not be determined
+	 */
+	@SuppressWarnings("serial")
+	private static class InitialPositionNotFoundException extends Exception {}
 
 	/**
 	 * Builds a {@link Node} that represents a moving person/vehicle on the map.
-	 * @param checkPoints Checkpoints of the person/vehicle, parsed from the event log.
+	 * @param positionCheckPoints Checkpoints of the person/vehicle, defining his/its position
 	 * @param provider Used for generating the visualizations of people
 	 * @return A {@link Shape} that represents a moving person/vehicle on the map.
 	 * @throws IOException When the shape could not be loaded for any reason
+	 * @throws InitialPositionNotFoundException When the checkpoints provided by the first parameter
+	 * are an empty collection
+	 * @throws IllegalArgumentException When either of the method parameters are null
 	 */
-	private Node buildPersonShape(List<CheckPoint> checkPoints, SceneBuilder.ShapeProvider provider) throws IOException{
-		double x = Double.MIN_VALUE;
-		double y = Double.MIN_VALUE;
-		for (CheckPoint cp : checkPoints){
-			if (cp.getType().equals(Type.POSITION_DEF)){
-				x = cp.getX();
-				y = cp.getY();
-				break;
-			}
+	private Node buildPersonShape(List<CheckPoint> positionCheckPoints, SceneBuilder.ShapeProvider provider) 
+			throws IOException, InitialPositionNotFoundException, IllegalArgumentException {
+		if (provider == null){
+			throw new IllegalArgumentException("Non-null ShapeProvider must be specified.");
 		}
-		if (x == Double.MIN_VALUE){
-			return null;
+		Point2D initialPosition = getInitialPosition(positionCheckPoints);
+		double x = initialPosition.getX();
+		double y = initialPosition.getY();
+		Node shape = provider.getNewShape();
+		if (shape != null){
+			shape.setTranslateX(transformX(x));
+			shape.setTranslateY(transformY(y));
+		}
+		return shape;
+	}
+	
+	/**
+	 * Given a list of checkpoints defining the position of a person, this method
+	 * returns the initial position of the person.
+	 * @param positionCheckPoints Checkpoints defining the position of a person
+	 * @return The initial position of the person
+	 * @throws InitialPositionNotFoundException When the list provided as a parameter is empty
+	 */
+	private Point2D getInitialPosition(List<CheckPoint> positionCheckPoints) 
+			throws InitialPositionNotFoundException{
+		if (positionCheckPoints == null){
+			throw new IllegalArgumentException("Non-null list of checkpoints must be supplied");
 		} else {
-			Node shape = provider.getNewShape();
-			if (shape != null){
-				shape.setTranslateX(transformX(x));
-				shape.setTranslateY(transformY(y));
+			CheckPoint cp = positionCheckPoints.get(0);
+			if (cp == null){
+				throw new InitialPositionNotFoundException();
+			} else {
+				MyLink link = links.get(cp.getLinkID());
+				MyNode node;
+				if (cp.getType() == Type.LINK_ENTERED){
+					node = link.getFrom();
+				} else {
+					node = link.getTo();
+				}
+				return new Point2D(node.getX(), node.getY());
 			}
-			return shape;
 		}
 	}
 	
@@ -779,7 +985,8 @@ public class MapScene {
 	 * @see {@link PreferencesBuilder}
 	 * @see {@link MapScene#getPreferences()}
 	 */
-	private final PreferencesBuilder preferences = new PreferencesBuilder(circles, lines, ensembleShapes);
+	private final PreferencesBuilder preferences = new PreferencesBuilder(
+			circles, links, linkCorridors, ensembleShapes);
 	
 	/**
 	 * @return A valid instance of the object providing access to the preferences objects.
@@ -900,7 +1107,7 @@ public class MapScene {
 		this.maxTime = maxTime;
 		this.duration = duration;
 		this.nodes = nodes;
-		this.links = links;
+		this.links.putAll(links);
 		double[] borders = getMapBorders();
 		this.minx = borders[0];
 		this.miny = borders[1];

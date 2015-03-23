@@ -10,11 +10,30 @@ package cz.filipekt.jdcv;
 class CheckPoint {	
 	
 	/**
-	 * A {@link CheckPoint} can bear three types of information - that a person entered 
-	 * the car, left the car, or is at a specified place at specified time with the car. 
+	 * A {@link CheckPoint} can bear various types of information - the types
+	 * are specified here 
 	 */
 	public static enum Type{
-		PERSON_ENTERS, PERSON_LEAVES, POSITION_DEF
+		
+		/**
+		 * Person entered a car
+		 */
+		PERSON_ENTERS, 
+		
+		/**
+		 * Person left a car
+		 */
+		PERSON_LEAVES, 
+		
+		/**
+		 * Person enters a link
+		 */
+		LINK_ENTERED,
+		
+		/**
+		 * Person leaves a link
+		 */
+		LINK_LEFT;
 	}
 	
 	/**
@@ -29,17 +48,19 @@ class CheckPoint {
 	public CheckPoint.Type getType() {
 		return type;
 	}
+	
+	/**
+	 * ID of the link
+	 */
+	private final String linkID;
+	
+	/**
+	 * @return ID of the link
+	 */
+	public String getLinkID() {
+		return linkID;
+	}
 
-	/**
-	 * x-coordinate of a point in map
-	 */
-	private final double x;
-	
-	/**
-	 * y-coordinate of a point in map
-	 */
-	private final double y;
-	
 	/**
 	 * A point in time
 	 */
@@ -72,22 +93,6 @@ class CheckPoint {
 	}
 
 	/**
-	 * @return x-coordinate of a point in map
-	 * @see {@link CheckPoint#x}
-	 */
-	public double getX() {
-		return x;
-	}
-
-	/**
-	 * @return y-coordinate of a point in map
-	 * @see {@link CheckPoint#y}
-	 */
-	public double getY() {
-		return y;
-	}
-
-	/**
 	 * @return A point in time
 	 * @see {@link CheckPoint#time}
 	 */
@@ -96,15 +101,14 @@ class CheckPoint {
 	}
 
 	/**
-	 * @param x x-coordinate of a point in map
-	 * @param y y-coordinate of a point in map
+	 * @param linkID ID of the link
 	 * @param time A point in time
-	 * @param person Who is driving
+	 * @param person Who is driving/moving
+	 * @param ID of the vehicle driven
 	 * @param type The type of information this {@link CheckPoint} bears.
 	 */
-	public CheckPoint(double x, double y, double time, String person, String vehicle, Type type) {
-		this.x = x;
-		this.y = y;
+	public CheckPoint(String linkID, double time, String person, String vehicle, Type type) {
+		this.linkID = linkID;
 		this.time = time;
 		this.person = person;
 		this.vehicle = vehicle;
@@ -119,15 +123,7 @@ class CheckPoint {
 	 * @param type
 	 */
 	public CheckPoint(double time, String person, String vehicle, Type type) {
-		this(0, 0, time, person, vehicle, type);
-	}
-
-	/**
-	 * Produces a human-readable representation of the object. For debugging purposes.
-	 */
-	@Override
-	public String toString() {
-		return "Time: " + time + ", x: " + x + ", y: " + y + ", person: " + person;
+		this(null, time, person, vehicle, type);
 	}
 	
 	

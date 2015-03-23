@@ -55,6 +55,56 @@ class CheckPointDatabase {
 	}
 	
 	/**
+	 * @param personID A person
+	 * @return The list of checkpoints (associated with the specified person) that
+	 * define the person's position (i.e. the checkpoints that say the person has
+	 * entered/left a vehicle are missed out) 
+	 */
+	public List<CheckPoint> getPositionsList(String personID){
+		return getSelectionList(personID, true);
+	}
+	
+	/**
+	 * @param personID A person
+	 * @return The list of checkpoints (associated with the specified person) that
+	 * do not specify the person's position, but contains other data
+	 */
+	public List<CheckPoint> getOthersList(String personID){
+		return getSelectionList(personID, false);
+	}
+	
+	/** 
+	 * @param personID A person
+	 * @param positions If true, position defining checkpoints are requested, else the
+	 * remaining checkpoints are requested.
+	 * @return The list of checkpoints associated with the person that moreover satisfy
+	 * the condition specified by the second parameter 
+	 */
+	private List<CheckPoint> getSelectionList(String personID, boolean positions){
+		if (database.containsKey(personID)){
+			List<CheckPoint> res = new ArrayList<>();
+			for (CheckPoint cp : database.get(personID)){
+				switch(cp.getType()){
+					case LINK_ENTERED:	//fall through
+					case LINK_LEFT:
+						if (positions){
+							res.add(cp);
+						}
+						break;
+					default:
+						if (!positions){
+							res.add(cp);
+						}
+						break;
+				}
+			}
+			return res;
+		} else {
+			return new ArrayList<>();
+		}
+	}
+	
+	/**
 	 * @return The IDs of all the persons that are recorded in this database.
 	 */
 	public Set<String> getKeys(){
@@ -125,7 +175,7 @@ class CheckPointDatabase {
 	public boolean getJustDeparted(String personID){
 		Boolean val = justDeparted.get(personID);
 		if (val == null){
-			return false;
+			return true;
 		} else {
 			return val;
 		}
