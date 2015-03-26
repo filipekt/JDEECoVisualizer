@@ -475,10 +475,11 @@ public class Visualizer extends Application {
 		configFileCharsets.getSelectionModel().select(preferredEncoding);
 		configFileCharsets.setPrefWidth(encodingBoxWidth);
 		Button configFileSelect = new Button("Select..");
-		configFileSelect.setOnMouseClicked(new FileChooserButton(stage, configFileField, "Select Configuration File"));
+		configFileSelect.setOnMouseClicked(new FileChooserButton(stage, configFileField, 
+				"Select Configuration File"));
 		Button configFileLoad = new Button("Load!");
-		configFileLoad.setOnAction(new ConfigFileLoader(configFileField, configFileCharsets, fields, 
-				charsets, durationField));
+		configFileLoad.setOnAction(new ConfigFileLoader(configFileField, configFileCharsets, 
+				fields, charsets, durationField));
 		pane.add(configFileLabel, 0, row);
 		pane.add(configFileField, 1, row);
 		pane.add(configFileCharsets, 2, row);
@@ -492,7 +493,8 @@ public class Visualizer extends Application {
 		
 		Button okButton = new Button("OK");
 		okButton.setOnMouseClicked(new SceneBuilder(fields, okButton, onlyComponentsBox, pane, 
-				Visualizer.this, durationField, timeLineStatus, timeLineRate, startAtField, endAtField));
+				Visualizer.this, durationField, timeLineStatus, timeLineRate, startAtField, 
+				endAtField, charsets));
 		pane.add(okButton, 1, row);
 		pane.setAlignment(Pos.CENTER);
 		pane.setHgap(importSceneGridHGap);

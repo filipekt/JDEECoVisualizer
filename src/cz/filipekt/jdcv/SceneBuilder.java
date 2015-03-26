@@ -1,8 +1,10 @@
 package cz.filipekt.jdcv;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -16,6 +18,7 @@ import javafx.event.EventHandler;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
@@ -29,6 +32,8 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
 
+import cz.filipekt.jdcv.BigFilesSearch.ElementTooLargeException;
+import cz.filipekt.jdcv.BigFilesSearch.SelectionTooBigException;
 import cz.filipekt.jdcv.CheckPoint.Type;
 import cz.filipekt.jdcv.events.EnteredOrLeftLink;
 import cz.filipekt.jdcv.events.EntersOrLeavesVehicle;
@@ -96,6 +101,11 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	 * Called whenever the visualization is sped up or down
 	 */
 	private final ChangeListener<Number> timeLineRate;
+	
+	/**
+	 * The combo boxes selecting the character encoding of the input text files
+	 */
+	private final List<ComboBox<String>> charsetBoxes;
 
 	/**
 	 * @param pathFields Text fields containing the paths to the source XML files.
@@ -113,11 +123,12 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	 * visualization should begin.
 	 * @param endAtField The field specifying the time (simulation time) at which the 
 	 * visualization should end.
+	 * @param charsetBoxes The combo boxes selecting the character encoding of the input text files
 	 * @throws NullPointerException When any of the parameters if null
 	 */
 	public SceneBuilder(List<TextField> pathFields, Button okButton, CheckBox onlyAgents, GridPane pane, Visualizer visualizer, 
 			TextField durationField, ChangeListener<Status> timeLineStatus, ChangeListener<Number> timeLineRate,
-			TextField startAtField, TextField endAtField) throws NullPointerException {
+			TextField startAtField, TextField endAtField, List<ComboBox<String>> charsetBoxes) throws NullPointerException {
 		if ((pathFields == null) || (okButton == null) || (onlyAgents == null) || (pane == null) ||
 				(visualizer == null) || (durationField == null) || (timeLineStatus == null) ||
 				(timeLineRate == null) || (startAtField == null) || (endAtField == null)){
@@ -133,6 +144,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		this.timeLineRate = timeLineRate;
 		this.startAtField = startAtField;
 		this.endAtField = endAtField;
+		this.charsetBoxes = charsetBoxes;
 	}
 	
 	/**
@@ -180,15 +192,16 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	 * @param endAt Value of the field specifying the simulation time at which visualization should end
 	 * @param duration Value of the field specifying the total duration of the visualization
 	 */
-	private void reportProblemsForScene(List<String> problems, final boolean onlyAgents, final Integer startAt,
-			final Integer endAt, final int duration){
+	private void reportProblemsForScene(List<String> problems, final boolean onlyAgents, 
+			final Double startAt, final Double endAt, final int duration){
 		if (problems.size() > 0){
 			StringBuilder sb = new StringBuilder();
 			for (String problem : problems){
 				sb.append(problem);
 				sb.append("\n");
 			}
-			Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.ERROR, "Some problems were encountered:", sb.toString());
+			Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.ERROR, "Some problems were encountered:", 
+					sb.toString());
 		} else {
 			new Thread(){
 
@@ -196,41 +209,38 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 				public void run() {
 					try {	
 						prepareNewScene(onlyAgents, startAt, endAt, duration);
-					} catch (final IOException ex){
-						Platform.runLater(new Runnable() {
-							
-							@Override
-							public void run() {
-								Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.ERROR,
-										"Could not read from one of the input files:",
-										ex.getMessage());								
-							}
-						});
-					} catch (final ParserConfigurationException ex) {
-						Platform.runLater(new Runnable() {
-							
-							@Override
-							public void run() {
-								Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.ERROR,
-										"A problem with XML parser configuration has been encountered:",
-										ex.getMessage());								
-							}
-						});
+					} catch (final IOException ex){						
+						reportError("Could not read from one of the input files:", ex.getMessage());
+					} catch (final ParserConfigurationException ex) {						
+						reportError("A problem with XML parser configuration has been encountered:",
+								ex.getMessage());
 					} catch (final SAXException ex) {
-						Platform.runLater(new Runnable() {
-							
-							@Override
-							public void run() {
-								Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.ERROR,
-										"A problem in syntax of one of the XML input files has been encountered:",
-										ex.getMessage());								
-							}
-						});
+						reportError("A problem in syntax of one of the XML input files has been " + 
+								"encountered:", ex.getMessage());
+					} catch (SelectionTooBigException e) {
+						reportError("The selected time interval is too large to handle.");
+					} catch (ElementTooLargeException e) {
+						reportError("An event element in the Matsim event log is too large.",
+								"Contact the application developer.");
 					}
 				}
 				
 			}.start();
 		}
+	}
+	
+	/**
+	 * Shows the error dialog using {@link Dialog} in the JavaFX application thread
+	 * @param messages The error messages to show
+	 */
+	private void reportError(final String... messages){
+		Platform.runLater(new Runnable() {
+			
+			@Override
+			public void run() {
+				Dialog.show(Dialog.Type.ERROR, messages);
+			}
+		});
 	}
 	
 	/**
@@ -249,26 +259,26 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		boolean onlyAgents = onlyAgentsBox.isSelected();
 		List<String> problems = new ArrayList<>();
 		String startAtText = startAtField.getText();
-		Integer startAtVal = null;
+		Double startAtVal = null;
 		try {
 			if ((startAtText != null) && (!startAtText.isEmpty())){
-				startAtVal = Integer.valueOf(startAtText);
+				startAtVal = Double.valueOf(startAtText);
 			}
 
 		} catch (NumberFormatException ex){
 			problems.add("The \"Start at\" field may only contain an integer number or nothing.");
 		}
-		Integer startAt = startAtVal;
+		Double startAt = startAtVal;
 		String endAtText = endAtField.getText();
-		Integer endAtVal = null;
+		Double endAtVal = null;
 		try {
 			if ((endAtText != null) && (!endAtText.isEmpty())){
-				endAtVal = Integer.valueOf(endAtText);
+				endAtVal = Double.valueOf(endAtText);
 			}
 		} catch (NumberFormatException ex) {
 			problems.add("The \"End at\" field may only contain an integer number or nothing.");
 		}
-		Integer endAt = endAtVal;
+		Double endAt = endAtVal;
 		String durationText = durationField.getText();
 		int durationVal = -1;
 		try {
@@ -293,9 +303,12 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	 * It is generally used as a wrapper for other kinds of exceptions.
 	 * @throws IOException If the source XML file, specified by a method parameter, 
 	 * does not exist or is inaccessible.
+	 * @throws ElementTooLargeException If an event element in the Matsim event log is too large
+	 * @throws SelectionTooBigException If the selected time interval is too large to handle 
 	 */
-	private void prepareNewScene(boolean onlyAgents, Integer startAt, Integer endAt, int duration) 
-			throws ParserConfigurationException, SAXException, IOException{
+	private void prepareNewScene(boolean onlyAgents, Double startAt, Double endAt, int duration) 
+			throws ParserConfigurationException, SAXException, IOException, SelectionTooBigException, 
+			ElementTooLargeException {
 		Platform.runLater(new Runnable() {
 			
 			@Override
@@ -304,24 +317,30 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 			}
 		});		
 		try {
-			Path networkFile = Paths.get(pathFields.get(0).getText());		
+			Path networkFile = Paths.get(pathFields.get(0).getText());
+			String networkFileEncoding = charsetBoxes.get(0).getSelectionModel().getSelectedItem();
 			Path eventsFile = Paths.get(pathFields.get(1).getText());
+			String eventsFileEncoding = charsetBoxes.get(1).getSelectionModel().getSelectedItem();
+			InputStream eventsStream = getEventLogStream(eventsFile, eventsFileEncoding, startAt, endAt);
 			Path ensembleFile = Paths.get(pathFields.get(2).getText());
+			String ensembleFileEncoding = charsetBoxes.get(2).getSelectionModel().getSelectedItem();
 			NodeHandler nodeHandler = new NodeHandler();
-			XMLextractor.run(networkFile, nodeHandler);
+			XMLextractor.run(networkFile, networkFileEncoding, nodeHandler);
 			LinkHandler linkHandler = new LinkHandler(nodeHandler.getNodes());
-			XMLextractor.run(networkFile, linkHandler);	
+			XMLextractor.run(networkFile, networkFileEncoding, linkHandler);	
 			EnsembleHandler ensembleHandler = new EnsembleHandler(startAt, endAt);
-			XMLextractor.run(ensembleFile, ensembleHandler);
-			MatsimEventHandler eventWithPersonHandler = new MatsimEventHandler(linkHandler.getLinks(), onlyAgents, startAt, endAt);
-			XMLextractor.run(eventsFile, eventWithPersonHandler);
-			final CheckPointDatabase cdb = buildCheckPointDatabase(eventWithPersonHandler.getEvents());
+			XMLextractor.run(ensembleFile, ensembleFileEncoding, ensembleHandler);
+			MatsimEventHandler matsimEventHandler = new MatsimEventHandler(
+					linkHandler.getLinks(), onlyAgents, startAt, endAt);
+			XMLextractor.run(eventsStream, eventsFileEncoding, matsimEventHandler);
+			final CheckPointDatabase cdb = buildCheckPointDatabase(matsimEventHandler.getEvents());
 			double minTime = startAt==null ? cdb.getMinTime() : (startAt * 1.0);
 			double maxTime = endAt==null ? cdb.getMaxTime() : (endAt * 1.0);
-			final MapScene scene = new MapScene(nodeHandler.getNodes(), linkHandler.getLinks(), visualizer.getMapWidth(), 
-					visualizer.getMapHeight(), timeLineStatus, timeLineRate, minTime, 
-					maxTime, duration, cdb, ensembleHandler.getEvents());
-			ShapeProvider circleProvider = new CircleProvider(scene.getPersonCircleRadius(), scene.getPersonCircleColor());
+			final MapScene scene = new MapScene(nodeHandler.getNodes(), linkHandler.getLinks(), 
+					visualizer.getMapWidth(), visualizer.getMapHeight(), timeLineStatus, timeLineRate, 
+					minTime, maxTime, duration, cdb, ensembleHandler.getEvents());
+			ShapeProvider circleProvider = new CircleProvider(scene.getPersonCircleRadius(), 
+					scene.getPersonCircleColor());
 			scene.update(circleProvider, false, null);
 			Platform.runLater(new Runnable() {
 				
@@ -341,6 +360,49 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 			});
 		}
 				
+	}
+	
+	/**
+	 * If the event log file is at most this big, it is parsed as a whole.
+	 * If the file is larger, intelligent searching is used.
+	 */
+	private final long eventLogFileThreashold = 10L * 1024L * 1024L;
+	
+	/**
+	 * Returns an input stream opened on a possibly modified version of the XML document given in 
+	 * the first parameter. If the XML file is small enough, the returned stream is simply opened 
+	 * on the file. If the XML file is larger than the threshold {@link SceneBuilder#eventLogFileThreashold}, 
+	 * the stream is opened on a modified version of the XML document. In this modified version, most of the 
+	 * event elements that do not belong to the time interval specified in the parameters are discarded, 
+	 * i.e. the resulting document may be much smaller than the whole original document.
+	 * For more info about what "most of the elements" means, see {@link BigFilesSearch}
+	 * @see {@link BigFilesSearch#getSectionWellFormed(double, double)} 
+	 * @param eventLog The Matsim event log file
+	 * @param encoding Character encoding set used by the Matsim event log file
+	 * @param fromTime If not null, specifies the lower bound of the desired time interval. If null,
+	 * no lower bound is given.
+	 * @param toTime If not null, specifies the upper bound of the desired time interval. If null,
+	 * no upper bound is given
+	 * @return Stream opened on a possibly modified version of the Matsim event log file
+	 * @throws IOException If it is impossible to read from the Matsim event log file
+	 * @throws ElementTooLargeException If some event element is too large
+	 * @throws SelectionTooBigException If the specified time interval is too large
+	 */
+	private InputStream getEventLogStream(Path eventLog, String encoding, Double fromTime, Double toTime) 
+			throws IOException, SelectionTooBigException, ElementTooLargeException{
+		if (Files.exists(eventLog)){
+			if (Files.size(eventLog) <= eventLogFileThreashold){
+				return Files.newInputStream(eventLog);
+			} else {
+				Charset charset = Charset.forName(encoding);
+				BigFilesSearch bfs = new BigFilesSearch(eventLog, charset);
+				String document = bfs.getSectionWellFormed(fromTime, toTime);
+				byte[] docBytes = document.getBytes(encoding);
+				return new ByteArrayInputStream(docBytes);
+			}
+		} else {
+			throw new IOException("Event log file does not exist.");
+		}
 	}
 	
 	/**

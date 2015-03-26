@@ -105,7 +105,7 @@ public class MatsimEventHandler extends DefaultHandler {
 	 * If {@link EnsembleHandler#startAtConstraint} holds, only events starting from
 	 * this time on are taken into account
 	 */
-	private final int startAtLimit;
+	private final double startAtLimit;
 	
 	/**
 	 * If true, only the events ending before time {@link EnsembleHandler#endAtLimit}
@@ -117,18 +117,19 @@ public class MatsimEventHandler extends DefaultHandler {
 	 * If {@link EnsembleHandler#endAtConstraint} holds, only the events ending before this
 	 * time are taken into account
 	 */
-	private final int endAtLimit;
+	private final double endAtLimit;
 
 	/**
 	 * @param links Collection of parsed link elements, as extracted from a network source file.
-	 * @param onlyComponents If true, only the events of the people corresponding to the injected JDEECo components will be
-	 * taken into account. If false, all of the events will be parsed.
+	 * @param onlyComponents If true, only the events of the people corresponding to the injected 
+	 * JDEECo components will be taken into account. If false, all of the events will be parsed.
 	 * @param startAt Only events starting from this time on are taken into account. If null,
 	 * no such constraint is applied.
 	 * @param endAt Only the events ending before this time are taken into account. If null,
 	 * no such constraint is applied.
 	 */
-	public MatsimEventHandler(Map<String, MyLink> links, boolean onlyComponents, Integer startAt, Integer endAt) {		
+	public MatsimEventHandler(Map<String, MyLink> links, boolean onlyComponents, Double startAt, 
+			Double endAt) {		
 		this.links = links;
 		this.onlyComponents = onlyComponents;
 		if (startAt == null){

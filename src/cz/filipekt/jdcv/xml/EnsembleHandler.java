@@ -71,7 +71,7 @@ public class EnsembleHandler extends DefaultHandler {
 	 * If {@link EnsembleHandler#startAtConstraint} holds, only events starting from
 	 * this time on are taken into account
 	 */
-	private final int startAtLimit;
+	private final double startAtLimit;
 	
 	/**
 	 * If true, only the events ending before time {@link EnsembleHandler#endAtLimit}
@@ -83,7 +83,7 @@ public class EnsembleHandler extends DefaultHandler {
 	 * If {@link EnsembleHandler#endAtConstraint} holds, only the events ending before this
 	 * time are taken into account
 	 */
-	private final int endAtLimit;
+	private final double endAtLimit;
 	
 	/**
 	 * @param startAt Only events starting from this time on are taken into account. If null,
@@ -91,7 +91,7 @@ public class EnsembleHandler extends DefaultHandler {
 	 * @param endAt Only the events ending before this time are taken into account. If null,
 	 * no such constraint is applied.
 	 */
-	public EnsembleHandler(Integer startAt, Integer endAt){
+	public EnsembleHandler(Double startAt, Double endAt){
 		if (startAt == null){
 			startAtConstraint = false;
 			startAtLimit = -1;
