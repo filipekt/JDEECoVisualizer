@@ -693,7 +693,6 @@ public class Visualizer extends Application {
 		ImageView recordStartImage = Resources.getImageView("record.png", playIconSize);
 		ImageView recordStopImage = Resources.getImageView("stop.png", playIconSize);
 		Button recordButton = new Button("Record", recordStartImage);
-		recordButton.setDisable(true);	// TODO fix the recording functionality
 		recordButton.setOnMouseClicked(new RecordingHandler(recordButton, recordStartImage, recordStopImage, this));
 		panel.getChildren().add(recordButton);
 		for (Node node : panel.getChildren()){

@@ -1,6 +1,6 @@
 package cz.filipekt.jdcv;
 
-import java.awt.image.BufferedImage;
+import java.awt.image.RenderedImage;
 import java.io.File;
 import java.io.IOException;
 import java.text.DateFormat;
@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,19 +19,26 @@ import javafx.animation.Animation.Status;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.value.ChangeListener;
+import javafx.concurrent.Task;
+import javafx.concurrent.WorkerStateEvent;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.effect.BoxBlur;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
@@ -40,9 +48,14 @@ import javafx.scene.shape.MoveTo;
 import javafx.scene.shape.Path;
 import javafx.scene.shape.Shape;
 import javafx.scene.transform.Scale;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+import javafx.stage.WindowEvent;
 import javafx.util.Duration;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.FileImageOutputStream;
 
 import cz.filipekt.jdcv.CheckPoint.Type;
 import cz.filipekt.jdcv.SceneBuilder.ImageProvider;
@@ -186,41 +199,122 @@ public class MapScene {
 	}
 	
 	/**
-	 * After recording of snapshots has been stopped, this method is called
-	 * to flush the recorded snapshots (stored in {@link MapScene#recordedFrames})
-	 * to disk.
+	 * Flushes the specified number of recorded snapshots (stored in 
+	 * {@link MapScene#recordedFrames}) to disk.
+	 * A new separate thread is used for this purpose. These threads are synchronized,
+	 * i.e. the caller does not have to care about threading.
+	 * @param framesCount Number of screenshots to flush
 	 */
-	public void flushRecordedFrames(){
-		//TODO use a single ImageWriter for all images
+	public void flushRecordedFrames(final int framesCount){
 		if (recordedFrames.size() > 0){
-			new Thread(new Runnable() {
+			showProgress();
+			Task<Void> task = new Task<Void>() {
 				
 				@Override
-				public void run() {
-					BufferedImage bim;
-					File file;
-					int i = 0;
-					DateFormat df = new SimpleDateFormat("yyyy-MMM-dd-HH-mm-ss");
-					String datePrefix = df.format(new Date());
-					for (WritableImage wi : recordedFrames){
-						bim = SwingFXUtils.fromFXImage(wi, null);
-						file = new File(recordingDirectory, datePrefix + "_" + i + ".png");
-						try {
-							ImageIO.write(bim, "png", file);
-						} catch (IOException ex) {}
-						i += 1;
+				public Void call() {											
+					synchronized(recordedFrames){
+						Iterator<ImageWriter> it = ImageIO.getImageWritersByFormatName("png");
+						ImageWriter writer = null;
+						if (it.hasNext()){
+							writer = it.next();
+						}
+						if (writer != null){
+							try {						
+								DateFormat df = new SimpleDateFormat("yyyy-MMM-dd-HH-mm-ss");
+								String datePrefix = df.format(new Date());
+								int i = 0;
+								long limit = Math.min(recordedFrames.size(), framesCount);
+								Iterator<WritableImage> iter = recordedFrames.iterator();
+								while (iter.hasNext() && (i < framesCount)){								
+									WritableImage wi = iter.next();
+									RenderedImage recordedImage = SwingFXUtils.fromFXImage(wi, null);
+									File file = new File(recordingDirectory, datePrefix + "_" + i + ".png");							
+									try (FileImageOutputStream outStream = new FileImageOutputStream(file)){									
+										writer.setOutput(outStream);
+										writer.write(recordedImage);	
+										outStream.flush();
+										updateProgress(i+1, limit);
+									} catch (IOException ex) {									
+									} finally {
+										iter.remove();
+										i++;
+									}
+								}
+							} finally {
+								writer.dispose();
+							}
+						}						
 					}
-					recordedFrames.clear();
+					return null;
 				}
-			}).start();
-			
+			};
+			EventHandler<WorkerStateEvent> flushWindowCloser = new EventHandler<WorkerStateEvent>() {
+				
+				@Override
+				public void handle(WorkerStateEvent arg0) {
+					if (flushWindow != null){
+						flushWindow.close();
+					}
+					if (timeLine.getStatus() == Status.PAUSED){
+						timeLine.play();
+					}
+					controlsBar.setDisable(false);
+				}
+			};
+			task.setOnSucceeded(flushWindowCloser);
+			task.setOnFailed(flushWindowCloser);
+			task.setOnCancelled(flushWindowCloser);
+			flushProgress.progressProperty().bind(task.progressProperty());
+			new Thread(task).start();
 		}
+	}
+	 
+	/**
+	 * Depicts the progress of flushing the recorded video 
+	 * frames to disc
+	 */
+	private final ProgressBar flushProgress = new ProgressBar();
+	
+	/**
+	 * Window depicting the progress of flushing the recorded video 
+	 * frames to disc
+	 */
+	private Stage flushWindow;
+	
+	/**
+	 * Shows a small window depicting the progress of flushing the recorded video 
+	 * frames to disc
+	 */
+	private void showProgress(){
+		Platform.runLater(new Runnable() {
+			
+			@Override
+			public void run() {	
+				controlsBar.setDisable(true);
+				flushWindow = new Stage();
+				flushWindow.setOnCloseRequest(new EventHandler<WindowEvent>() {
+					
+					@Override
+					public void handle(WindowEvent event) {
+						event.consume();
+					}
+				});
+				flushProgress.setPrefWidth(200);
+				flushWindow.initStyle(StageStyle.UTILITY);
+				flushWindow.setTitle("Flushing to Disc");
+				HBox pane = new HBox(flushProgress);
+				HBox.setHgrow(flushProgress, Priority.ALWAYS);
+				Scene scene = new Scene(pane);
+				flushWindow.setScene(scene);				
+				flushWindow.show();
+			}
+		});
 	}
 	
 	/**
 	 * Temporary storage for recorded snapshots when recording is underway.
 	 */
-	private List<WritableImage> recordedFrames = new ArrayList<>();
+	private final List<WritableImage> recordedFrames = new ArrayList<>();
 	
 	/**
 	 * If true, the {@link KeyFrame} instances produced by {@link MapScene#createRecordingFrames()}
@@ -229,18 +323,38 @@ public class MapScene {
 	private boolean recordingFramesAdded = false;
 	
 	/**
+	 * When recording is on, every time this number of frames is recorded, 
+	 * they are flushed to the disc.
+	 */
+	private final int recordingFlushInterval = 20;
+	
+	/**
 	 * @return {@link KeyFrame} instances that are later inserted into the {@link MapScene#timeLine} 
 	 * keyframes, to allow possible recording requests.
 	 */
 	private List<KeyFrame> createRecordingFrames(){
 		double totalTime = timeLine.getTotalDuration().toMillis();
 		List<KeyFrame> res = new ArrayList<>();
-		int count = (int)Math.floor(totalTime / recordingFreqency);
-		for (int i = 0; i<count; i++){
+		long count = (long)Math.floor(totalTime / recordingFreqency);
+		for (long i = 0; i<count; i++){
 			double time = recordingFreqency * i;
 			Duration timeVal = new Duration(time);
 			KeyFrame frame = new KeyFrame(timeVal, new RecordingAction());
 			res.add(frame);
+			if ((i % recordingFlushInterval) == 0){
+				frame = new KeyFrame(timeVal, new EventHandler<ActionEvent>(){
+
+					@Override
+					public void handle(ActionEvent arg0) {	
+						if (recordingInProgress){
+							timeLine.pause();
+							flushRecordedFrames(recordingFlushInterval);
+						}
+					}
+					
+				});
+				res.add(frame);
+			}
 		}		
 		return res;
 	}
@@ -255,7 +369,9 @@ public class MapScene {
 		public void handle(ActionEvent event) {
 			if (recordingInProgress){
 				WritableImage image = mapContainer.snapshot(null, null);
-				recordedFrames.add(image);
+				synchronized(recordedFrames){
+					recordedFrames.add(image);
+				}
 			}
 		}
 		
@@ -642,11 +758,41 @@ public class MapScene {
 	 * @param factor By this value the current zoom factor {@link MapScene#zoom} will be multiplied.
 	 */
 	public void changeZoom(double factor){
-		zoom *= factor;				
-		Scale scale = new Scale(factor, factor, 0, 0);		
+		setZoom(zoom * factor);
+	}
+	
+	/**
+	 * @return Zoom factor used to view the map
+	 * @see {@link MapScene#zoom}
+	 */
+	public double getZoom(){
+		return zoom;
+	}
+	
+	/**
+	 * Sets the value of the current zoom factor. Zooms in/out, appropriately, 
+	 * the container holding the scene map.
+	 * @param zoom New value of the zoom factor
+	 */
+	public void setZoom(double zoom){
+		this.zoom = zoom;
+		mapContainer.setPrefHeight(originalMapHeight * zoom);
+		mapContainer.setPrefWidth(originalMapWidth * zoom);		
+		mapContainer.getTransforms().clear();
+		Scale scale = new Scale(zoom, zoom, 0, 0);
 		mapContainer.getTransforms().add(scale);
-		mapContainer.setPrefHeight(mapContainer.getPrefHeight() * factor);
-		mapContainer.setPrefWidth(mapContainer.getPrefWidth() * factor);
+	}
+	
+	/**
+	 * @return Snapshot of the container holding the scene map.
+	 */
+	public WritableImage getSnap(){
+		mapContainer.setPrefHeight(originalMapHeight);
+		mapContainer.setPrefWidth(originalMapWidth);
+		WritableImage res = mapContainer.snapshot(null, null);
+		mapContainer.setPrefHeight(originalMapHeight * zoom);
+		mapContainer.setPrefWidth(originalMapWidth * zoom);
+		return res;
 	}
 	
 	/**
@@ -1084,6 +1230,21 @@ public class MapScene {
 	}
 	
 	/**
+	 * Preferred map width at the beginning, before any zooming takes place
+	 */
+	private final double originalMapWidth;
+	
+	/**
+	 * Preferred map height at the beginning, before any zooming takes place
+	 */
+	private final double originalMapHeight;
+	
+	/**
+	 * The tool bar containing the various zooming, pausing, forwarding etc. options
+	 */
+	private final HBox controlsBar;
+	
+	/**
 	 * @param nodes The network nodes. Keys = node IDs, values = {@link MyNode} node representations.
 	 * @param links The network links. Keys = link IDs, values = {@link MyLink} link representations.
 	 * @param mapWidth Preferred width of the map view, in pixels
@@ -1096,11 +1257,12 @@ public class MapScene {
 	 * @param checkpointDb The checkpoints (position of people) as encountered when 
 	 * parsing the input XML files. Contains positions of people on the map at specified times.
 	 * @param ensembleEvents The ensemble events as parsed from the ensemble event log file.
+	 * @param controlsBar The tool bar containing the various zooming, pausing, forwarding etc. options
 	 */
 	MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight,  
 			ChangeListener<? super Status> timeLineStatus, ChangeListener<? super Number> timeLineRate,
 			double minTime, double maxTime, int duration, CheckPointDatabase checkpointDb, 
-			List<EnsembleEvent> ensembleEvents) {
+			List<EnsembleEvent> ensembleEvents, HBox controlsBar) {
 		this.checkpointDb = checkpointDb;
 		this.ensembleEvents = ensembleEvents;
 		this.minTime = minTime;
@@ -1113,6 +1275,9 @@ public class MapScene {
 		this.miny = borders[1];
 		this.maxx = borders[2];
 		this.maxy = borders[3];
+		this.originalMapWidth = mapWidth;
+		this.originalMapHeight = mapHeight;
+		this.controlsBar = controlsBar;
 		widthFactor = (mapWidth - constantMargin) / (maxx - minx);
 		heightFactor = (mapHeight - constantMargin) / (maxy - miny);
 		mapContainer.setPrefSize(mapWidth, mapHeight);

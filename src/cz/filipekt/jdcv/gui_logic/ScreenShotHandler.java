@@ -46,8 +46,7 @@ public class ScreenShotHandler implements EventHandler<Event>{
 	 */
 	@Override
 	public void handle(Event arg0) {
-		MapScene scene = visualizer.getScene();
-		Stage stage = visualizer.getStage();
+		MapScene scene = visualizer.getScene();		
 		if (scene != null){
 			Timeline timeLine = scene.getTimeLine();
 			boolean paused = false;
@@ -55,11 +54,12 @@ public class ScreenShotHandler implements EventHandler<Event>{
 				timeLine.pause();
 				paused = true;
 			}
-			WritableImage image = scene.getMapContainer().snapshot(null, null);
+			WritableImage image = scene.getSnap();
 			FileChooser fileChooser = new FileChooser();
 			fileChooser.setTitle("Specify a PNG file");
 			FileChooser.ExtensionFilter filter = new ExtensionFilter("Just PNG files", "png");
 			fileChooser.getExtensionFilters().add(filter);
+			Stage stage = visualizer.getStage();
 			File file = fileChooser.showSaveDialog(stage);
 			if (file != null){
 				BufferedImage bim = SwingFXUtils.fromFXImage(image, null);

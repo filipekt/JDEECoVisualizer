@@ -338,7 +338,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 			double maxTime = endAt==null ? cdb.getMaxTime() : (endAt * 1.0);
 			final MapScene scene = new MapScene(nodeHandler.getNodes(), linkHandler.getLinks(), 
 					visualizer.getMapWidth(), visualizer.getMapHeight(), timeLineStatus, timeLineRate, 
-					minTime, maxTime, duration, cdb, ensembleHandler.getEvents());
+					minTime, maxTime, duration, cdb, ensembleHandler.getEvents(), visualizer.getControlsBar());
 			ShapeProvider circleProvider = new CircleProvider(scene.getPersonCircleRadius(), 
 					scene.getPersonCircleColor());
 			scene.update(circleProvider, false, null);

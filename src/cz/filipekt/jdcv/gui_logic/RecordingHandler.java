@@ -4,6 +4,8 @@ import java.io.File;
 
 import cz.filipekt.jdcv.MapScene;
 import cz.filipekt.jdcv.Visualizer;
+import cz.filipekt.jdcv.util.Dialog;
+import cz.filipekt.jdcv.util.Dialog.Type;
 import javafx.animation.Timeline;
 import javafx.animation.Animation.Status;
 import javafx.event.Event;
@@ -65,12 +67,11 @@ public class RecordingHandler implements EventHandler<Event>{
 	 */
 	@Override
 	public void handle(Event arg0) {
-		MapScene scene = visualizer.getScene();
-		Stage stage = visualizer.getStage();
+		MapScene scene = visualizer.getScene();		
 		if (scene != null){			
 			if (scene.isRecordingInProgress()){
 				scene.setRecordingInProgress(false);
-				scene.flushRecordedFrames();
+				scene.flushRecordedFrames(Integer.MAX_VALUE);
 				recordButton.setText("Record");
 				recordButton.setGraphic(recordStartImage);
 			} else {
@@ -82,12 +83,18 @@ public class RecordingHandler implements EventHandler<Event>{
 				}
 				DirectoryChooser dirChooser = new DirectoryChooser();
 				dirChooser.setTitle("Select a folder");
+				Stage stage = visualizer.getStage();
 				File dir = dirChooser.showDialog(stage);
 				if (dir != null){
 					scene.setRecordingDirectory(dir);
 					scene.setRecordingInProgress(true);
 					recordButton.setText("Stop");
 					recordButton.setGraphic(recordStopImage);
+					if (scene.getZoom() != 1.0){
+						scene.setZoom(1);
+						Dialog.show(Type.INFO, "The zoom has been restored.", 
+								"Recording only allowed when zoom is not in effect.");
+					}
 				}
 				if (paused){
 					timeLine.play();
