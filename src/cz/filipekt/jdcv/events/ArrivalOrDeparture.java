@@ -16,6 +16,9 @@ public class ArrivalOrDeparture implements MatsimEvent {
 		private static final String transitName = "transit_walk";
 		
 		public static LegMode from(String value){
+			if (value == null){
+				return null;
+			}
 			switch (value) {
 				case carName:
 					return CAR;

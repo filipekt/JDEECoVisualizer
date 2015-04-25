@@ -84,7 +84,7 @@ public class Visualizer extends Application {
 	 * Preferred width of the map view, in pixels.
 	 */
 	private final double mapWidth = 1000.0;
-	
+
 	/**
 	 * Preferred height of the map view, in pixels.
 	 */
@@ -102,10 +102,10 @@ public class Visualizer extends Application {
 	 * above actions - such as making the relevant GUI parts accessible or setting up
 	 * the slider at the bottom. 
 	 * @param newScene Well prepared simulation data and settings
-	 * @param min Starting simulation time
-	 * @param max Ending simulation time
+	 * @param matsimEventsPresent Marks whether we are visualizing any MATSIM events, i.e. moving cars/persons.
+	 * If false, the visualization only shows the map.
 	 */
-	public void setScene(final MapScene newScene, double min, double max) {
+	public void setScene(final MapScene newScene, boolean matsimEventsPresent) {
 		if (newScene == null){
 			showNoMap();
 			controlsBar.setDisable(true);
@@ -114,38 +114,46 @@ public class Visualizer extends Application {
 			timelineSlider.setDisable(true);
 			if ((scene != null) && (scene.getTimeLine() != null)){
 				scene.getTimeLine().stop();
-				scene.getTimeLine().currentTimeProperty().removeListener(timelineToSliderListener);
-				timelineSlider.valueProperty().removeListener(sliderToTimelineListener);
+				if (timelineToSliderListener != null){
+					scene.getTimeLine().currentTimeProperty().removeListener(timelineToSliderListener);
+					timelineToSliderListener = null;
+				}
+				if (sliderToTimelineListener != null){
+					timelineSlider.valueProperty().removeListener(sliderToTimelineListener);
+					sliderToTimelineListener = null;
+				}
 			}
 		} else {
 			ScrollPane mapScrollPane = newScene.getMapPane();
 			mapPane.getChildren().clear();
-			mapPane.getChildren().add(mapScrollPane);
-			controlsBar.setDisable(false);
+			mapPane.getChildren().add(mapScrollPane);											
 			graphicsColumn.setDisable(false);
 			switchablePanel.setDisable(false);
-			timelineSlider.setDisable(false);
-			setSliderParameters(min, max);
-			timelineToSliderListener = new ChangeListener<Duration>() {
-
-				@Override
-				public void changed(ObservableValue<? extends Duration> arg0,
-						Duration oldValue, Duration newValue) {
-					double millis = newValue.toMillis();
-					timelineSlider.setValue(newScene.convertToSimulationTime(millis));
-				}
-			};
-			newScene.getTimeLine().currentTimeProperty().addListener(timelineToSliderListener);
-			sliderToTimelineListener = new ChangeListener<Number>() {
-
-				@Override
-				public void changed(ObservableValue<? extends Number> arg0,
-						Number oldValue, Number newValue) {
-					Duration time = new Duration(newScene.convertToVisualizationTime(newValue.doubleValue()));
-					newScene.getTimeLine().jumpTo(time);
-				}
-			};
-			timelineSlider.valueProperty().addListener(sliderToTimelineListener);
+			if (matsimEventsPresent){
+				controlsBar.setDisable(false);
+				timelineSlider.setDisable(false);
+				setSliderParameters(newScene.getMinTime(), newScene.getMaxTime());
+				timelineToSliderListener = new ChangeListener<Duration>() {
+	
+					@Override
+					public void changed(ObservableValue<? extends Duration> arg0,
+							Duration oldValue, Duration newValue) {
+						double millis = newValue.toMillis();
+						timelineSlider.setValue(newScene.convertToSimulationTime(millis));
+					}
+				};
+				newScene.getTimeLine().currentTimeProperty().addListener(timelineToSliderListener);
+				sliderToTimelineListener = new ChangeListener<Number>() {
+	
+					@Override
+					public void changed(ObservableValue<? extends Number> arg0,
+							Number oldValue, Number newValue) {
+						Duration time = new Duration(newScene.convertToVisualizationTime(newValue.doubleValue()));
+						newScene.getTimeLine().jumpTo(time);
+					}
+				};
+				timelineSlider.valueProperty().addListener(sliderToTimelineListener);
+			}
 		}
 		this.scene = newScene;
 		providePreferencesToPlugins();
@@ -299,14 +307,6 @@ public class Visualizer extends Application {
 	 * Container for map view, or if no map is currently view, for a dialog for loading a map.
 	 */
 	private final Pane mapPane = new StackPane();
-	
-	/** 
-	 * @return Preferred width of the map view, in pixels.
-	 * @see {@link Visualizer#mapWidth}
-	 */
-	double getMapWidth() {
-		return mapWidth;
-	}
 
 	/**
 	 * @return Preferred height of the map view, in pixels.
@@ -314,6 +314,14 @@ public class Visualizer extends Application {
 	 */
 	double getMapHeight() {
 		return mapHeight;
+	}
+	
+	/**
+	 * @return Preferred width of the map view, in pixels.
+	 * @see {@link Visualizer#mapWidth}
+	 */
+	public double getMapWidth() {
+		return mapWidth;
 	}
 	
 	/**
@@ -431,20 +439,6 @@ public class Visualizer extends Application {
 		onlyComponentsBox.setSelected(true);
 		pane.add(onlyComponentsLabel, 0, row);
 		pane.add(onlyComponentsBox, 1, row);
-		row += 1;
-		
-		Label showOffCorridorsLabel = new Label("Show off the corridor functionality:");
-		final CheckBox showOffCorridorsBox = new CheckBox();
-		showOffCorridorsBox.setSelected(false);
-		showOffCorridorsBox.setOnAction(new EventHandler<ActionEvent>() {
-			
-			@Override
-			public void handle(ActionEvent arg0) {
-				Visualizer.decorateCorridors = showOffCorridorsBox.isSelected();
-			}
-		});
-		pane.add(showOffCorridorsLabel, 0, row);
-		pane.add(showOffCorridorsBox, 1, row);
 		row += 1;
 		
 		Label startAtLabel = new Label("Start at time (seconds):");
@@ -756,11 +750,6 @@ public class Visualizer extends Application {
 	 * Parent container for {@link Visualizer#timelineSlider}
 	 */
 	private final Pane sliderWrapper;
-	
-	/**
-	 * If true, the application will show off the corridor functionality.
-	 */
-	static boolean decorateCorridors;
 	
 	/**
 	 * Initializer for {@link Visualizer#sliderWrapper}.

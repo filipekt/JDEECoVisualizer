@@ -269,7 +269,9 @@ public class MatsimEventHandler extends DefaultHandler {
 		String linkVal = attributes.getValue(linkName);
 		Utils.ensureNonNullAndNonEmpty(linkVal);
 		String legModeVal = attributes.getValue(legModeName);
-		Utils.ensureNonNullAndNonEmpty(legModeVal);
+		if (!Utils.checkNonNullAndNonEmpty(legModeVal)){
+			legModeVal = null;
+		}
 		MyLink link = links.get(linkVal);
 		if (link == null){
 			throw new SAXException(new LinkNotFoundException());

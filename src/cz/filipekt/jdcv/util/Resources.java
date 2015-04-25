@@ -63,7 +63,7 @@ public class Resources {
 		 * wrapped in an instance of {@link ImageView}.
 		 * When the image could not be loaded, an empty {@link ImageView}
 		 * is returned.  
-		 * @param resourceName Name of the desired image
+		 * @param resourceName Name of the resource with desired image
 		 * @param size Preferred width and height of the {@link ImageView} 
 		 * @return The desired image wrapped in a {@link ImageView}. If the image could
 		 * not be loaded, an empty {@link ImageView} is returned.

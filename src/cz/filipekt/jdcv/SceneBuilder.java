@@ -25,6 +25,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
+import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
 
@@ -35,6 +36,7 @@ import org.xml.sax.SAXException;
 import cz.filipekt.jdcv.BigFilesSearch.ElementTooLargeException;
 import cz.filipekt.jdcv.BigFilesSearch.SelectionTooBigException;
 import cz.filipekt.jdcv.CheckPoint.Type;
+import cz.filipekt.jdcv.events.EnsembleEvent;
 import cz.filipekt.jdcv.events.EnteredOrLeftLink;
 import cz.filipekt.jdcv.events.EntersOrLeavesVehicle;
 import cz.filipekt.jdcv.events.EventType;
@@ -209,14 +211,17 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 				public void run() {
 					try {	
 						prepareNewScene(onlyAgents, startAt, endAt, duration);
-					} catch (final IOException ex){						
+					} catch (IOException ex){						
 						reportError("Could not read from one of the input files:", ex.getMessage());
-					} catch (final ParserConfigurationException ex) {						
+					} catch (ParserConfigurationException ex) {						
 						reportError("A problem with XML parser configuration has been encountered:",
 								ex.getMessage());
-					} catch (final SAXException ex) {
+					} catch (SAXException ex) {
 						reportError("A problem in syntax of one of the XML input files has been " + 
-								"encountered:", ex.getMessage());
+								"encountered:", 
+//								ex.getException()==null ? ex.getMessage() : ex.getException().getMessage());
+								ex.getException()==null ? ex.getMessage() : ex.getException().toString());
+						ex.printStackTrace();
 					} catch (SelectionTooBigException e) {
 						reportError("The selected time interval is too large to handle.");
 					} catch (ElementTooLargeException e) {
@@ -249,13 +254,13 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	 */
 	@Override
 	public void handle(javafx.event.Event event) {
-		for (TextField field : pathFields){
-			if ((field == null) || (field.getText() == null) || (field.getText().isEmpty())){
-				Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.INFO, 
-						"You must specify paths to all of the three source XML files.");
-				return;
-			}
-		}
+		TextField networkField = pathFields.get(0);
+		if ((networkField == null) || (networkField.getText() == null) || (networkField.getText().isEmpty())){
+			Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.INFO, 
+					"Path to the network definition XML file must be specified.");
+			return;
+		}			
+		determineSpecifiedFiles();
 		boolean onlyAgents = onlyAgentsBox.isSelected();
 		List<String> problems = new ArrayList<>();
 		String startAtText = startAtField.getText();
@@ -280,15 +285,47 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		}
 		Double endAt = endAtVal;
 		String durationText = durationField.getText();
-		int durationVal = -1;
-		try {
-			durationVal = Integer.parseInt(durationText);
-		} catch (NumberFormatException ex){
-			problems.add("The \"Duration\" field must contain an integer number.");
+		int duration = -1;
+		if (matsimEventsPresent){
+			try {
+				duration = Integer.parseInt(durationText);
+			} catch (NumberFormatException ex){
+				problems.add("The \"Target duration\" field must contain an integer number.");
+			}
 		}
-		int duration = durationVal;
 		reportProblemsForScene(problems, onlyAgents, startAt, endAt, duration);
 	}
+	
+	/**
+	 * Checks which input fields have been filled in, out of the three specifying the XML input files.
+	 * The (un)availability is recorded to {@link SceneBuilder#matsimEventsPresent} and
+	 * {@link SceneBuilder#ensembleEventsPresent}
+	 */
+	private void determineSpecifiedFiles(){
+		TextField eventField = pathFields.get(1);
+		if ((eventField == null) || (eventField.getText() == null) || eventField.getText().isEmpty()){
+			matsimEventsPresent = false;
+		} else {
+			matsimEventsPresent = true;
+		}
+		TextField ensembleField = pathFields.get(2);
+		if ((!matsimEventsPresent) || (ensembleField == null) || (ensembleField.getText() == null) || 
+				ensembleField.getText().isEmpty()){
+			ensembleEventsPresent = false;
+		} else {
+			ensembleEventsPresent = true;
+		}	
+	}
+	
+	/**
+	 * If true, a file containing the MATSIM event log has been specified by the user.
+	 */
+	private boolean matsimEventsPresent;
+	
+	/**
+	 * If true, a file containing the ensemble event log has been specified by the user.
+	 */
+	private boolean ensembleEventsPresent;
 	
 	/**
 	 * Creates a {@link MapScene} representation of the data provided by the input
@@ -317,36 +354,51 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 			}
 		});		
 		try {
-			Path networkFile = Paths.get(pathFields.get(0).getText());
+			TextField networkField = pathFields.get(0);
+			TextField eventField = pathFields.get(1);
+			TextField ensembleField = pathFields.get(2);	
+			Path networkFile = Paths.get(networkField.getText());
 			String networkFileEncoding = charsetBoxes.get(0).getSelectionModel().getSelectedItem();
-			Path eventsFile = Paths.get(pathFields.get(1).getText());
-			String eventsFileEncoding = charsetBoxes.get(1).getSelectionModel().getSelectedItem();
-			InputStream eventsStream = getEventLogStream(eventsFile, eventsFileEncoding, startAt, endAt);
-			Path ensembleFile = Paths.get(pathFields.get(2).getText());
-			String ensembleFileEncoding = charsetBoxes.get(2).getSelectionModel().getSelectedItem();
 			NodeHandler nodeHandler = new NodeHandler();
 			XMLextractor.run(networkFile, networkFileEncoding, nodeHandler);
 			LinkHandler linkHandler = new LinkHandler(nodeHandler.getNodes());
-			XMLextractor.run(networkFile, networkFileEncoding, linkHandler);	
-			EnsembleHandler ensembleHandler = new EnsembleHandler(startAt, endAt);
-			XMLextractor.run(ensembleFile, ensembleFileEncoding, ensembleHandler);
-			MatsimEventHandler matsimEventHandler = new MatsimEventHandler(
-					linkHandler.getLinks(), onlyAgents, startAt, endAt);
-			XMLextractor.run(eventsStream, eventsFileEncoding, matsimEventHandler);
-			final CheckPointDatabase cdb = buildCheckPointDatabase(matsimEventHandler.getEvents());
-			double minTime = startAt==null ? cdb.getMinTime() : (startAt * 1.0);
-			double maxTime = endAt==null ? cdb.getMaxTime() : (endAt * 1.0);
-			final MapScene scene = new MapScene(nodeHandler.getNodes(), linkHandler.getLinks(), 
-					visualizer.getMapWidth(), visualizer.getMapHeight(), timeLineStatus, timeLineRate, 
-					minTime, maxTime, duration, cdb, ensembleHandler.getEvents(), visualizer.getControlsBar());
-			ShapeProvider circleProvider = new CircleProvider(scene.getPersonCircleRadius(), 
-					scene.getPersonCircleColor());
+			XMLextractor.run(networkFile, networkFileEncoding, linkHandler);
+			double minTime, maxTime;
+			List<EnsembleEvent> events = null;
+			final CheckPointDatabase cdb;
+			if(matsimEventsPresent){
+				Path eventsFile = Paths.get(eventField.getText());
+				String eventsFileEncoding = charsetBoxes.get(1).getSelectionModel().getSelectedItem();
+				InputStream eventsStream = getEventLogStream(eventsFile, eventsFileEncoding, startAt, endAt);
+				MatsimEventHandler matsimEventHandler = new MatsimEventHandler(
+						linkHandler.getLinks(), onlyAgents, startAt, endAt);
+				XMLextractor.run(eventsStream, eventsFileEncoding, matsimEventHandler);
+				cdb = buildCheckPointDatabase(matsimEventHandler.getEvents());
+				minTime = startAt==null ? cdb.getMinTime() : (startAt * 1.0);
+				maxTime = endAt==null ? cdb.getMaxTime() : (endAt * 1.0);
+				if (ensembleEventsPresent){
+					Path ensembleFile = Paths.get(ensembleField.getText());
+					String ensembleFileEncoding = charsetBoxes.get(2).getSelectionModel().getSelectedItem();									
+					EnsembleHandler ensembleHandler = new EnsembleHandler(startAt, endAt);
+					XMLextractor.run(ensembleFile, ensembleFileEncoding, ensembleHandler);
+					events = ensembleHandler.getEvents();
+				}
+			} else {
+				minTime = 0;
+				maxTime = 0;
+				cdb = null;
+			}
+			ShapeProvider circleProvider = new CircleProvider(personCircleRadius, personCircleColor);
+			final MapScene scene = new MapScene(nodeHandler.getNodes(), linkHandler.getLinks(), visualizer.getMapWidth(), 
+					visualizer.getMapHeight(), timeLineStatus, timeLineRate, minTime, maxTime, duration, cdb, events, 
+					visualizer.getControlsBar(), matsimEventsPresent, ensembleEventsPresent, 8 * personCircleRadius,
+					circleProvider);			
 			scene.update(circleProvider, false, null);
 			Platform.runLater(new Runnable() {
 				
 				@Override
 				public void run() {					
-					visualizer.setScene(scene, cdb.getMinTime(), cdb.getMaxTime());										
+					visualizer.setScene(scene, matsimEventsPresent);										
 				}
 			});		
 		} finally {
@@ -361,6 +413,16 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		}
 				
 	}
+	
+	/**
+	 * Radius of the circle representing a person in the visualization
+	 */
+	private final double personCircleRadius = 2.5;
+	
+	/**
+	 * Color of the circle representing a person in the visualization
+	 */
+	private final Paint personCircleColor = Color.LIME;
 	
 	/**
 	 * If the event log file is at most this big, it is parsed as a whole.

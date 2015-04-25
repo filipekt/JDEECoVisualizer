@@ -42,10 +42,6 @@ import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Circle;
-import javafx.scene.shape.Line;
-import javafx.scene.shape.LineTo;
-import javafx.scene.shape.MoveTo;
-import javafx.scene.shape.Path;
 import javafx.scene.shape.Shape;
 import javafx.scene.transform.Scale;
 import javafx.stage.Stage;
@@ -93,34 +89,34 @@ public class MapScene {
 	private final Map<Node,MyNode> circles = new HashMap<>();
 	
 	/**
-	 * Minimal value of x-coordinate among all the nodes in {@link MapScene#nodes}
+	 * Minimal value of the x-coordinate among all the nodes in the MATSIM map
 	 */
 	private final double minx;
 	
 	/**
-	 * Minimal value of y-coordinate among all the nodes in {@link MapScene#nodes}
+	 * Minimal value of the y-coordinate among all the nodes in the MATSIM map
 	 */
 	private final double miny;
 	
 	/**
-	 * Maximal value of x-coordinate among all the nodes in {@link MapScene#nodes}
+	 * Maximal value of the x-coordinate among all the nodes in the MATSIM map
 	 */
 	private final double maxx;
 	
 	/**
-	 * Maximal value of y-coordinate among all the nodes in {@link MapScene#nodes}
+	 * Maximal value of the y-coordinate among all the nodes in the MATSIM map
 	 */
 	private final double maxy;
 	
 	/**
-	 * Factor by which the x-coordinate scale should be multiplied so that the network view
-	 * fits nicely into the window of preferred width {@link MapScene#preferredMapWidth}.
+	 * Factor by which the x-coordinate scale (from MATSIM map) must be multiplied so 
+	 * that the resulting network view fits nicely into the window of preferred width 
 	 */
 	private final double widthFactor;
 	
 	/**
-	 * Factor by which the y-coordinate scale should be multiplied so that the network view
-	 * fits nicely into the window of preferred height {@link MapScene#preferredMapHeight}.
+	 * Factor by which the y-coordinate scale (from MATSIM map) must be multiplied so 
+	 * that the resulting network view fits nicely into the window of preferred height 
 	 */
 	private final double heightFactor;
 
@@ -191,7 +187,7 @@ public class MapScene {
 	 * snapshots are added to the keyframe list of {@link MapScene#timeLine}.
 	 */
 	private void addRecordingFrames(){
-		if (!recordingFramesAdded){			
+		if (matsimEventsPresent && !recordingFramesAdded){			
 			List<KeyFrame> frames = createRecordingFrames();
 			timeLine.getKeyFrames().addAll(frames);
 			recordingFramesAdded = true;
@@ -412,18 +408,11 @@ public class MapScene {
 	private Map<Shape,MyNode> generateCircles(){
 		Map<Shape,MyNode> res = new HashMap<>();
 		for (MyNode node : nodes.values()){
-			double x = node.getX();
-			x -= minx;
-			x *= (widthFactor * zoom);
-			x += (constantMargin / 2);
-			double y = node.getY();
-			y -= miny;
-			y *= (heightFactor * zoom);
-			y += (constantMargin / 2);
+			double x = matsimToVisual.transformX(node.getX());
+			double y = matsimToVisual.transformY(node.getY());
 			final Circle circle = new Circle(x, y, nodeRadius, nodeColor);
 			circle.setEffect(new BoxBlur());
-			res.put(circle, node);
-			
+			res.put(circle, node);			
 			final Map<String,String> data = new LinkedHashMap<>();
 			data.put("Node ID", node.getId());
 			data.put("x-coordinate", node.getX() + "");
@@ -483,113 +472,29 @@ public class MapScene {
 	 */
 	private Map<String,LinkCorridor> generateLinkCorridors(){
 		Map<String,LinkCorridor> res = new HashMap<>();
-		for (MyLink link : links.values()){
-			Point2D fromPoint = new Point2D(transformX(link.getFrom().getX()), 
-					transformY(link.getFrom().getY()));
-			Point2D toPoint = new Point2D(transformX(link.getTo().getX()), 
-					transformY(link.getTo().getY()));
-			List<Point2D> path;
-			if (Visualizer.decorateCorridors){
-				Point2D midPoint = getMidPoint(fromPoint, toPoint);
-				path = Arrays.asList(fromPoint, midPoint, toPoint);
-			} else {
-				path = Arrays.asList(fromPoint, toPoint);
-			}
-			Node visual = getVisualCorridor(fromPoint, toPoint);
-			connectLinkWithInfoPanel(link, visual);
-			LinkCorridor corridor = new LinkCorridor(link.getId(), visual, path);
+		for (MyLink link : links.values()){			
+			Point2D fromPoint = new Point2D(matsimToVisual.transformX(link.getFrom().getX()), 
+					matsimToVisual.transformY(link.getFrom().getY()));
+			Point2D toPoint = new Point2D(matsimToVisual.transformX(link.getTo().getX()), 
+					matsimToVisual.transformY(link.getTo().getY()));
+			CorridorLoader cl = new CorridorLoader(link, fromPoint, toPoint);
+			LinkCorridor corridor = cl.build();
+			connectLinkWithInfoPanel(link, corridor.getVisualization());
 			res.put(link.getId(), corridor);
 		}
 		return res;
-	}
+	}		
 	
 	/**
-	 * Returns the visualization of the link going between the given points.
-	 * @param fromPoint Link goes from this point
-	 * @param toPoint Link ends at this point
-	 * @return Visualization of the link going between the given points
+	 * Double of the width of the white margin that is added on each side of the map.
 	 */
-	private Node getVisualCorridor(Point2D fromPoint, Point2D toPoint){
-		final Path visual = new Path();
-		MoveTo moveTo = new MoveTo(fromPoint.getX(), fromPoint.getY());
-		if (Visualizer.decorateCorridors){
-			Point2D midPoint = getMidPoint(fromPoint, toPoint);
-			LineTo lineTo1 = new LineTo(midPoint.getX(), midPoint.getY());
-			LineTo lineTo2 = new LineTo(toPoint.getX(), toPoint.getY());
-			visual.getElements().addAll(moveTo, lineTo1, lineTo2);
-		} else {
-			LineTo lineTo = new LineTo(toPoint.getX(), toPoint.getY());
-			visual.getElements().addAll(moveTo, lineTo);
-		}
-		visual.setStroke(linkDefaultColor);
-		visual.setStrokeWidth(linkWidth);
-		visual.setOnMouseEntered(new EventHandler<MouseEvent>() {
-
-			@Override
-			public void handle(MouseEvent arg0) {
-				visual.setStrokeWidth(linkWidth * 3);
-			}
-		});
-		visual.setOnMouseExited(new EventHandler<MouseEvent>() {
-
-			@Override
-			public void handle(MouseEvent arg0) {
-				visual.setStrokeWidth(linkWidth);
-			}
-		});
-		return visual;
-	}
-	
+	private final double constantMargin = 25.0;
+		
 	/**
-	 * Returns a point near the middle of the line (from-to). Exactly:
-	 * let L be the distance between (from,to). Let P be the line that is
-	 * perpendicular to (from,to) and crosses (from,to) in the middle.
-	 * Then the returned point lies on P at the distance L/4 from the crossing.
+	 * Converter from the coordinates used in the MATSIM simulation map to the coordinates
+	 * used in the visualization, i.e. as used on the screen
 	 */
-	private Point2D getMidPoint(Point2D from, Point2D to){
-		double x = (from.getX() + to.getX()) / 2;
-		double y = (from.getY() + to.getY()) / 2;
-		Point2D midPoint = new Point2D(x, y);
-		Point2D translated = to.subtract(from);
-		Point2D translatedOrthogonal = new Point2D(translated.getY(), -translated.getX());
-		Point2D transaltedOrthogonalSmall = new Point2D(translatedOrthogonal.getX() / 4, 
-				translatedOrthogonal.getY() / 4);
-		return transaltedOrthogonalSmall.add(midPoint);
-	}
-	
-	/**
-	 * Width of the {@link Line} instances that represent links, in pixels.
-	 */
-	private final double linkWidth = 2.0;
-	
-	/**
-	 * Default color of the {@link Line} instances that represent links
-	 */
-	private final Paint linkDefaultColor = Color.SILVER;
-	
-	/**
-	 * @param x An x-coordinate as given in an XML element such event, link, etc. 
-	 * @return The x-coordinate converted to the value used in the map visualization, where the
-	 * coordinates correspond to the actual pixels on the screen (before zooming). 
-	 */
-	private double transformX(double x){
-		x -= minx;
-		x *= (widthFactor * zoom);
-		x += (constantMargin / 2);
-		return x;
-	}
-	
-	/**
-	 * @param y A y-coordinate as given in an XML element such event, link, etc.
-	 * @return The y-coordinate converted to the value used in the map visualization, where the
-	 * coordinates correspond to the actual pixels on the screen (before zooming). 
-	 */
-	private double transformY(double y){
-		y -= miny;
-		y *= (heightFactor * zoom);
-		y += (constantMargin / 2);
-		return y;
-	}
+	private final CoordinateTransformer matsimToVisual;
 	
 	/**
 	 * The simulation time at which we start the visualization
@@ -601,6 +506,22 @@ public class MapScene {
 	 */
 	private final double maxTime;
 	
+	/**
+	 * @return The simulation time at which we start the visualization
+	 * @see {@link MapScene#minTime}
+	 */
+	public double getMinTime() {
+		return minTime;
+	}
+
+	/**
+	 * @return The simulation time at which we end the visualization
+	 * @see {@link MapScene#maxTime}
+	 */
+	public double getMaxTime() {
+		return maxTime;
+	}
+
 	/**
 	 * The actual intended duration of the visualization (i.e. in visualization time)
 	 */
@@ -633,37 +554,6 @@ public class MapScene {
 	private final Map<String,Node> personShapes = new HashMap<>();
 	
 	/**
-	 * Radius of the circle representing a person in the visualization
-	 */
-	private final double personCircleRadius = 2.5;
-	
-	/**
-	 * @return Radius of the circle representing a person in the visualization
-	 * @see {@link MapScene#personCircleRadius}
-	 */
-	double getPersonCircleRadius() {
-		return personCircleRadius;
-	}
-	
-	/**
-	 * Both width and height of the image that represents a person/car in the visualization
-	 */
-	private final double personImageWidth = 8 * personCircleRadius;
-	
-	/**
-	 * Color of the circle representing a person in the visualization
-	 */
-	private final Paint personCircleColor = Color.LIME;
-	
-	/**
-	 * @return Color of the circle representing a person in the visualization
-	 * @see {@link MapScene#personCircleColor}
-	 */
-	Paint getPersonCircleColor() {
-		return personCircleColor;
-	}
-
-	/**
 	 * Timeline used for animation of the simulation output 
 	 */
 	private final Timeline timeLine = new Timeline();
@@ -679,7 +569,7 @@ public class MapScene {
 	/**
 	 * Maps each link ID to the corresponding link visualization
 	 */
-	private final Map<String,LinkCorridor> linkCorridors = new HashMap<>();
+	private final Map<String,LinkCorridor> linkCorridors = new HashMap<>();	
 	
 	/**
 	 * Updates the collections of node instances that represent the map elements,
@@ -813,12 +703,7 @@ public class MapScene {
 	/**
 	 * Scrollable container for {@link MapScene#mapContainer}
 	 */
-	private final ScrollPane mapPane = new ScrollPane(mapContainer);
-
-	/**
-	 * Double of the width of the white margin that is added on each side of the map.
-	 */
-	private final double constantMargin = 25.0;
+	private final ScrollPane mapPane = new ScrollPane(mapContainer);	
 	
 	/**
 	 * Maps each ensemble membership relation to the graphical representation of this relation.
@@ -834,46 +719,15 @@ public class MapScene {
 	 * @throws IOException When a person shape could not be loaded for any reason
 	 */
 	private void produceShapes(ShapeProvider shapeProvider, String[] selectedPeople) throws IOException{
-		Collection<KeyFrame> keyFrames = buildFramesForPeople(shapeProvider, selectedPeople);
-		Collection<KeyFrame> keyFrames2 = buildFramesForEnsembles();
-		timeLine.getKeyFrames().addAll(keyFrames);
-		timeLine.getKeyFrames().addAll(keyFrames2);
-	}
-	
-	/**
-	 * Given a person ID and the checkpoints associated with the person's movement, this method
-	 * creates a collection of key-value pairs for use by the info side-panel, with each pair
-	 * containing a piece of relevant information about the person.
-	 * @param personID ID of the person
-	 * @param checkPoints Checkpoints associated with the person, describing its movements
-	 * @return Collection of key-value pairs for use by the info side-panel
-	 */
-	private Map<String,String> getInfoForPerson(String personID, List<CheckPoint> checkPoints){
-		Map<String,String> res = new LinkedHashMap<>();
-		res.put("Person ID", personID);
-		for (CheckPoint cp : checkPoints){
-			String key = "Time " + cp.getTime();
-			String value = null;
-			switch (cp.getType()){
-				case PERSON_ENTERS:
-					value = "person enters vehicle";
-					break;
-				case PERSON_LEAVES:
-					value = "persons leaves vehicle";
-					break;
-				case LINK_ENTERED:
-					value = "enters link " + cp.getLinkID();
-					break;
-				case LINK_LEFT:
-					value = "leaves link " + cp.getLinkID();
-					break;
-			}
-			if (value != null){
-				res.put(key, value);
+		if (matsimEventsPresent){
+			Collection<KeyFrame> keyFrames = buildFramesForPeople(shapeProvider, selectedPeople);
+			timeLine.getKeyFrames().addAll(keyFrames);
+			if (ensembleEventsPresent){
+				Collection<KeyFrame> keyFrames2 = buildFramesForEnsembles();			
+				timeLine.getKeyFrames().addAll(keyFrames2);
 			}
 		}
-		return res;
-	}
+	}	
 	
 	/**
 	 * Using the {@link MapScene#checkpointDb}, this method converts its contents into the format
@@ -900,7 +754,7 @@ public class MapScene {
 				if ((positionCheckpoints != null) && (!positionCheckpoints.isEmpty())){
 					try {
 						Node personShape = buildPersonShape(positionCheckpoints, shapeProvider);
-						personShape.setOnMouseClicked(new InfoPanelSetter(personID));
+						personShape.setOnMouseClicked(new InfoPanelSetter(personID, checkpointDb));
 						personShape.setVisible(false);
 						Collection<KeyFrame> personFrames = new ArrayList<>();
 						prepareInitialFrame(personFrames, personShape);
@@ -930,43 +784,6 @@ public class MapScene {
 			}
 		}
 		return frames;
-	}
-	
-	/**
-	 * Handler for the event that the user clicks on a person visualization.
-	 * It shows detailed info about that person in the info-panel.
-	 */
-	private class InfoPanelSetter implements EventHandler<MouseEvent>{
-		
-		/**
-		 * Pieces of information to be shown in the info-panel.
-		 */
-		private final Map<String,String> info;
-
-		/**
-		 * @param personID ID of the person whose info will be shown
-		 */
-		public InfoPanelSetter(String personID) {
-			List<CheckPoint> checkPoints = checkpointDb.getList(personID);
-			if (checkPoints == null){
-				throw new NullPointerException();
-			} else {
-				Map<String,String> personInfo = getInfoForPerson(personID, checkPoints);
-				if (personInfo == null){
-					throw new NullPointerException();
-				} else {
-					this.info = personInfo;
-				}
-			}
-		}
-
-		/**
-		 * Called when the user clicks on a person visualization.
-		 */
-		@Override
-		public void handle(MouseEvent arg0) {
-			InfoPanel.getInstance().setInfo("Person/car selected:", info);
-		}
 	}
 	
 	/**
@@ -1092,8 +909,8 @@ public class MapScene {
 		double y = initialPosition.getY();
 		Node shape = provider.getNewShape();
 		if (shape != null){
-			shape.setTranslateX(transformX(x));
-			shape.setTranslateY(transformY(y));
+			shape.setTranslateX(matsimToVisual.transformX(x));
+			shape.setTranslateY(matsimToVisual.transformY(y));
 		}
 		return shape;
 	}
@@ -1187,9 +1004,8 @@ public class MapScene {
 	}
 
 	/**
-	 * The checkpoints (position of people) as encountered when 
-	 * parsing the input XML files. Contains positions of people 
-	 * on the map at specified times.
+	 * The checkpoints (position of people) as encountered when parsing the input XML 
+	 * files. Contains positions of people on the map at specified times.
 	 */
 	private final CheckPointDatabase checkpointDb;
 	
@@ -1213,7 +1029,7 @@ public class MapScene {
 			timeLine.stop();
 			ShapeProvider provider;
 			if (imageName == null){
-				provider = new SceneBuilder.CircleProvider(personCircleRadius, personCircleColor);
+				provider = circleProvider;
 			} else {
 				provider = new ImageProvider(isResource, imageName, personImageWidth);
 			}
@@ -1245,6 +1061,29 @@ public class MapScene {
 	private final HBox controlsBar;
 	
 	/**
+	 * Marks whether we are visualizing any MATSIM events, i.e. moving cars/persons.
+	 * If false, the visualization only shows the map.
+	 */
+	private final boolean matsimEventsPresent;
+	
+	/**
+	 * Marks whether we are visualizing any ensemble membership events. If false, 
+	 * just the map is shown plus, if {@link MapScene#matsimEventsPresent} is 
+	 * true, the moving cars/persons.
+	 */
+	private final boolean ensembleEventsPresent;
+	
+	/**
+	 * Both width and height of the image that represents a person/car in the visualization
+	 */
+	private final double personImageWidth;
+	
+	/**
+	 * Generates the plain circles for cars/people representation
+	 */
+	private final ShapeProvider circleProvider;
+	
+	/**
 	 * @param nodes The network nodes. Keys = node IDs, values = {@link MyNode} node representations.
 	 * @param links The network links. Keys = link IDs, values = {@link MyLink} link representations.
 	 * @param mapWidth Preferred width of the map view, in pixels
@@ -1254,15 +1093,24 @@ public class MapScene {
 	 * @param minTime The simulation time at which we start the visualization
 	 * @param maxTime The simulation time at which we end the visualization
 	 * @param duration The actual intended duration of the visualization (i.e. in visualization time)
-	 * @param checkpointDb The checkpoints (position of people) as encountered when 
+	 * @param checkpointDb The checkpoints (positions of people) as encountered when 
 	 * parsing the input XML files. Contains positions of people on the map at specified times.
 	 * @param ensembleEvents The ensemble events as parsed from the ensemble event log file.
 	 * @param controlsBar The tool bar containing the various zooming, pausing, forwarding etc. options
+	 * @param matsimEventsPresent Marks whether we are visualizing any MATSIM events, i.e. moving cars/persons.
+	 * If false, the visualization only shows the map.
+	 * @param ensembleEventsPresent Marks whether we are visualizing any ensemble membership events. If false, 
+	 * just the map is shown plus, if {@link MapScene#matsimEventsPresent} is 
+	 * true, the moving cars/persons.
+	 * @param personImageWidth Both width and height of the image that represents a person/car in 
+	 * the visualization
+	 * @param circleProvider Generates the plain circles for cars/people representation
 	 */
 	MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight,  
 			ChangeListener<? super Status> timeLineStatus, ChangeListener<? super Number> timeLineRate,
 			double minTime, double maxTime, int duration, CheckPointDatabase checkpointDb, 
-			List<EnsembleEvent> ensembleEvents, HBox controlsBar) {
+			List<EnsembleEvent> ensembleEvents, HBox controlsBar, boolean matsimEventsPresent,
+			boolean ensembleEventsPresent, double personImageWidth, ShapeProvider circleProvider) {
 		this.checkpointDb = checkpointDb;
 		this.ensembleEvents = ensembleEvents;
 		this.minTime = minTime;
@@ -1284,6 +1132,11 @@ public class MapScene {
 		mapContainer.setId("mapContainer");
 		timeLine.statusProperty().addListener(timeLineStatus);
 		timeLine.rateProperty().addListener(timeLineRate);
+		matsimToVisual = new MatsimToVisualCoordinates(minx, miny, widthFactor, heightFactor, constantMargin/2);
+		this.matsimEventsPresent = matsimEventsPresent;
+		this.ensembleEventsPresent = ensembleEventsPresent;
+		this.personImageWidth = personImageWidth;
+		this.circleProvider = circleProvider;
 	}
 
 }

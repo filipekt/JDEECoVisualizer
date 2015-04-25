@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<events>
+	<event time="10.0" type="PersonEntersVehicle" person="V1" vehicle="V1" />
+	<event time="10.0" type="departure" person="V1" link="1" />
+	<event time="10.0" type="left link" person="V1" link="1" />
+	<event time="10.0" type="entered link" person="V1" link="4opp" />
+	<event time="25.0" type="left link" person="V1" link="4opp" />
+	<event time="25.0" type="entered link" person="V1" link="4" />
+	<event time="40.0" type="left link" person="V1" link="4" />
+	<event time="40.0" type="arrival" person="V1" link="4" />
+	<event time="40.0" type="PersonLeavesVehicle" person="V1" vehicle="V1" />
+</events>

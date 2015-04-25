@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<network name="custom_corridors">
+	<nodes>
+		<node id="top_left" x="10.0" y="10.0" />
+		<node id="center" x="20.0" y="20.0" />
+		<node id="top_right" x="30.0" y="10.0" />
+		<node id="bottom_left" x="10.0" y="30.0" />
+		<node id="bottom_right" x="30.0" y="30.0" />
+	</nodes>
+	<links>
+		<link id="1" from="top_left" to="center" />
+		<link id="1opp" from="center" to="top_left" />
+		<link id="2" from="bottom_right" to="center" />
+		<link id="2opp" from="center" to="bottom_right" />
+		<link id="3" from="bottom_left" to="center" />
+		<link id="3opp" from="center" to="bottom_left" />
+		<link id="4" from="top_right" to="center">
+			<link_img source="arrow.png" fromx="836" fromy="1280" tox="1" toy="250" />
+			<link_path>
+				<point x="836" y="653" />
+				<point x="817" y="446" />
+				<point x="695" y="305" />
+				<point x="483" y="251" />
+			</link_path>
+		</link>
+		<link id="4opp" from="center" to="top_right">
+		<link_img source="arrow.png" fromx="836" fromy="1280" tox="1" toy="250" />
+			<link_path>
+				<point x="836" y="653" />
+				<point x="817" y="446" />
+				<point x="695" y="305" />
+				<point x="483" y="251" />
+			</link_path>
+		</link>
+	</links>
+</network>

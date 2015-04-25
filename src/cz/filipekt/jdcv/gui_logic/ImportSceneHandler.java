@@ -47,7 +47,7 @@ public class ImportSceneHandler implements EventHandler<ActionEvent> {
 	 */
 	@Override
 	public void handle(ActionEvent arg0) {
-		visualizer.setScene(null, 0, 0);
+		visualizer.setScene(null, false);
 		visualizer.showImportScene();				
         closeThisSceneItem.setDisable(false);
         importSceneItem.setDisable(true);
