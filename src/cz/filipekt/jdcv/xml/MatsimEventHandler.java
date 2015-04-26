@@ -165,12 +165,13 @@ public class MatsimEventHandler extends DefaultHandler {
 	public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
 		if (qName.equals(eventName)){
 			String timeVal = attributes.getValue(timeName);
-			Utils.ensureNonNullAndNonEmpty(timeVal);
+			Utils.ensureNonNullAndNonEmptyAttr(eventName, timeName, timeVal);
 			double time;
 			try {
 				time = Double.parseDouble(timeVal);
 			} catch (NumberFormatException ex){
-				throw new SAXException(new InvalidAttributeValueException());
+				throw new SAXException(new InvalidAttributeValueException(
+						"Time attribute of the event element must be in the \"double precision\" format"));
 			}
 			if (startAtConstraint && (startAtLimit > time)){
 				return;
@@ -182,7 +183,7 @@ public class MatsimEventHandler extends DefaultHandler {
 			EventType type = EventType.from(typeVal);
 			if (type != null){
 				String personVal = attributes.getValue(personName);
-				Utils.ensureNonNullAndNonEmpty(personVal);
+				Utils.ensureNonNullAndNonEmptyAttr(eventName, personName, personVal);
 				if (!onlyComponents || isInjectedComponent(personVal)){
 					switch(type){
 						case PERSON_ENTERS_VEHICLE:
@@ -229,7 +230,7 @@ public class MatsimEventHandler extends DefaultHandler {
 	private void processEnteredOrLVehicle(Attributes attributes, double time, String personVal, boolean entered) 
 			throws SAXException{
 		String vehicleVal = attributes.getValue(vehicleName);
-		Utils.ensureNonNullAndNonEmpty(vehicleVal);
+		Utils.ensureNonNullAndNonEmptyAttr("\"entered or left vehicle\" event", vehicleName, vehicleVal);
 		EntersOrLeavesVehicle elv = new EntersOrLeavesVehicle(entered, time, personVal, vehicleVal);
 		events.add(elv);
 	}
@@ -246,7 +247,7 @@ public class MatsimEventHandler extends DefaultHandler {
 	private void processEorLLink(Attributes attributes, double time, String personVal, boolean entered) 
 			throws SAXException{
 		String linkVal = attributes.getValue(linkName);
-		Utils.ensureNonNullAndNonEmpty(linkVal);
+		Utils.ensureNonNullAndNonEmptyAttr("\"entered or left link\" event", linkName, linkVal);
 		String vehicleVal = attributes.getValue(vehicleName);
 		MyLink link = links.get(linkVal);
 		if (link == null){
@@ -267,7 +268,7 @@ public class MatsimEventHandler extends DefaultHandler {
 	private void processArrivalDeparture(Attributes attributes, double time, String personVal, boolean departure) 
 			throws SAXException{
 		String linkVal = attributes.getValue(linkName);
-		Utils.ensureNonNullAndNonEmpty(linkVal);
+		Utils.ensureNonNullAndNonEmptyAttr("\"arrival or departure\" event", linkName, linkVal);
 		String legModeVal = attributes.getValue(legModeName);
 		if (!Utils.checkNonNullAndNonEmpty(legModeVal)){
 			legModeVal = null;
@@ -291,7 +292,7 @@ public class MatsimEventHandler extends DefaultHandler {
 	private void processActStartEnd(Attributes attributes, double time, String personVal, boolean start) 
 			throws SAXException{
 		String linkVal = attributes.getValue(linkName);
-		Utils.ensureNonNullAndNonEmpty(linkVal);
+		Utils.ensureNonNullAndNonEmptyAttr("\"actstart or actend\" event", linkName, linkVal);
 		String facilityVal = attributes.getValue(facilityName);
 		String actTypeVal = attributes.getValue(actTypeName);
 		MyLink link = links.get(linkVal);

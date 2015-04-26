@@ -78,7 +78,7 @@ public class Console {
 	/**
 	 * Width and height of the icons placed inside the control buttons
 	 */
-	private final double buttonIconSize = 20.0;
+	private final int buttonIconSize = 20;
 	
 	/**
 	 * The standard output of the JavaScript code is redirected here. 
@@ -147,18 +147,15 @@ public class Console {
 	 * Runs the initialization scripts in the scripting environment
 	 */
 	private void initializeEngineEnvironment(){
-		try {
-			InputStream initJS = Resources.getResourceInputStream(initScript);
-			if (initJS != null){
-				Reader initJsReader = new InputStreamReader(initJS, Charset.forName(initScriptEncoding));
-				if (engine != null){
-					engine.eval(initJsReader);
-				}
+		try (InputStream initJS = Resources.getResourceInputStream(initScript)){			
+			Reader initJsReader = new InputStreamReader(initJS, Charset.forName(initScriptEncoding));
+			if (engine != null){
+				engine.eval(initJsReader);
 			}
 		} catch (ScriptException e) {
 			System.out.println("Engine environment hasn't been properly initialized.");
 			System.out.println(e.getMessage());
-		}
+		} catch (IOException ex) {}
 	}
 	
 	/**
@@ -331,11 +328,10 @@ public class Console {
 			stage.initStyle(StageStyle.DECORATED);
 			stage.sizeToScene();
 			stage.setTitle("Scripting Console");
-			InputStream consoleIconStream = Resources.getResourceInputStream("console.png");
-			if (consoleIconStream != null){
+			try (InputStream consoleIconStream = Resources.getResourceInputStream("console.png")){
 				Image consoleIcon = new Image(consoleIconStream);
 				stage.getIcons().add(consoleIcon);
-			}
+			} catch (IOException ex) {}
 		}
 	}
 	
@@ -380,18 +376,20 @@ public class Console {
 		 * Loads the help file contents. Loads the help window icon.
 		 */
 		public HelpButtonHandler() {
-			InputStream helpStream = Resources.getResourceInputStream(helpFileName);
-			String contents = null;
-			try {
-				contents = readTextFrom(helpStream);
-			} catch (IOException ex) {}
-			helpFileContents = contents;
-			InputStream iconStream = Resources.getResourceInputStream("help.png");
-			if (iconStream == null){
-				windowIcon = null;
-			} else {
-				windowIcon = new Image(iconStream);
+			String helpFileContents;						
+			try (InputStream helpStream = Resources.getResourceInputStream(helpFileName)){
+				helpFileContents = readTextFrom(helpStream);
+			} catch (IOException ex) {
+				helpFileContents = null;
 			}
+			this.helpFileContents = helpFileContents;
+			Image windowIcon;
+			try (InputStream iconStream = Resources.getResourceInputStream("help.png")){
+				windowIcon = new Image(iconStream);
+			} catch (IOException ex) {
+				windowIcon = null;
+			}
+			this.windowIcon = windowIcon;
 			if (helpFileContents != null){
 				WebEngine engine = browser.getEngine();
 				engine.loadContent(helpFileContents);

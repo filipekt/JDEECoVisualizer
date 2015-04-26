@@ -40,9 +40,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.DragEvent;
 import javafx.scene.input.Dragboard;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.input.TransferMode;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -226,13 +224,13 @@ public class Visualizer extends Application {
 	/**
 	 * Width and height of the check mark shown next to the items in the View menu.
 	 */
-	private final double checkBoxSize = 18.0;
+	private final int checkBoxSize = 18;
 	
 	/**
 	 * Width and height of the play/pause icon shown inside the corresponding button 
 	 * in the controls tool bar.
 	 */
-	private final double playIconSize = 20.0;
+	private final int playIconSize = 20;
 	
 	/**
 	 * Sets all the controls contained in the graphics columns to to the default values.
@@ -486,7 +484,7 @@ public class Visualizer extends Application {
 		}
 		
 		Button okButton = new Button("OK");
-		okButton.setOnMouseClicked(new SceneBuilder(fields, okButton, onlyComponentsBox, pane, 
+		okButton.setOnMouseClicked(new SceneImportHandler(fields, okButton, onlyComponentsBox, pane, 
 				Visualizer.this, durationField, timeLineStatus, timeLineRate, startAtField, 
 				endAtField, charsets));
 		pane.add(okButton, 1, row);
@@ -552,15 +550,6 @@ public class Visualizer extends Application {
 		playButton.setOnMouseClicked(new PlayButtonHandler(this));
 		timeLineStatus = new TimeLineStatusHandler(playButton, stopButton, playImage, pauseImage);
 		final Label speedLabel = new Label("Speed: 1.0x");
-		speedLabel.setOnMouseClicked(new EventHandler<MouseEvent>() {
-
-			@Override
-			public void handle(MouseEvent arg0) {
-				if (scene != null){
-					
-				}
-			}
-		});
 		timeLineRate = new ChangeListener<Number>() {
 			
 			@Override
@@ -592,6 +581,9 @@ public class Visualizer extends Application {
 				if ((timeline.getStatus() == Status.RUNNING) || (timeline.getStatus() == Status.PAUSED)){
 					timeline.stop();
 					stopButton.setDisable(true);
+					if ((recordingHandler != null) && (scene != null)){
+						recordingHandler.stopRecording(scene);
+					}
 				}
 			}
 		});
@@ -687,7 +679,8 @@ public class Visualizer extends Application {
 		ImageView recordStartImage = Resources.getImageView("record.png", playIconSize);
 		ImageView recordStopImage = Resources.getImageView("stop.png", playIconSize);
 		Button recordButton = new Button("Record", recordStartImage);
-		recordButton.setOnMouseClicked(new RecordingHandler(recordButton, recordStartImage, recordStopImage, this));
+		recordingHandler = new RecordingHandler(recordButton, recordStartImage, recordStopImage, this); 
+		recordButton.setOnMouseClicked(recordingHandler);
 		panel.getChildren().add(recordButton);
 		for (Node node : panel.getChildren()){
 			VBox.setMargin(node, new Insets(graphicsItemsMargin, 0, graphicsItemsMargin, 2 * graphicsItemsMargin));
@@ -702,6 +695,11 @@ public class Visualizer extends Application {
 		};
 		return panel;
 	}
+	
+	/**
+	 * Handler for the event that the user clicks the "start/stop recording" button 
+	 */
+	private RecordingHandler recordingHandler;
 	
 	/**
 	 * The stripe of the application view that contains the {@link Visualizer#graphicsColumn},
@@ -835,9 +833,8 @@ public class Visualizer extends Application {
 	 * @return Button for switching on/off the specified plugin
 	 */
 	private Button createPluginButton(Plugin plugin){
-		InputStream imageStream = plugin.getThumbnail();
-		ImageView thumbNail;
-		try {
+		ImageView thumbNail;		
+		try (InputStream imageStream = plugin.getThumbnail()){
 			Image image = new Image(imageStream, pluginButtonImageWidth, pluginButtonImageWidth, false, false);
 			thumbNail = new ImageView(image);
 		} catch (Exception ex){
@@ -857,27 +854,6 @@ public class Visualizer extends Application {
 	 * The button is mapped here to the main panel of the associated plugin.
 	 */
 	private final Map<Button,Node> plugins2 = new HashMap<>();
-	
-	/**
-	 * A simple dummy implementation of {@link Plugin}
-	 */
-	static class PluginExpl implements Plugin {
-		
-		@Override
-		public InputStream getThumbnail() {
-			return Resources.getResourceInputStream("success.png");
-		}
-		
-		@Override
-		public Node getPanel() {
-			return new FlowPane(new Label("Lorem ipsum"));
-		}
-		
-		@Override
-		public String getName() {
-			return "Test";
-		}
-	};
 	
 	/**
 	 * Selects the info-panel in the panel switching menu on the right side of the 

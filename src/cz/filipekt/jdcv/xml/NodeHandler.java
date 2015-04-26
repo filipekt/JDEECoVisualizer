@@ -64,18 +64,19 @@ public class NodeHandler extends DefaultHandler {
 			Attributes attributes) throws SAXException {
 		if (qName.equals(nodeName)){
 			String id = attributes.getValue(idName);
-			Utils.ensureNonNullAndNonEmpty(id);
+			Utils.ensureNonNullAndNonEmptyAttr(nodeName, idName, id);
 			String x = attributes.getValue(xName);
-			Utils.ensureNonNullAndNonEmpty(x);
+			Utils.ensureNonNullAndNonEmptyAttr(nodeName, xName, x);
 			String y = attributes.getValue(yName);
-			Utils.ensureNonNullAndNonEmpty(y);
+			Utils.ensureNonNullAndNonEmptyAttr(nodeName, yName, y);
 			try {
 				double xd = Double.parseDouble(x);
 				double yd = Double.parseDouble(y);
 				MyNode node = new MyNode(id, xd, yd);
 				nodes.put(node.getId(), node);
 			} catch (NumberFormatException ex){
-				throw new SAXException(new InvalidAttributeValueException());
+				throw new SAXException(new InvalidAttributeValueException(
+						"x and y attributes of the node element must be in the \"double precision\" format"));
 			}
 		}
 	}

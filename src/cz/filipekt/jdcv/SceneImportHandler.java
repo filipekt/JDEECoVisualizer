@@ -57,7 +57,7 @@ import cz.filipekt.jdcv.xml.XMLextractor;
  * 
  * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
-class SceneBuilder implements EventHandler<javafx.event.Event>{
+class SceneImportHandler implements EventHandler<javafx.event.Event>{
 	
 	/**
 	 * The three fields containing the paths to the source XML files.
@@ -83,8 +83,8 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	private final ProgressIndicator progIndicator = new ProgressIndicator(-1);
 	
 	/**
-	 * The {@link GridPane} which contains {@link SceneBuilder#progIndicator} 
-	 * and {@link SceneBuilder#okButton}.
+	 * The {@link GridPane} which contains {@link SceneImportHandler#progIndicator} 
+	 * and {@link SceneImportHandler#okButton}.
 	 */
 	private final GridPane pane;
 	
@@ -114,8 +114,8 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	 * @param okButton The button with which this {@link EventHandler} is associated.
 	 * @param onlyAgents The {@link CheckBox} that allows the user to select whether to show just those
 	 * elements in the map that correspond to the injected JDEECo agents 
-	 * @param pane The {@link GridPane} which contains {@link SceneBuilder#progIndicator} 
-	 * and {@link SceneBuilder#okButton}.
+	 * @param pane The {@link GridPane} which contains {@link SceneImportHandler#progIndicator} 
+	 * and {@link SceneImportHandler#okButton}.
 	 * @param visualizer The {@link Visualizer} that will show the network that has been 
 	 * submitted by clicking the OK button.
 	 * @param durationField The field specifying the duration of the visualization
@@ -128,7 +128,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	 * @param charsetBoxes The combo boxes selecting the character encoding of the input text files
 	 * @throws NullPointerException When any of the parameters if null
 	 */
-	public SceneBuilder(List<TextField> pathFields, Button okButton, CheckBox onlyAgents, GridPane pane, Visualizer visualizer, 
+	public SceneImportHandler(List<TextField> pathFields, Button okButton, CheckBox onlyAgents, GridPane pane, Visualizer visualizer, 
 			TextField durationField, ChangeListener<Status> timeLineStatus, ChangeListener<Number> timeLineRate,
 			TextField startAtField, TextField endAtField, List<ComboBox<String>> charsetBoxes) throws NullPointerException {
 		if ((pathFields == null) || (okButton == null) || (onlyAgents == null) || (pane == null) ||
@@ -167,7 +167,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	private final TextField durationField;
 
 	/**
-	 * Adds {@link SceneBuilder#progIndicator} to the {@link SceneBuilder#pane} container.
+	 * Adds {@link SceneImportHandler#progIndicator} to the {@link SceneImportHandler#pane} container.
 	 */
 	private void openProgressIndicator(){
 		int column = GridPane.getColumnIndex(okButton);
@@ -177,18 +177,18 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	}
 	
 	/**
-	 * Removes {@link SceneBuilder#progIndicator} from the 
-	 * {@link SceneBuilder#pane} container.
+	 * Removes {@link SceneImportHandler#progIndicator} from the 
+	 * {@link SceneImportHandler#pane} container.
 	 */
 	private void closeProgressIndiciator(){
 		pane.getChildren().remove(progIndicator);
 	}
 	
 	/**
-	 * Reports any problems encountered by the {@link SceneBuilder#handle} method and then tries to
-	 * create a new {@link MapScene} by calling {@link SceneBuilder#prepareNewScene}. If any problem
+	 * Reports any problems encountered by the {@link SceneImportHandler#handle} method and then tries to
+	 * create a new {@link MapScene} by calling {@link SceneImportHandler#prepareNewScene}. If any problem
 	 * is encountered, details are shown to the user and the application is terminated.
-	 * @param problems Problems encountered by {@link SceneBuilder#handle}
+	 * @param problems Problems encountered by {@link SceneImportHandler#handle}
 	 * @param onlyAgents Value of the checkbox specifying whether only JDEECo agents should be shown
 	 * @param startAt Value of the field specifying the simulation time at which visualization should start
 	 * @param endAt Value of the field specifying the simulation time at which visualization should end
@@ -217,11 +217,18 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 						reportError("A problem with XML parser configuration has been encountered:",
 								ex.getMessage());
 					} catch (SAXException ex) {
-						reportError("A problem in syntax of one of the XML input files has been " + 
-								"encountered:", 
-//								ex.getException()==null ? ex.getMessage() : ex.getException().getMessage());
-								ex.getException()==null ? ex.getMessage() : ex.getException().toString());
-						ex.printStackTrace();
+						String message;
+						if (ex.getException() == null){
+							message = ex.getMessage();
+						} else {
+							if ((ex.getException().getMessage() != null) && (!ex.getException().getMessage().isEmpty())){
+								message = ex.getException().getMessage();
+							} else {
+								message = ex.getException().toString();
+							}
+						}
+						reportError("A problem in syntax of one of the XML input files has been encountered:", 
+								message);
 					} catch (SelectionTooBigException e) {
 						reportError("The selected time interval is too large to handle.");
 					} catch (ElementTooLargeException e) {
@@ -249,8 +256,8 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	}
 	
 	/**
-	 * Called when {@link SceneBuilder#okButton} is clicked. Makes sure that the input fields 
-	 * contain data. Further processing is delegated to {@link SceneBuilder#reportProblemsForScene}
+	 * Called when {@link SceneImportHandler#okButton} is clicked. Makes sure that the input fields 
+	 * contain data. Further processing is delegated to {@link SceneImportHandler#reportProblemsForScene}
 	 */
 	@Override
 	public void handle(javafx.event.Event event) {
@@ -298,8 +305,8 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	
 	/**
 	 * Checks which input fields have been filled in, out of the three specifying the XML input files.
-	 * The (un)availability is recorded to {@link SceneBuilder#matsimEventsPresent} and
-	 * {@link SceneBuilder#ensembleEventsPresent}
+	 * The (un)availability is recorded to {@link SceneImportHandler#matsimEventsPresent} and
+	 * {@link SceneImportHandler#ensembleEventsPresent}
 	 */
 	private void determineSpecifiedFiles(){
 		TextField eventField = pathFields.get(1);
@@ -389,10 +396,24 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 				cdb = null;
 			}
 			ShapeProvider circleProvider = new CircleProvider(personCircleRadius, personCircleColor);
-			final MapScene scene = new MapScene(nodeHandler.getNodes(), linkHandler.getLinks(), visualizer.getMapWidth(), 
-					visualizer.getMapHeight(), timeLineStatus, timeLineRate, minTime, maxTime, duration, cdb, events, 
-					visualizer.getControlsBar(), matsimEventsPresent, ensembleEventsPresent, 8 * personCircleRadius,
-					circleProvider);			
+			MapSceneBuilder sceneBuilder = new MapSceneBuilder();
+			sceneBuilder.setNodes(nodeHandler.getNodes());
+			sceneBuilder.setLinks(linkHandler.getLinks());
+			sceneBuilder.setMapWidth(visualizer.getMapWidth());
+			sceneBuilder.setMapHeight(visualizer.getMapHeight());
+			sceneBuilder.setTimeLineStatus(timeLineStatus);
+			sceneBuilder.setTimeLineRate(timeLineRate);
+			sceneBuilder.setMinTime(minTime);
+			sceneBuilder.setMaxTime(maxTime);
+			sceneBuilder.setDuration(duration);
+			sceneBuilder.setCheckpointDb(cdb);
+			sceneBuilder.setEnsembleEvents(events);
+			sceneBuilder.setControlsBar(visualizer.getControlsBar());
+			sceneBuilder.setMatsimEventsPresent(matsimEventsPresent);
+			sceneBuilder.setEnsembleEventsPresent(ensembleEventsPresent);
+			sceneBuilder.setPersonImageWidth(8 * personCircleRadius);
+			sceneBuilder.setCircleProvider(circleProvider);
+			final MapScene scene = sceneBuilder.build();
 			scene.update(circleProvider, false, null);
 			Platform.runLater(new Runnable() {
 				
@@ -417,7 +438,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	/**
 	 * Radius of the circle representing a person in the visualization
 	 */
-	private final double personCircleRadius = 2.5;
+	private final int personCircleRadius = 3;
 	
 	/**
 	 * Color of the circle representing a person in the visualization
@@ -433,7 +454,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 	/**
 	 * Returns an input stream opened on a possibly modified version of the XML document given in 
 	 * the first parameter. If the XML file is small enough, the returned stream is simply opened 
-	 * on the file. If the XML file is larger than the threshold {@link SceneBuilder#eventLogFileThreashold}, 
+	 * on the file. If the XML file is larger than the threshold {@link SceneImportHandler#eventLogFileThreashold}, 
 	 * the stream is opened on a modified version of the XML document. In this modified version, most of the 
 	 * event elements that do not belong to the time interval specified in the parameters are discarded, 
 	 * i.e. the resulting document may be much smaller than the whole original document.
@@ -494,7 +515,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		/**
 		 * Width (a also height) of the provided image
 		 */
-		private final double imageWidth;
+		private final int imageWidth;
 		
 		/**
 		 * If true, the specified image is looked for in the application resources.
@@ -510,7 +531,7 @@ class SceneBuilder implements EventHandler<javafx.event.Event>{
 		 * @param imageWidth Width (a also height) of the provided image
 		 * @throws FileNotFoundException When the image could not be found
 		 */
-		public ImageProvider(boolean isResource, String image, double imageWidth) throws FileNotFoundException {
+		public ImageProvider(boolean isResource, String image, int imageWidth) throws FileNotFoundException {
 			this.image = image;
 			this.imageWidth = imageWidth;
 			this.isResource = isResource;

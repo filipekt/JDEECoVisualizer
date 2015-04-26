@@ -145,38 +145,40 @@ public class FacilitiesHandler extends DefaultHandler {
 			Attributes attributes) throws SAXException {
 		if (qName.equals(facilityName)){
 			facilityIdVal = attributes.getValue(facilityIdName);
-			Utils.ensureNonNullAndNonEmpty(facilityIdVal);
+			Utils.ensureNonNullAndNonEmptyAttr(facilityName, facilityIdName, facilityIdVal);
 			String x = attributes.getValue(facilityXName);
-			Utils.ensureNonNullAndNonEmpty(x);
+			Utils.ensureNonNullAndNonEmptyAttr(facilityName, facilityXName, x);
 			String y = attributes.getValue(facilityYName);
-			Utils.ensureNonNullAndNonEmpty(y);
+			Utils.ensureNonNullAndNonEmptyAttr(facilityName, facilityYName, y);
 			try {
 				facilityXVal = Double.parseDouble(x);
 				facilityYVal = Double.parseDouble(y);
 			} catch (NumberFormatException ex){
-				throw new SAXException(new InvalidAttributeValueException());
+				throw new SAXException(new InvalidAttributeValueException(
+						"Numeric attributes of the " + facilityName + " element must be in the \"double precision\" format."));
 			}
 		}
 		if (qName.equals(activityName)){
 			activityTypeVal = attributes.getValue(activityTypeName);
-			Utils.ensureNonNullAndNonEmpty(activityTypeVal);
+			Utils.ensureNonNullAndNonEmptyAttr(activityName, activityTypeName, activityTypeVal);
 		}
 		if (qName.equals(capacityName)){
 			String capVal = attributes.getValue(capacityValueName);
-			Utils.ensureNonNullAndNonEmpty(capVal);
+			Utils.ensureNonNullAndNonEmptyAttr(capacityName, capacityValueName, capVal);
 			try {
 				activityCapacity = Long.parseLong(capVal.split("\\.")[0]);
 			} catch (NumberFormatException ex){
-				throw new SAXException(new InvalidAttributeValueException());
+				throw new SAXException(new InvalidAttributeValueException(
+						capacityValueName + " attribute of the " + capacityName + " element must be in the long integer format."));
 			}
 		}
 		if (qName.equals(openTimeName)){		
 			String day = attributes.getValue(dayName);
-			Utils.ensureNonNullAndNonEmpty(day);
+			Utils.ensureNonNullAndNonEmptyAttr(openTimeName, dayName, day);
 			String startTime = attributes.getValue(startTimeName);
-			Utils.ensureNonNullAndNonEmpty(startTime);
+			Utils.ensureNonNullAndNonEmptyAttr(openTimeName, startTimeName, startTime);
 			String endTime = attributes.getValue(endTimeName);
-			Utils.ensureNonNullAndNonEmpty(endTime);
+			Utils.ensureNonNullAndNonEmptyAttr(openTimeName, endTimeName, endTime);
 			try {
 				MyOpenTime ot = parseOpenTimeFrom(day, startTime, endTime);
 				activityOpenTimes.add(ot);
@@ -223,7 +225,8 @@ public class FacilitiesHandler extends DefaultHandler {
 			Date endDate = MyOpenTime.dateFormat.parse(end);
 			return new MyOpenTime(dayVal, startDate, endDate);
 		} catch (IllegalArgumentException | ParseException | NullPointerException ex){
-			throw new InvalidAttributeValueException();
+			throw new InvalidAttributeValueException(
+					openTimeName + " element attributes are in an invalid format");
 		}
 	}
 	

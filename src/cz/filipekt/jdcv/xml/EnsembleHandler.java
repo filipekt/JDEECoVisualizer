@@ -118,12 +118,13 @@ public class EnsembleHandler extends DefaultHandler {
 			Attributes attributes) throws SAXException {
 		if (qName.equals(eventName)){
 			String timeVal = attributes.getValue(timeName);
-			Utils.ensureNonNullAndNonEmpty(timeVal);
+			Utils.ensureNonNullAndNonEmptyAttr(eventName, timeName, timeVal);
 			double time;
 			try {
 				time = Double.parseDouble(timeVal);
 			} catch (NumberFormatException ex){
-				throw new SAXException(new InvalidAttributeValueException());
+				throw new SAXException(new InvalidAttributeValueException(
+						"Time attribute of the ensemble event must be in the \"double precision\" format."));
 			}
 			if (startAtConstraint && (startAtLimit > time)){
 				return;
@@ -132,13 +133,13 @@ public class EnsembleHandler extends DefaultHandler {
 				return;
 			}
 			String coordinatorVal = attributes.getValue(coordinatorName);
-			Utils.ensureNonNullAndNonEmpty(coordinatorVal);
+			Utils.ensureNonNullAndNonEmptyAttr(eventName, coordinatorName, coordinatorVal);
 			String memberVal = attributes.getValue(memberName);
-			Utils.ensureNonNullAndNonEmpty(memberVal);
+			Utils.ensureNonNullAndNonEmptyAttr(eventName, memberName, memberVal);
 			String membershipVal = attributes.getValue(membershipName);
-			Utils.ensureNonNullAndNonEmpty(membershipVal);
+			Utils.ensureNonNullAndNonEmptyAttr(eventName, membershipName, membershipVal);
 			String ensembleVal = attributes.getValue(ensembleName);
-			Utils.ensureNonNullAndNonEmpty(ensembleVal);
+			Utils.ensureNonNullAndNonEmptyAttr(eventName, ensembleName, ensembleVal);
 			boolean membership;
 			switch(membershipVal){
 				case "true":
@@ -148,7 +149,8 @@ public class EnsembleHandler extends DefaultHandler {
 					membership = false;
 					break;
 				default:
-					throw new SAXException(new InvalidAttributeValueException());
+					throw new SAXException(new InvalidAttributeValueException(
+							"Membership attribute in the ensemble event element has only two allowed values: true, false."));
 			}
 			EnsembleEvent eev = new EnsembleEvent(coordinatorVal, memberVal, membership, ensembleVal, time);
 			events.add(eev);

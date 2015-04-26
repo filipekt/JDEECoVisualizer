@@ -43,7 +43,7 @@ public class Dialog {
 	 * Width and height of the illustrative icon shown inside the dialog that
 	 * is shown with {@link Visualizer#showDialog(Type, String)}
 	 */
-	private static final double dialogIconSize = 64.0;
+	private static final int dialogIconSize = 64;
 	
 	/**
 	 * Loads the graphics corresponding to the dialog type specified by

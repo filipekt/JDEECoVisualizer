@@ -219,16 +219,17 @@ public class LinkHandler extends DefaultHandler {
 	 */
 	private void processPoint(Attributes attributes) throws SAXException{
 		String xStr = attributes.getValue(pointXName);
-		Utils.ensureNonNullAndNonEmpty(xStr);
+		Utils.ensureNonNullAndNonEmptyAttr(pointName, pointXName, xStr);
 		String yStr = attributes.getValue(pointYName);
-		Utils.ensureNonNullAndNonEmpty(yStr);
+		Utils.ensureNonNullAndNonEmptyAttr(pointName, pointYName, yStr);
 		try {
 			int x = Integer.parseInt(xStr);
 			int y = Integer.parseInt(yStr);
 			Point2D point = new Point2D(x, y);
 			points.add(point);
 		} catch (NumberFormatException ex){
-			throw new SAXException(new InvalidAttributeValueException());
+			throw new SAXException(new InvalidAttributeValueException(
+					"Numeric attributes of the point element must be in the integer format."));
 		}
 	}
 	
@@ -240,15 +241,15 @@ public class LinkHandler extends DefaultHandler {
 	 */
 	private void processLinkImg(Attributes attributes) throws SAXException{
 		String source = attributes.getValue(linkImgSourceName);
-		Utils.ensureNonNullAndNonEmpty(source);
+		Utils.ensureNonNullAndNonEmptyAttr(linkImgName, linkImgSourceName, source);
 		String fromx = attributes.getValue(linkImgFromXName);
-		Utils.ensureNonNullAndNonEmpty(fromx);
+		Utils.ensureNonNullAndNonEmptyAttr(linkImgName, linkImgFromXName, fromx);
 		String fromy = attributes.getValue(linkImgFromYName);
-		Utils.ensureNonNullAndNonEmpty(fromy);
+		Utils.ensureNonNullAndNonEmptyAttr(linkImgName, linkImgFromYName, fromy);
 		String tox = attributes.getValue(linkImgToXName);
-		Utils.ensureNonNullAndNonEmpty(tox);
+		Utils.ensureNonNullAndNonEmptyAttr(linkImgName, linkImgToXName, tox);
 		String toy = attributes.getValue(linkImgToYName);
-		Utils.ensureNonNullAndNonEmpty(toy);
+		Utils.ensureNonNullAndNonEmptyAttr(linkImgName, linkImgToYName, toy);
 		try {
 			int fromXNum = Integer.parseInt(fromx);
 			int fromYNum = Integer.parseInt(fromy);
@@ -256,7 +257,8 @@ public class LinkHandler extends DefaultHandler {
 			int toYNum = Integer.parseInt(toy);
 			linkImage = new MyLinkImg(source, fromXNum, fromYNum, toXNum, toYNum);
 		} catch (NumberFormatException ex){
-			throw new SAXException(new InvalidAttributeValueException());
+			throw new SAXException(new InvalidAttributeValueException(
+					"Numeric attributes of the link_img element must be in the integer format."));
 		}
 	}
 	
@@ -278,11 +280,11 @@ public class LinkHandler extends DefaultHandler {
 	 */
 	private void processLink(Attributes attributes) throws SAXException {
 		String id = attributes.getValue(idName);
-		Utils.ensureNonNullAndNonEmpty(id);
+		Utils.ensureNonNullAndNonEmptyAttr(linkName, idName, id);
 		String from = attributes.getValue(fromName);
-		Utils.ensureNonNullAndNonEmpty(from);
+		Utils.ensureNonNullAndNonEmptyAttr(linkName, fromName, from);
 		String to = attributes.getValue(toName);
-		Utils.ensureNonNullAndNonEmpty(to);		
+		Utils.ensureNonNullAndNonEmptyAttr(linkName, toName, to);		
 		String length = attributes.getValue(lengthName);
 		if (!Utils.checkNonNullAndNonEmpty(length)){
 			length = null;
@@ -334,7 +336,8 @@ public class LinkHandler extends DefaultHandler {
 				linkBuilder.setAllowedModes(modesArray);
 			}																							
 		} catch (NumberFormatException ex){
-			throw new SAXException(new InvalidAttributeValueException());
+			throw new SAXException(new InvalidAttributeValueException(
+					"Numeric attributes of the link element must be in the \"double precision\" format."));
 		}
 	}
 	

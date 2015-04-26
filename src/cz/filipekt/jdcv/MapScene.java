@@ -54,8 +54,8 @@ import javax.imageio.ImageWriter;
 import javax.imageio.stream.FileImageOutputStream;
 
 import cz.filipekt.jdcv.CheckPoint.Type;
-import cz.filipekt.jdcv.SceneBuilder.ImageProvider;
-import cz.filipekt.jdcv.SceneBuilder.ShapeProvider;
+import cz.filipekt.jdcv.SceneImportHandler.ImageProvider;
+import cz.filipekt.jdcv.SceneImportHandler.ShapeProvider;
 import cz.filipekt.jdcv.ensembles.CoordinatorRelation;
 import cz.filipekt.jdcv.ensembles.EnsembleDatabase;
 import cz.filipekt.jdcv.ensembles.MembershipRelation;
@@ -740,7 +740,7 @@ public class MapScene {
 	 * @return {@link KeyFrame} instances describing the movements of people on the map.
 	 * @throws IOException When a person shape could not be loaded for any reason
 	 */
-	private Collection<KeyFrame> buildFramesForPeople(SceneBuilder.ShapeProvider shapeProvider, 
+	private Collection<KeyFrame> buildFramesForPeople(SceneImportHandler.ShapeProvider shapeProvider, 
 			String[] selectedPeople) throws IOException{
 		Collection<KeyFrame> frames = new ArrayList<>();
 		Collection<String> selectedPeopleCol = null;
@@ -899,7 +899,7 @@ public class MapScene {
 	 * are an empty collection
 	 * @throws IllegalArgumentException When either of the method parameters are null
 	 */
-	private Node buildPersonShape(List<CheckPoint> positionCheckPoints, SceneBuilder.ShapeProvider provider) 
+	private Node buildPersonShape(List<CheckPoint> positionCheckPoints, SceneImportHandler.ShapeProvider provider) 
 			throws IOException, InitialPositionNotFoundException, IllegalArgumentException {
 		if (provider == null){
 			throw new IllegalArgumentException("Non-null ShapeProvider must be specified.");
@@ -1076,7 +1076,7 @@ public class MapScene {
 	/**
 	 * Both width and height of the image that represents a person/car in the visualization
 	 */
-	private final double personImageWidth;
+	private final int personImageWidth;
 	
 	/**
 	 * Generates the plain circles for cars/people representation
@@ -1110,7 +1110,7 @@ public class MapScene {
 			ChangeListener<? super Status> timeLineStatus, ChangeListener<? super Number> timeLineRate,
 			double minTime, double maxTime, int duration, CheckPointDatabase checkpointDb, 
 			List<EnsembleEvent> ensembleEvents, HBox controlsBar, boolean matsimEventsPresent,
-			boolean ensembleEventsPresent, double personImageWidth, ShapeProvider circleProvider) {
+			boolean ensembleEventsPresent, int personImageWidth, ShapeProvider circleProvider) {
 		this.checkpointDb = checkpointDb;
 		this.ensembleEvents = ensembleEvents;
 		this.minTime = minTime;

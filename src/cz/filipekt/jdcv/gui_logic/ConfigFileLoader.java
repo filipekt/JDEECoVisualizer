@@ -124,6 +124,7 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 	private final String agentsPreamble = "onlyAgents";
 	
 	/**
+	 * Fired when user clicks the "load" button next to the config file text field.
 	 * Makes sure that the config file exists, is opened and is properly processed.
 	 */
 	@Override
@@ -133,6 +134,7 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 			Dialog.show(Type.INFO, "Path to the configuration file hasn't been specified.",
 					"Fill in the path and try again.");
 		} else {
+			clearInputFields();
 			Path path = Paths.get(pathValue);
 			if (Files.exists(path)){
 				Charset charset = Charset.forName(configFileCharsets.getSelectionModel().getSelectedItem());
@@ -152,6 +154,16 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 						"Enter a different file and try again.");
 			}
 		}
+	}
+	
+	/**
+	 * Clears all the input fields on the "import new scene" page.  
+	 */
+	private void clearInputFields(){
+		networkField.setText("");
+		eventField.setText("");
+		ensembleField.setText("");
+		durationField.setText("");
 	}
 	
 	/**

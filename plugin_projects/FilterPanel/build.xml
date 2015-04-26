@@ -22,7 +22,7 @@
 	<!-- Compiles the java source files -->
 	<target name="build" depends="clean">
 		<mkdir dir="${build}" />
-		<javac srcdir="${src}" destdir="${build}" classpath="${jdcv-dir}/build" />
+		<javac encoding="UTF-8" srcdir="${src}" destdir="${build}" classpath="${jdcv-dir}/build" includeantruntime="false" />
 	</target>
 	
 	<!-- Packages the compiled classes into a JAR file -->

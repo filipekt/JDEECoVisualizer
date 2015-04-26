@@ -12,13 +12,16 @@ import cz.filipekt.jdcv.exceptions.MandatoryAttributeNotFoundException;
 public class Utils {
 	
 	/**
-	 * Ensures that the given String is not null and not empty.
-	 * @param value The String to be examined
-	 * @throws SAXException When the given String is either null or empty.
+	 * Ensures that the given attribute value is non-null and non-empty.
+	 * @param element Element which holds the attribute
+	 * @param attrName Name of the attribute
+	 * @param attrValue Value of the attribute
+	 * @throws SAXException When the attribute value is either null or empty.
 	 */
-	static void ensureNonNullAndNonEmpty(String value) throws SAXException{
-		if ((value == null) || value.isEmpty()){
-			throw new SAXException(new MandatoryAttributeNotFoundException());
+	static void ensureNonNullAndNonEmptyAttr(String element, String attrName, String attrValue) throws SAXException{
+		if ((attrValue == null) || attrValue.isEmpty()){
+			throw new SAXException(new MandatoryAttributeNotFoundException("The " + attrName + " attribute of the " + 
+					element + " element must always be present."));
 		}
 	}
 	

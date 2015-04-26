@@ -70,36 +70,56 @@ public class RecordingHandler implements EventHandler<Event>{
 		MapScene scene = visualizer.getScene();		
 		if (scene != null){			
 			if (scene.isRecordingInProgress()){
-				scene.setRecordingInProgress(false);
-				scene.flushRecordedFrames(Integer.MAX_VALUE);
-				recordButton.setText("Record");
-				recordButton.setGraphic(recordStartImage);
+				stopRecording(scene);
 			} else {
-				Timeline timeLine = scene.getTimeLine();
-				boolean paused = false;
-				if (timeLine.getStatus() == Status.RUNNING){
-					timeLine.pause();
-					paused = true;
-				}
-				DirectoryChooser dirChooser = new DirectoryChooser();
-				dirChooser.setTitle("Select a folder");
-				Stage stage = visualizer.getStage();
-				File dir = dirChooser.showDialog(stage);
-				if (dir != null){
-					scene.setRecordingDirectory(dir);
-					scene.setRecordingInProgress(true);
-					recordButton.setText("Stop");
-					recordButton.setGraphic(recordStopImage);
-					if (scene.getZoom() != 1.0){
-						scene.setZoom(1);
-						Dialog.show(Type.INFO, "The zoom has been restored.", 
-								"Recording only allowed when zoom is not in effect.");
-					}
-				}
-				if (paused){
-					timeLine.play();
-				}
+				startRecording(scene);
 			}					
+		}
+	}
+	
+	/**
+	 * Stops the recording
+	 * @param scene The scene that is being recorded
+	 */
+	public void stopRecording(MapScene scene){
+		if ((scene != null) && (scene.isRecordingInProgress())){			
+			scene.setRecordingInProgress(false);
+			scene.flushRecordedFrames(Integer.MAX_VALUE);
+			recordButton.setText("Record");
+			recordButton.setGraphic(recordStartImage);			
+		}
+	}
+	
+	/**
+	 * Starts the recording
+	 * @param scene The scene to be recorded
+	 */
+	public void startRecording(MapScene scene){
+		if ((scene != null) && (!scene.isRecordingInProgress())){
+			Timeline timeLine = scene.getTimeLine();
+			boolean paused = false;
+			if (timeLine.getStatus() == Status.RUNNING){
+				timeLine.pause();
+				paused = true;
+			}
+			DirectoryChooser dirChooser = new DirectoryChooser();
+			dirChooser.setTitle("Select a folder");
+			Stage stage = visualizer.getStage();
+			File dir = dirChooser.showDialog(stage);
+			if (dir != null){
+				scene.setRecordingDirectory(dir);
+				scene.setRecordingInProgress(true);
+				recordButton.setText("Stop");
+				recordButton.setGraphic(recordStopImage);
+				if (scene.getZoom() != 1.0){
+					scene.setZoom(1);
+					Dialog.show(Type.INFO, "The zoom has been restored.", 
+							"Recording only allowed when zoom is not in effect.");
+				}
+			}
+			if (paused){
+				timeLine.play();
+			}
 		}
 	}
 }

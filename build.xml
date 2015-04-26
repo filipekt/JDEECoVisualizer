@@ -21,10 +21,9 @@
 	<property name="plugins" value="plugins" />
 	
 	<target name="clean" description="clean up" >
-		<!-- Delete the ${build}, ${dist} and ${bin} directory trees -->
+		<!-- Delete the ${build} and ${dist} directory trees -->
 		<delete dir="${build}" />
-		<delete dir="${dist}" />
-		<delete dir="${bin}" />
+		<delete dir="${dist}" />		
 	</target>
 	
 	<target name="init" depends="clean">
@@ -34,7 +33,7 @@
 	
 	<target name="compile" depends="init" description="compile the source " >
 		<!-- Compile the java code from ${src} into ${build} -->
-		<javac srcdir="${src}" destdir="${build}" includeantruntime="false" />
+		<javac encoding="UTF-8" srcdir="${src}" destdir="${build}" includeantruntime="false" />
 	</target>
 	
 	<target name="dist" depends="compile" description="generate the distribution" >
@@ -64,6 +63,10 @@
 	<target name="run_and_clean" depends="run">
 		<!-- After running the program, clean the mess. -->
 		<antcall target="clean" />
+	</target>
+	
+	<target name="just_dist" depends="dist">
+		<delete dir="${build}" />
 	</target>
   
 </project>

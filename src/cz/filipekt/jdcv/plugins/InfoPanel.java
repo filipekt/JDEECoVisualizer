@@ -1,5 +1,6 @@
 package cz.filipekt.jdcv.plugins;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 
@@ -30,9 +31,11 @@ public class InfoPanel implements Plugin {
 
 	/**
 	 * @return The thumbnail shown right next to the panel title in the panel-switching button
+	 * @throws IOException If the image couldn't be found. This should never happen unless the
+	 * application resources directory has been messed with
 	 */
 	@Override
-	public InputStream getThumbnail() {
+	public InputStream getThumbnail() throws IOException {
 		return Resources.getResourceInputStream("info-2.png");
 	}
 

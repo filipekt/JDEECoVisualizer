@@ -1,5 +1,6 @@
 package cz.filipekt.jdcv.plugins.filter;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collection;
@@ -59,9 +60,10 @@ public class FilterPanel extends PluginWithPreferences {
 
 	/**
 	 * @return Input stream opened on a file containing a small image representing this plugin
+	 * @throws IOException If the resource couldn't be found
 	 */
 	@Override
-	public InputStream getThumbnail() {
+	public InputStream getThumbnail() throws IOException {
 		return Resources.getResourceInputStream("filter.png");
 	}
 
@@ -262,11 +264,10 @@ public class FilterPanel extends PluginWithPreferences {
 			stage.initStyle(StageStyle.DECORATED);
 			stage.setResizable(false);
 			stage.setTitle("Create New Filter");
-			InputStream iconStream = Resources.getResourceInputStream("filter.png");
-			if (iconStream != null){
+			try (InputStream iconStream = Resources.getResourceInputStream("filter.png")){
 				Image icon = new Image(iconStream);
 				stage.getIcons().add(icon);
-			}
+			} catch (IOException ex) {}
 		}
 	}
 	

@@ -1,5 +1,6 @@
 package cz.filipekt.jdcv.plugins;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 import javafx.scene.Node;
@@ -19,9 +20,10 @@ public interface Plugin {
 	String getName();
 	
 	/**
-	 * @return Input stream opened on a file containing a small image representing this plugin
+	 * @return Input stream opened on a file containing the small image representing this plugin
+	 * @throws IOException If the image couldn't be found.
 	 */
-	InputStream getThumbnail();
+	InputStream getThumbnail() throws IOException;
 	
 	/**
 	 * @return The main panel of this plugin, as shown on the right side of the 
