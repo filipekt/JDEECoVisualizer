@@ -18,11 +18,11 @@ import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
-import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -49,6 +49,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import cz.filipekt.jdcv.gui_logic.CloseSceneHandler;
@@ -60,7 +61,9 @@ import cz.filipekt.jdcv.gui_logic.ImportSceneHandler;
 import cz.filipekt.jdcv.gui_logic.PlayButtonHandler;
 import cz.filipekt.jdcv.gui_logic.RecordingHandler;
 import cz.filipekt.jdcv.gui_logic.ScreenShotHandler;
+import cz.filipekt.jdcv.gui_logic.StopButtonAction;
 import cz.filipekt.jdcv.gui_logic.TimeLineRateChanged;
+import cz.filipekt.jdcv.gui_logic.TimeLineRateListener;
 import cz.filipekt.jdcv.gui_logic.TimeLineStatusHandler;
 import cz.filipekt.jdcv.gui_logic.ZoomingHandler;
 import cz.filipekt.jdcv.plugins.InfoPanel;
@@ -95,15 +98,16 @@ public class Visualizer extends Application {
 	
 	/**
 	 * This method is used to specify what will be visualized. The {@link MapScene} instance
-	 * given in the parameter contains a well prepared simulation data and settings.
-	 * Further, this method takes care of some basic GUI operations associated with the
-	 * above actions - such as making the relevant GUI parts accessible or setting up
-	 * the slider at the bottom. 
+	 * given in the parameter is either null, which means that the user wants to close a
+	 * scene, or non-null. In that case, it contains a well prepared simulation data and 
+	 * settings. Further, this method takes care of some basic GUI operations associated 
+	 * with the above actions - such as making the relevant GUI parts accessible or 
+	 * setting up the slider at the bottom. 
 	 * @param newScene Well prepared simulation data and settings
-	 * @param matsimEventsPresent Marks whether we are visualizing any MATSIM events, i.e. moving cars/persons.
-	 * If false, the visualization only shows the map.
+	 * @param matsimEventsPresent Marks whether we are visualizing any MATSIM events, 
+	 * i.e. moving cars/persons. If false, the visualization only shows the map.
 	 */
-	public void setScene(final MapScene newScene, boolean matsimEventsPresent) {
+	public void setScene(MapScene newScene, boolean matsimEventsPresent) {
 		if (newScene == null){
 			showNoMap();
 			controlsBar.setDisable(true);
@@ -122,39 +126,52 @@ public class Visualizer extends Application {
 				}
 			}
 		} else {
-			ScrollPane mapScrollPane = newScene.getMapPane();
-			mapPane.getChildren().clear();
-			mapPane.getChildren().add(mapScrollPane);											
-			graphicsColumn.setDisable(false);
-			switchablePanel.setDisable(false);
-			if (matsimEventsPresent){
-				controlsBar.setDisable(false);
-				timelineSlider.setDisable(false);
-				setSliderParameters(newScene.getMinTime(), newScene.getMaxTime());
-				timelineToSliderListener = new ChangeListener<Duration>() {
-	
-					@Override
-					public void changed(ObservableValue<? extends Duration> arg0,
-							Duration oldValue, Duration newValue) {
-						double millis = newValue.toMillis();
-						timelineSlider.setValue(newScene.convertToSimulationTime(millis));
-					}
-				};
-				newScene.getTimeLine().currentTimeProperty().addListener(timelineToSliderListener);
-				sliderToTimelineListener = new ChangeListener<Number>() {
-	
-					@Override
-					public void changed(ObservableValue<? extends Number> arg0,
-							Number oldValue, Number newValue) {
-						Duration time = new Duration(newScene.convertToVisualizationTime(newValue.doubleValue()));
-						newScene.getTimeLine().jumpTo(time);
-					}
-				};
-				timelineSlider.valueProperty().addListener(sliderToTimelineListener);
-			}
+			setNontrivialScene(newScene, matsimEventsPresent);
 		}
 		this.scene = newScene;
 		providePreferencesToPlugins();
+	}
+	
+	/**
+	 * When a non-null scene is handed to {@link Visualizer#setScene(MapScene, boolean)}, 
+	 * this method takes care of loading the scene.
+	 * @see {@link Visualizer#setScene(MapScene, boolean)}
+	 * @param newScene Well prepared simulation data and settings
+	 * @param matsimEventsPresent Marks whether we are visualizing any MATSIM events, 
+	 * i.e. moving cars/persons. If false, the visualization only shows the map.
+	 */
+	private void setNontrivialScene(final MapScene newScene, boolean matsimEventsPresent){
+		ScrollPane mapScrollPane = newScene.getMapPane();
+		mapPane.getChildren().clear();
+		mapPane.getChildren().add(mapScrollPane);											
+		graphicsColumn.setDisable(false);
+		switchablePanel.setDisable(false);
+		if (matsimEventsPresent){
+			controlsBar.setDisable(false);
+			timelineSlider.setDisable(false);
+			setSliderParameters(newScene.getMinTime(), newScene.getMaxTime());
+			timelineToSliderListener = new ChangeListener<Duration>() {
+
+				@Override
+				public void changed(ObservableValue<? extends Duration> arg0,
+						Duration oldValue, Duration newValue) {
+					double millis = newValue.toMillis();
+					timelineSlider.setValue(newScene.convertToSimulationTime(millis));
+				}
+			};
+			newScene.getTimeLine().currentTimeProperty().addListener(timelineToSliderListener);
+			sliderToTimelineListener = new ChangeListener<Number>() {
+
+				@Override
+				public void changed(ObservableValue<? extends Number> arg0,
+						Number oldValue, Number newValue) {
+					Duration time = new Duration(
+							newScene.convertToVisualizationTime(newValue.doubleValue()));
+					newScene.getTimeLine().jumpTo(time);
+				}
+			};
+			timelineSlider.valueProperty().addListener(sliderToTimelineListener);
+		}
 	}
 	
 	/**
@@ -250,6 +267,18 @@ public class Visualizer extends Application {
 	public void setGraphicsColumnDefaults() {
 		graphicsColumnDefaults.run();
 	}
+	
+	/**
+	 * Handler for the event that the user clicks the "open console" button in the 
+	 * application menu. When run, the scripting console is opened in a new window.
+	 */
+	private final EventHandler<ActionEvent> scriptingWindowButton = new EventHandler<ActionEvent>() {
+
+		@Override
+		public void handle(ActionEvent event) {
+			Console.getInstance().showScriptingConsole(Visualizer.this);
+		}
+	};
 
 	/**
 	 * Constructs the main menu bar of the application.
@@ -268,15 +297,9 @@ public class Visualizer extends Application {
 		closeThisSceneItem.setOnAction(new CloseSceneHandler(importSceneItem, closeThisSceneItem, this));
 		fileMenu.getItems().addAll(importSceneItem, closeThisSceneItem);
 		Menu optionsMenu = new Menu("Options");
-		MenuItem scriptingPanel = new MenuItem("Open Console");
-		scriptingPanel.setOnAction(new EventHandler<ActionEvent>() {
-			
-			@Override
-			public void handle(ActionEvent arg0) {
-				Console.getInstance().showScriptingConsole(Visualizer.this);
-			}
-		});
-		optionsMenu.getItems().addAll(scriptingPanel);
+		MenuItem scriptingWindow = new MenuItem("Open Console");
+		scriptingWindow.setOnAction(scriptingWindowButton);
+		optionsMenu.getItems().addAll(scriptingWindow);
 		Menu viewMenu = new Menu("View");
 		MenuItem controlsPanel = new MenuItem("Controls Panel");
 		ImageView checkBoxImage = Resources.getImageView("checkmark.png", checkBoxSize);
@@ -376,9 +399,57 @@ public class Visualizer extends Application {
 	private final String preferredEncoding = "UTF-8";
 	
 	/**
+	 * Computes the width (in pixels) of default JavaFX view of the given text
+	 * @param text Text whose width is computed
+	 * @return Width of a default view of the given text
+	 */
+	private double computeTextLength(String text){
+		Text textView = new Text(text);
+	    new Scene(new Group(textView)); 
+	    textView.snapshot(null, null);
+	    return textView.getLayoutBounds().getWidth();
+	}
+	
+	/**
+	 * Determines which of the available charset names has the maximal length in default 
+	 * text view, and returns the length (in pixels). 
+	 * @return Length of the longest charset name, in pixels, using default view
+	 */
+	private double getEncodingNameMaxLength(){
+		double maxVal = 0.0;
+		for (String encodingName : CharsetNames.get()){
+			double length = computeTextLength(encodingName);
+			if (length > maxVal){
+				maxVal = length;
+			}
+		}
+		return maxVal;
+	}
+	
+	/**
 	 * The preferred width of the combo-boxes for selecting the input file encoding
 	 */
-	private final double encodingBoxWidth = 90.0;
+	private final double encodingBoxWidth = getEncodingNameMaxLength() + 60.0;
+	
+	/**
+	 * The text inside of the buttons used for opening a file selection dialog
+	 */
+	private final String selectButtonText = "Select..";
+	
+	/**
+	 * The preferred width of the buttons used for opening a file selection dialog
+	 */
+	private final double selectButtonWidth = computeTextLength(selectButtonText) + 40.0;
+	
+	/**
+	 * Text inside the load button, which loads and processes an input config file
+	 */
+	private final String loadButtonText = "Load!";
+	
+	/**
+	 * The preferred width of the load button, which loads and processes an input config file
+	 */
+	private final double loadButtonWidth = computeTextLength(loadButtonText) + 40.0;
 
 	/**
 	 * Builds the {@link Visualizer#importSceneGrid}.
@@ -394,10 +465,81 @@ public class Visualizer extends Application {
 		labels.add(new Label("Ensemble event log:"));
 		final List<TextField> fields = new ArrayList<>();
 		List<ComboBox<String>> charsets = new ArrayList<>();
-		List<Button> chooserButtons = new ArrayList<>();
+		List<Button> chooserButtons = new ArrayList<>();				
+		int row = prepareInputFilesControls(pane, fields, labels, charsets, chooserButtons);	
+		TextField durationField = new TextField();
+		CheckBox onlyComponentsBox = new CheckBox();
+		TextField startAtField = new TextField();
+		TextField endAtField = new TextField();
+		row = prepareOtherControls(pane, row, durationField, onlyComponentsBox, startAtField, endAtField);
+		row += 1;
+		String line = "----------";
+		Label orLabel = new Label(line + " OR " + line);
+		pane.add(orLabel, 0, row, 2, 1);
+		GridPane.setHalignment(orLabel, HPos.CENTER);
+		row += 2;		
+		prepareConfigLoaderRow(pane, row, fields, charsets, durationField);
+		row += 2;		
+		Button okButton = new Button("OK");
+		okButton.setOnMouseClicked(new SceneImportHandler(fields, okButton, onlyComponentsBox, pane, 
+				Visualizer.this, durationField, timeLineStatus, timeLineRate, startAtField, 
+				endAtField, charsets));
+		pane.add(okButton, 1, row);
+		pane.setAlignment(Pos.CENTER);
+		pane.setHgap(importSceneGridHGap);
+		pane.setVgap(importSceneGridVGap);
+		return pane;
+	}
+	
+	/**
+	 * Builds and prepares various controls contained in the "import scene" page
+	 * @param pane Base container for the controls in the "import scene" page
+	 * @param row Number of the row in the pane, to which the controls will be added
+	 * @param durationField The input field for specifying the desired duration of the visualization
+	 * @param onlyComponentsBox The checkbox for specifying whether only the injected JDEECo
+	 * components should be visualized
+	 * @param startAtField Input field specifying at which simulation time should the visualization start
+	 * @param endAtField Input field specifying at which simulation time should the visualization end
+	 * @return The number of the current row, as the "import scene" page is built one row at a time
+	 */
+	private int prepareOtherControls(GridPane pane, int row, TextField durationField, 
+			CheckBox onlyComponentsBox, TextField startAtField, TextField endAtField){
+		Label durationLabel = new Label("Target duration (seconds):");
+		pane.add(durationLabel, 0, row);
+		pane.add(durationField, 1, row);		
+		row += 1;		
+		Label onlyComponentsLabel = new Label("Show just JDEECo components:");
+		onlyComponentsBox.setSelected(true);
+		pane.add(onlyComponentsLabel, 0, row);
+		pane.add(onlyComponentsBox, 1, row);
+		row += 1;		
+		Label startAtLabel = new Label("Start at time (seconds):");
+		pane.add(startAtLabel, 0, row);
+		pane.add(startAtField, 1, row);
+		row += 1;		
+		Label endAtLabel = new Label("End at time (seconds):");
+		pane.add(endAtLabel, 0, row);
+		pane.add(endAtField, 1, row);
+		row += 1;
+		return row;
+	}
+	
+	/**
+	 * Builds and prepares the controls that allow the user to specify the input files.
+	 * @param pane Base container for the controls in the "import scene" page
+	 * @param fields The input text fields for entering the paths to the input files
+	 * @param labels Labels which identify the input fields for input file specification  
+	 * @param charsets All the combo-boxes used for selecting the text encoding for the input files
+	 * @param chooserButtons Buttons used for opening the file selection dialog
+	 * @return The number of the current row, as the "import scene" page is built one row at a time
+	 */
+	private int prepareInputFilesControls(GridPane pane, List<TextField> fields, List<Label> labels,
+			List<ComboBox<String>> charsets, List<Button> chooserButtons){
 		for (int i = 0; i < labels.size(); i++){
 			fields.add(new TextField());
-			chooserButtons.add(new Button("Select.."));
+			Button chooserButton = new Button(selectButtonText);
+			chooserButton.setPrefWidth(selectButtonWidth);
+			chooserButtons.add(chooserButton);
 			ComboBox<String> charsetBox = new ComboBox<String>();
 			charsetBox.getItems().addAll(CharsetNames.get());
 			charsetBox.getSelectionModel().select(preferredEncoding);
@@ -425,73 +567,45 @@ public class Visualizer extends Application {
 			pane.add(button, 3, row);
 			row += 1;
 		}
-		
-		Label durationLabel = new Label("Target duration (seconds):");
-		TextField durationField = new TextField();
-		pane.add(durationLabel, 0, row);
-		pane.add(durationField, 1, row);		
-		row += 1;
-		
-		Label onlyComponentsLabel = new Label("Show only the injected JDEECo components:");
-		CheckBox onlyComponentsBox = new CheckBox();
-		onlyComponentsBox.setSelected(true);
-		pane.add(onlyComponentsLabel, 0, row);
-		pane.add(onlyComponentsBox, 1, row);
-		row += 1;
-		
-		Label startAtLabel = new Label("Start at time (seconds):");
-		TextField startAtField = new TextField();
-		pane.add(startAtLabel, 0, row);
-		pane.add(startAtField, 1, row);
-		row += 1;
-		
-		Label endAtLabel = new Label("End at time (seconds):");
-		TextField endAtField = new TextField();
-		pane.add(endAtLabel, 0, row);
-		pane.add(endAtField, 1, row);
-		row += 1;
-		
-		row += 1;
-		String line = "----------";
-		Label orLabel = new Label(line + " OR " + line);
-		pane.add(orLabel, 0, row, 2, 1);
-		GridPane.setHalignment(orLabel, HPos.CENTER);
-		row += 2;
-		
+		return row;
+	}
+	
+	/**
+	 * Builds and prepares the controls that deal with loading configuration from an external
+	 * file. These controls are located in a single row of the "import scene" page.
+	 * @param pane Base container for the controls in the "import scene" page
+	 * @param row Number of the row in the pane, to which the controls will be added
+	 * @param fields The input text fields for entering the paths to the input files
+	 * @param charsets All the combo-boxes used for selecting the text encoding for the input files
+	 * @param durationField The input field for specifying the desired duration of the visualization 
+	 */
+	private void prepareConfigLoaderRow(GridPane pane, int row, List<TextField> fields, 
+			List<ComboBox<String>> charsets, TextField durationField){
 		Label configFileLabel = new Label("Specify Configuration File:");
-		final TextField configFileField = new TextField();
+		TextField configFileField = new TextField();
 		configFileField.setPrefWidth(inputFieldsWidth);
 		setUpDragNDrop(Arrays.asList(configFileField));
-		final ComboBox<String> configFileCharsets = new ComboBox<String>();
+		ComboBox<String> configFileCharsets = new ComboBox<String>();
 		configFileCharsets.getItems().addAll(CharsetNames.get());
 		configFileCharsets.getSelectionModel().select(preferredEncoding);
 		configFileCharsets.setPrefWidth(encodingBoxWidth);
 		Button configFileSelect = new Button("Select..");
-		configFileSelect.setOnMouseClicked(new FileChooserButton(stage, configFileField, 
-				"Select Configuration File"));
-		Button configFileLoad = new Button("Load!");
-		configFileLoad.setOnAction(new ConfigFileLoader(configFileField, configFileCharsets, 
-				fields, charsets, durationField));
+		configFileSelect.setPrefWidth(selectButtonWidth);
+		configFileSelect.setOnMouseClicked(new FileChooserButton(
+				stage, configFileField, "Select Configuration File"));
+		Button configFileLoad = new Button(loadButtonText);
+		configFileLoad.setPrefWidth(loadButtonWidth);
+		ConfigFileLoader configLoader = new ConfigFileLoader(
+				configFileField, configFileCharsets, fields, charsets, durationField); 
+		configFileLoad.setOnAction(configLoader);
 		pane.add(configFileLabel, 0, row);
 		pane.add(configFileField, 1, row);
 		pane.add(configFileCharsets, 2, row);
 		pane.add(configFileSelect, 3, row);
-		pane.add(configFileLoad, 4, row);
-		row += 2;
-		
+		pane.add(configFileLoad, 4, row);		
 		if (Debug.debugModeOn){
 			configFileField.setText("C:/diplomka/JDEECoVisualizer-master/example_data/config.txt");
 		}
-		
-		Button okButton = new Button("OK");
-		okButton.setOnMouseClicked(new SceneImportHandler(fields, okButton, onlyComponentsBox, pane, 
-				Visualizer.this, durationField, timeLineStatus, timeLineRate, startAtField, 
-				endAtField, charsets));
-		pane.add(okButton, 1, row);
-		pane.setAlignment(Pos.CENTER);
-		pane.setHgap(importSceneGridHGap);
-		pane.setVgap(importSceneGridVGap);
-		return pane;
 	}
 	
 	/**
@@ -549,15 +663,8 @@ public class Visualizer extends Application {
 		playButton.setGraphic(playImage);
 		playButton.setOnMouseClicked(new PlayButtonHandler(this));
 		timeLineStatus = new TimeLineStatusHandler(playButton, stopButton, playImage, pauseImage);
-		final Label speedLabel = new Label("Speed: 1.0x");
-		timeLineRate = new ChangeListener<Number>() {
-			
-			@Override
-			public void changed(ObservableValue<? extends Number> arg0, Number arg1,
-					Number arg2) {
-				speedLabel.setText("Speed: " + arg2.doubleValue() + "x");
-			}
-		};
+		Label speedLabel = new Label("Speed: 1.0x");
+		timeLineRate = new TimeLineRateListener(speedLabel);
 		ImageView ffdImage = Resources.getImageView("fast-forward.png", playIconSize);
 		Button ffdButton = new Button("Speed up", ffdImage);
 		ImageView rwImage = Resources.getImageView("rewind.png", playIconSize);
@@ -573,21 +680,7 @@ public class Visualizer extends Application {
 		ImageView stopImage = Resources.getImageView("stop-black.png", playIconSize);
 		stopButton.setDisable(true);
 		stopButton.setGraphic(stopImage);
-		stopButton.setOnMouseClicked(new EventHandler<Event>() {
-
-			@Override
-			public void handle(Event arg0) {
-				Timeline timeline = scene.getTimeLine();
-				if ((timeline.getStatus() == Status.RUNNING) || (timeline.getStatus() == Status.PAUSED)){
-					timeline.stop();
-					stopButton.setDisable(true);
-					if ((recordingHandler != null) && (scene != null)){
-						recordingHandler.stopRecording(scene);
-					}
-				}
-			}
-		});
-		
+		stopButton.setOnMouseClicked(new StopButtonAction(Visualizer.this, stopButton, recordingHandler));
 		HBox hbox = new HBox(speedLabel, rwButton, playButton, stopButton, ffdButton, zoomInButton, zoomOutButton); 	
 		hbox.setSpacing(10);
 		hbox.setAlignment(Pos.CENTER_RIGHT);
