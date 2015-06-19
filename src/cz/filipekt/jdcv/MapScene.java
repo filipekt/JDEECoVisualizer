@@ -60,6 +60,8 @@ import cz.filipekt.jdcv.ensembles.CoordinatorRelation;
 import cz.filipekt.jdcv.ensembles.EnsembleDatabase;
 import cz.filipekt.jdcv.ensembles.MembershipRelation;
 import cz.filipekt.jdcv.events.EnsembleEvent;
+import cz.filipekt.jdcv.geometry.CoordinateTransformer;
+import cz.filipekt.jdcv.geometry.MatsimToVisualCoordinates;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;
 import cz.filipekt.jdcv.plugins.InfoPanel;
@@ -298,7 +300,8 @@ public class MapScene {
 				flushProgress.setPrefWidth(200);
 				flushWindow.initStyle(StageStyle.UTILITY);
 				flushWindow.setTitle("Flushing to Disc");
-				HBox pane = new HBox(flushProgress);
+				HBox pane = new HBox();
+				pane.getChildren().addAll(flushProgress);
 				HBox.setHgrow(flushProgress, Priority.ALWAYS);
 				Scene scene = new Scene(pane);
 				flushWindow.setScene(scene);				
@@ -703,7 +706,7 @@ public class MapScene {
 	/**
 	 * Scrollable container for {@link MapScene#mapContainer}
 	 */
-	private final ScrollPane mapPane = new ScrollPane(mapContainer);	
+	private final ScrollPane mapPane = new ScrollPane();
 	
 	/**
 	 * Maps each ensemble membership relation to the graphical representation of this relation.
@@ -1110,7 +1113,8 @@ public class MapScene {
 			ChangeListener<? super Status> timeLineStatus, ChangeListener<? super Number> timeLineRate,
 			double minTime, double maxTime, int duration, CheckPointDatabase checkpointDb, 
 			List<EnsembleEvent> ensembleEvents, HBox controlsBar, boolean matsimEventsPresent,
-			boolean ensembleEventsPresent, int personImageWidth, ShapeProvider circleProvider) {
+			boolean ensembleEventsPresent, int personImageWidth, ShapeProvider circleProvider) {		
+		mapPane.setContent(mapContainer);
 		this.checkpointDb = checkpointDb;
 		this.ensembleEvents = ensembleEvents;
 		this.minTime = minTime;

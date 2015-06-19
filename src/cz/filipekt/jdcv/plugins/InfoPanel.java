@@ -77,13 +77,14 @@ public class InfoPanel implements Plugin {
 	/**
 	 * Scrollable wrapper for {@link InfoPanel#area}
 	 */
-	private final ScrollPane pane = new ScrollPane(area);
-	
+	private final ScrollPane pane = new ScrollPane();
+
 	/**
 	 * This is a singleton class, so uncontrolled instantiation is forbidden
 	 */
 	private InfoPanel() {
 		area.setEditable(false);
+		pane.setContent(area);
 		pane.setFitToHeight(true);
 		pane.setFitToWidth(true);
 	}

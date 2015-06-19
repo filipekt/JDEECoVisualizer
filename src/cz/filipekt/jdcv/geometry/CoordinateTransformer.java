@@ -1,4 +1,4 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.geometry;
 
 /**
  * Converter of coordinates from system A to system B 

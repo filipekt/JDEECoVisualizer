@@ -1,4 +1,4 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.geometry;
 
 /**
  * Converter from the coordinates used in the MATSIM simulation map to the coordinates

@@ -17,6 +17,6 @@ public class Debug {
 	 * When in debug mode, this is used to specify the directory with 
 	 * application resources.
 	 */
-	public static final String projectDir = "C:/diplomka/JDEECoVisualizer-master";
+	public static final String projectDir = "C:/Users/filipekt/Downloads/JDEECoVisualizer-master";
 	
 }

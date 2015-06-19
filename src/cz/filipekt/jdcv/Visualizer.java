@@ -322,7 +322,7 @@ public class Visualizer extends Application {
 	/**
 	 * Contains the controls where users can specify input XML files for the visualization. 
 	 */
-	private final GridPane importSceneGrid;
+	private final GridPane importSceneGrid = new GridPane();
 
 	/**
 	 * Container for map view, or if no map is currently view, for a dialog for loading a map.
@@ -427,38 +427,25 @@ public class Visualizer extends Application {
 	}
 	
 	/**
-	 * The preferred width of the combo-boxes for selecting the input file encoding
-	 */
-	private final double encodingBoxWidth = getEncodingNameMaxLength() + 60.0;
-	
-	/**
 	 * The text inside of the buttons used for opening a file selection dialog
 	 */
 	private final String selectButtonText = "Select..";
 	
 	/**
-	 * The preferred width of the buttons used for opening a file selection dialog
-	 */
-	private final double selectButtonWidth = computeTextLength(selectButtonText) + 40.0;
-	
-	/**
 	 * Text inside the load button, which loads and processes an input config file
 	 */
 	private final String loadButtonText = "Load!";
-	
-	/**
-	 * The preferred width of the load button, which loads and processes an input config file
-	 */
-	private final double loadButtonWidth = computeTextLength(loadButtonText) + 40.0;
 
 	/**
-	 * Builds the {@link Visualizer#importSceneGrid}.
-	 * @param timeLineStatus Called whenever the visualization is started, paused or stopped
-	 * @return The {@link GridPane} to be used for importing new scenes.
+	 * Prepares and initializes the contents of @link Visualizer#importSceneGrid}.
 	 */
-	private GridPane createImportSceneGrid(ChangeListener<Status> timeLineStatus, 
-			ChangeListener<Number> timeLineRate){
-		GridPane pane = new GridPane();
+	private void createImportSceneGrid(){
+		//The preferred width of the combo-boxes for selecting the input file encoding
+		double encodingBoxWidth = getEncodingNameMaxLength() + 60.0;
+		//The preferred width of the buttons used for opening a file selection dialog
+		double selectButtonWidth = computeTextLength(selectButtonText) + 40.0;
+		//The preferred width of the load button, which loads and processes an input config file
+		double loadButtonWidth = computeTextLength(loadButtonText) + 40.0;
 		List<Label> labels = new ArrayList<>();
 		labels.add(new Label("Network definition XML:"));
 		labels.add(new Label("Event log:"));
@@ -466,29 +453,31 @@ public class Visualizer extends Application {
 		final List<TextField> fields = new ArrayList<>();
 		List<ComboBox<String>> charsets = new ArrayList<>();
 		List<Button> chooserButtons = new ArrayList<>();				
-		int row = prepareInputFilesControls(pane, fields, labels, charsets, chooserButtons);	
+		int row = prepareInputFilesControls(importSceneGrid, fields, labels, charsets, 
+				chooserButtons, encodingBoxWidth, selectButtonWidth);	
 		TextField durationField = new TextField();
 		CheckBox onlyComponentsBox = new CheckBox();
 		TextField startAtField = new TextField();
 		TextField endAtField = new TextField();
-		row = prepareOtherControls(pane, row, durationField, onlyComponentsBox, startAtField, endAtField);
+		row = prepareOtherControls(importSceneGrid, row, durationField, onlyComponentsBox, 
+				startAtField, endAtField);
 		row += 1;
 		String line = "----------";
 		Label orLabel = new Label(line + " OR " + line);
-		pane.add(orLabel, 0, row, 2, 1);
+		importSceneGrid.add(orLabel, 0, row, 2, 1);
 		GridPane.setHalignment(orLabel, HPos.CENTER);
 		row += 2;		
-		prepareConfigLoaderRow(pane, row, fields, charsets, durationField);
+		prepareConfigLoaderRow(importSceneGrid, row, fields, charsets, durationField, 
+				encodingBoxWidth, selectButtonWidth, loadButtonWidth);
 		row += 2;		
 		Button okButton = new Button("OK");
-		okButton.setOnMouseClicked(new SceneImportHandler(fields, okButton, onlyComponentsBox, pane, 
-				Visualizer.this, durationField, timeLineStatus, timeLineRate, startAtField, 
-				endAtField, charsets));
-		pane.add(okButton, 1, row);
-		pane.setAlignment(Pos.CENTER);
-		pane.setHgap(importSceneGridHGap);
-		pane.setVgap(importSceneGridVGap);
-		return pane;
+		okButton.setOnMouseClicked(new SceneImportHandler(fields, okButton, onlyComponentsBox, 
+				importSceneGrid, Visualizer.this, durationField, timeLineStatus, timeLineRate, 
+				startAtField, endAtField, charsets));
+		importSceneGrid.add(okButton, 1, row);
+		importSceneGrid.setAlignment(Pos.CENTER);
+		importSceneGrid.setHgap(importSceneGridHGap);
+		importSceneGrid.setVgap(importSceneGridVGap);
 	}
 	
 	/**
@@ -531,10 +520,13 @@ public class Visualizer extends Application {
 	 * @param labels Labels which identify the input fields for input file specification  
 	 * @param charsets All the combo-boxes used for selecting the text encoding for the input files
 	 * @param chooserButtons Buttons used for opening the file selection dialog
+	 * @param encodingBoxWidth The preferred width of the combo-boxes for selecting the input file encoding
+	 * @param selectButtonWidth The preferred width of the buttons used for opening a file selection dialog
 	 * @return The number of the current row, as the "import scene" page is built one row at a time
 	 */
 	private int prepareInputFilesControls(GridPane pane, List<TextField> fields, List<Label> labels,
-			List<ComboBox<String>> charsets, List<Button> chooserButtons){
+			List<ComboBox<String>> charsets, List<Button> chooserButtons, double encodingBoxWidth,
+			double selectButtonWidth){
 		for (int i = 0; i < labels.size(); i++){
 			fields.add(new TextField());
 			Button chooserButton = new Button(selectButtonText);
@@ -578,9 +570,14 @@ public class Visualizer extends Application {
 	 * @param fields The input text fields for entering the paths to the input files
 	 * @param charsets All the combo-boxes used for selecting the text encoding for the input files
 	 * @param durationField The input field for specifying the desired duration of the visualization 
+	 * @param encodingBoxWidth The preferred width of the combo-boxes for selecting the input file encoding
+	 * @param selectButtonWidth The preferred width of the buttons used for opening a file selection dialog
+	 * @param loadButtonWidth The preferred width of the load button, 
+	 * which loads and processes an input config file
 	 */
 	private void prepareConfigLoaderRow(GridPane pane, int row, List<TextField> fields, 
-			List<ComboBox<String>> charsets, TextField durationField){
+			List<ComboBox<String>> charsets, TextField durationField, double encodingBoxWidth,
+			double selectButtonWidth, double loadButtonWidth){
 		Label configFileLabel = new Label("Specify Configuration File:");
 		TextField configFileField = new TextField();
 		configFileField.setPrefWidth(inputFieldsWidth);
@@ -681,7 +678,9 @@ public class Visualizer extends Application {
 		stopButton.setDisable(true);
 		stopButton.setGraphic(stopImage);
 		stopButton.setOnMouseClicked(new StopButtonAction(Visualizer.this, stopButton, recordingHandler));
-		HBox hbox = new HBox(speedLabel, rwButton, playButton, stopButton, ffdButton, zoomInButton, zoomOutButton); 	
+		HBox hbox = new HBox();
+		hbox.getChildren().addAll(speedLabel, rwButton, playButton, stopButton, ffdButton, 
+				zoomInButton, zoomOutButton);
 		hbox.setSpacing(10);
 		hbox.setAlignment(Pos.CENTER_RIGHT);
 		return hbox;
@@ -848,7 +847,8 @@ public class Visualizer extends Application {
 	 * possibly, some belonging controls 
 	 */
 	private Pane createSliderWrapper(){
-		HBox res =  new HBox(timelineSlider);
+		HBox res =  new HBox();
+		res.getChildren().addAll(timelineSlider);
 		HBox.setHgrow(timelineSlider, Priority.ALWAYS);
 		HBox.setMargin(timelineSlider, new Insets(0, 50, 0, 50));
 		return res;
@@ -887,7 +887,8 @@ public class Visualizer extends Application {
 		ToolBar toolBar = new ToolBar();
 		toolBar.setPrefWidth(sidePanelWidth);
 		mainPanel.setPrefWidth(sidePanelWidth);
-		VBox pane = new VBox(toolBar, mainPanel);
+		VBox pane = new VBox();
+		pane.getChildren().addAll(toolBar, mainPanel);
 		VBox.setVgrow(toolBar, Priority.NEVER);
 		VBox.setVgrow(mainPanel, Priority.ALWAYS);
 		pane.setFillWidth(true);
@@ -967,15 +968,18 @@ public class Visualizer extends Application {
 	@Override
 	public void start(Stage stage) throws IOException {	
 		this.stage = stage;
+		createImportSceneGrid();
 		selectInfoPanel();
 		timelineSlider.setDisable(true);
 		noMapNode.setPrefSize(mapWidth, mapHeight);
 		importSceneGrid.setPrefSize(mapWidth, mapHeight);
 		controlsBar.setDisable(true);
 		switchablePanel.setDisable(true);
+		GridPane helpLabelWrapper = new GridPane();
+		helpLabelWrapper.setPadding(new Insets(10, 10, 10, 10));
 		Label helpLabel = new Label("To import new simulation data, click File -> Import Scene");
-		helpLabel.setPadding(new Insets(10, 10, 10, 10));
-		noMapNode.getChildren().add(helpLabel);	
+		helpLabelWrapper.add(helpLabel, 0, 0);
+		noMapNode.getChildren().add(helpLabelWrapper);	
 		mapPane.getChildren().add(noMapNode);
 		graphicsColumn.setPrefWidth(graphicsColumnWidth);
 		graphicsColumn.setMinWidth(graphicsColumnWidth);
@@ -1030,11 +1034,10 @@ public class Visualizer extends Application {
 	 * @throws IOException Unless the application source folder contents have been changed in 
 	 * any way by the user, this exception will never be thrown.
 	 */
-	public Visualizer() throws IOException {				
+	public Visualizer() throws IOException {		
 		menuBar = createMenuBar();	
 		controlsBar = createControlsBar();
 		graphicsColumn = createGraphicsColumn();
-		importSceneGrid = createImportSceneGrid(timeLineStatus, timeLineRate);
 		sliderWrapper = createSliderWrapper();
 		switchablePanel = createSwitchablePanel();
 	}			

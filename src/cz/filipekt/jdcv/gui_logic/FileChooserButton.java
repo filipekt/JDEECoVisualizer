@@ -1,6 +1,7 @@
 package cz.filipekt.jdcv.gui_logic;
 
 import java.io.File;
+import java.io.IOException;
 
 import javafx.event.Event;
 import javafx.event.EventHandler;
@@ -58,7 +59,9 @@ public class FileChooserButton implements EventHandler<Event>{
 	@Override
 	public void handle(Event arg0) {
 		FileChooser fileChooser = new FileChooser();
-		fileChooser.setInitialDirectory(FileChooserButton.lastDirectory);
+		try {
+			fileChooser.setInitialDirectory(FileChooserButton.lastDirectory.getCanonicalFile());
+		} catch (IOException e) {}
 		fileChooser.setTitle(windowTitle);
 		File res = fileChooser.showOpenDialog(stage);
 		if (res != null){
@@ -66,6 +69,7 @@ public class FileChooserButton implements EventHandler<Event>{
 			File dir = res.getAbsoluteFile().getParentFile();
 			FileChooserButton.lastDirectory = dir.getAbsoluteFile();
 		}
+		
 	}
 	
 }

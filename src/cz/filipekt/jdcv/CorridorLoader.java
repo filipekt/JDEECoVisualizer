@@ -19,6 +19,7 @@ import javafx.scene.shape.Line;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Scale;
 import javafx.scene.transform.Translate;
+import cz.filipekt.jdcv.geometry.PointUtils;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyLinkImg;
 
@@ -107,8 +108,8 @@ public class CorridorLoader {
 		} else {
 			fromPointImage = new Point2D(linkImage.getFromX(), linkImage.getFromY());
 			toPointImage = new Point2D(linkImage.getToX(), linkImage.getToY());
-			Point2D unitInImage = toPointImage.subtract(fromPointImage);
-			Point2D unitInVisual = toPoint.subtract(fromPoint);
+			Point2D unitInImage = PointUtils.subtract(toPointImage, fromPointImage);
+			Point2D unitInVisual = PointUtils.subtract(toPoint, fromPoint);
 			angle = angle(unitInImage, unitInVisual);
 			double distanceInImage = fromPointImage.distance(toPointImage);
 			double distanceInVisual = fromPoint.distance(toPoint);
@@ -168,7 +169,7 @@ public class CorridorLoader {
 	private double angle(Point2D vector){
 		double x = vector.getX();
 		double y = vector.getY();
-		double length = vector.distance(Point2D.ZERO);
+		double length = vector.distance(PointUtils.ZERO);
 		double angle = Math.toDegrees(Math.acos(x / length));
 		if (y < 0){
 			angle *= -1;
@@ -224,8 +225,8 @@ public class CorridorLoader {
 		res.add(fromPoint);
 		if (path != null){
 			for (Point2D point : path){
-				point = point.subtract(fromPointImage);
-				point = point.multiply(shrinkRatio);
+				point = PointUtils.subtract(point, fromPointImage);
+				point = PointUtils.multiply(point, shrinkRatio);
 				double angle1 = Math.toDegrees(Math.acos(point.getX() / point.distance(0, 0)));
 				if (point.getY() < 0){
 					angle1 *= -1;
@@ -234,7 +235,7 @@ public class CorridorLoader {
 				double newX = Math.cos(Math.toRadians(angle1)) * point.distance(0, 0);
 				double newY = Math.sin(Math.toRadians(angle1)) * point.distance(0, 0);
 				point = new Point2D(newX, newY);
-				point = point.add(fromPoint);
+				point = PointUtils.add(point, fromPoint);
 				res.add(point);
 			}
 		}

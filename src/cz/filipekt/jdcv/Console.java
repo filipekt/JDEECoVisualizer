@@ -49,6 +49,7 @@ import javax.script.ScriptException;
 import cz.filipekt.jdcv.prefs.GlobalPrefs;
 import cz.filipekt.jdcv.prefs.LinkPrefs;
 import cz.filipekt.jdcv.prefs.MembershipPrefs;
+import cz.filipekt.jdcv.prefs.NodePrefs;
 import cz.filipekt.jdcv.util.CharsetNames;
 import cz.filipekt.jdcv.util.Dialog;
 import cz.filipekt.jdcv.util.Dialog.Type;
@@ -274,7 +275,7 @@ public class Console {
 	 * the settings and parameters of the visualization with an ECMA script.
 	 * @param visualizer The parent application
 	 */
-	public void showScriptingConsole(final Visualizer visualizer){
+	public void showScriptingConsole(Visualizer visualizer){
 		if (isOpen){
 			return;
 		}
@@ -283,16 +284,21 @@ public class Console {
 		}
 		Stage stage = new Stage();
 		VBox pane = new VBox();
+		pane.setFillWidth(true);
+		pane.setPrefWidth(800);
+		pane.setPrefHeight(600);
 		Scene scene = new Scene(pane);
 		HBox buttonsBox = new HBox();
 		Label inputLabel = new Label("INPUT:");
 		TextArea inputArea = new TextArea();
-		ScrollPane inputAreaPane = new ScrollPane(inputArea);
+		ScrollPane inputAreaPane = new ScrollPane();
+		inputAreaPane.setContent(inputArea);
 		inputAreaPane.setFitToWidth(true);
 		inputAreaPane.setFitToHeight(true);
 		Label outputLabel = new Label("OUTPUT:");
 		TextArea outputArea = new TextArea();
-		ScrollPane outputAreaPane = new ScrollPane(outputArea);
+		ScrollPane outputAreaPane = new ScrollPane();
+		outputAreaPane.setContent(outputArea);
 		outputAreaPane.setFitToWidth(true);
 		outputAreaPane.setFitToHeight(true);
 		outputArea.setText(writer.toString());
@@ -425,7 +431,8 @@ public class Console {
 				Dialog.show(Type.ERROR, "Help file contents could not be loaded.");
 			} else {
 				Stage stage = new Stage();
-				StackPane pane = new StackPane(browser);
+				StackPane pane = new StackPane();
+				pane.getChildren().addAll(browser);
 				Scene scene = new Scene(pane);
 				stage.setScene(scene);
 				if (windowIcon != null){
@@ -479,16 +486,20 @@ public class Console {
 		@Override
 		public void handle(Event arg0) {
 			MapScene scene = visualizer.getScene();
+			Map<String,NodePrefs> nodePrefs;
 			Map<String,LinkPrefs> linkPrefs;
 			Set<MembershipPrefs> membershipPrefs;
 			GlobalPrefs generalPrefs = new GlobalPrefs(scene, writer);
 			if (scene == null){
+				nodePrefs = new HashMap<>();
 				linkPrefs = new HashMap<>();
 				membershipPrefs = new HashSet<>();
 			} else {
+				nodePrefs = scene.getPreferences().nodePrefs(Console.getInstance().getWriter());
 				linkPrefs = scene.getPreferences().linkPrefs(Console.getInstance().getWriter());
 				membershipPrefs = scene.getPreferences().membershipPrefs(Console.getInstance().getWriter());
 			}
+			engine.put("nodes", nodePrefs);
 			engine.put("links", linkPrefs);
 			engine.put("memberships", membershipPrefs);
 			engine.put("general", generalPrefs);

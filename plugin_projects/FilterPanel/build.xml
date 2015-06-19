@@ -5,6 +5,25 @@
 		Allows for basic filtering of the visualized elements.
 	</description>
 	
+	<!-- Ensure that the Java version is 7 or later -->
+	<fail message="Unsupported Java version: ${ant.java.version}. Make sure that the Java version is 1.7 or greater.">
+	  <condition>
+		  <or>
+		  	<equals arg1="${ant.java.version}" arg2="1.1"/>
+		  	<equals arg1="${ant.java.version}" arg2="1.2"/>
+		  	<equals arg1="${ant.java.version}" arg2="1.3"/>
+		  	<equals arg1="${ant.java.version}" arg2="1.4"/>
+			<equals arg1="${ant.java.version}" arg2="1.5"/>
+			<equals arg1="${ant.java.version}" arg2="1.6"/>			
+		  </or>
+	  </condition>
+	</fail>
+	
+	<!-- Sets the property java7 if the Java version is 7 -->
+	<condition property="java7">
+		<equals arg1="${ant.java.version}" arg2="1.7"/>
+	</condition>
+	
 	<property name="src" value="src" />
 	<property name="bin" value="bin" />
 	<property name="build" value="build" />
@@ -19,11 +38,20 @@
 		<delete dir="${dist}" />
 	</target>
 	
-	<!-- Compiles the java source files -->
-	<target name="build" depends="clean">
+	<!-- Compiles the java source files if Java version is 7-->
+	<target name="build_java7" depends="clean" if="java7">
 		<mkdir dir="${build}" />
-		<javac encoding="UTF-8" srcdir="${src}" destdir="${build}" classpath="${jdcv-dir}/build" includeantruntime="false" />
+		<javac encoding="UTF-8" srcdir="${src}" destdir="${build}" classpath="${jdcv-dir}/dist/JDEECoVisualizer.jar" includeantruntime="true" target="1.7" source="1.7" />
 	</target>
+	
+	<!-- Compiles the java source files if Java version is 8 or later -->
+	<target name="build_java8plus" depends="clean" unless="java7">
+		<mkdir dir="${build}" />
+		<javac encoding="UTF-8" srcdir="${src}" destdir="${build}" classpath="${jdcv-dir}/dist/JDEECoVisualizer.jar" includeantruntime="false" target="1.7" source="1.7" />
+	</target>
+	
+	<!-- Compiles the java source files -->
+	<target name="build" depends="build_java7,build_java8plus"></target>
 	
 	<!-- Packages the compiled classes into a JAR file -->
 	<target name="dist" depends="build">

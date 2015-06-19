@@ -103,7 +103,8 @@ public class FilterPanel extends PluginWithPreferences {
 		VBox vGrid = new VBox();
 		Button addButton = new Button("Add Filter");
 		Button removeButton = new Button("Remove Selected");
-		HBox buttons = new HBox(addButton, removeButton);
+		HBox buttons = new HBox();
+		buttons.getChildren().addAll(addButton, removeButton);
 		VBox.setVgrow(buttons, Priority.NEVER);
 		VBox.setVgrow(filters, Priority.ALWAYS);
 		filters.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);

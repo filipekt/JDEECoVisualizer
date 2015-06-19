@@ -1,4 +1,4 @@
-<project name="JDEECoVisualizer" default="run_and_clean">
+<project name="JDEECoVisualizer" default="just_dist">
 
 	<description>
 		The DEECo component model is a novel component model for design and 
@@ -12,6 +12,25 @@
 		components together with their internal DEECo knowledge. The tool has to be 
 		implemented in Java. 
 	</description>
+	
+	<!-- Ensure that the Java version is 7 or later -->
+	<fail message="Unsupported Java version: ${ant.java.version}. Make sure that the Java version is 1.7 or greater.">
+	  <condition>
+		  <or>
+		  	<equals arg1="${ant.java.version}" arg2="1.1"/>
+		  	<equals arg1="${ant.java.version}" arg2="1.2"/>
+		  	<equals arg1="${ant.java.version}" arg2="1.3"/>
+		  	<equals arg1="${ant.java.version}" arg2="1.4"/>
+			<equals arg1="${ant.java.version}" arg2="1.5"/>
+			<equals arg1="${ant.java.version}" arg2="1.6"/>			
+		  </or>
+	  </condition>
+	</fail>
+	
+	<!-- Sets the property java7 if the Java version is 7 -->
+	<condition property="java7">
+		<equals arg1="${ant.java.version}" arg2="1.7"/>
+	</condition>
 	
 	<property name="src" value="src" />
 	<property name="bin" value="bin" />
@@ -31,10 +50,17 @@
 		<mkdir dir="${build}"/>
 	</target>
 	
-	<target name="compile" depends="init" description="compile the source " >
+	<target name="compile-java7" depends="init" description="compile the source " if="java7">
 		<!-- Compile the java code from ${src} into ${build} -->
-		<javac encoding="UTF-8" srcdir="${src}" destdir="${build}" includeantruntime="false" />
+		<javac encoding="UTF-8" srcdir="${src}" destdir="${build}" source="1.7" target="1.7" includeAntRuntime="true" />
 	</target>
+	
+	<target name="compile-java8plus" depends="init" description="compile the source " unless="java7">
+		<!-- Compile the java code from ${src} into ${build} -->
+		<javac encoding="UTF-8" srcdir="${src}" destdir="${build}" source="1.7" target="1.7" includeAntRuntime="false" />
+	</target>
+	
+	<target name="compile" depends="compile-java8plus,compile-java7" description="compile the source " ></target>
 	
 	<target name="dist" depends="compile" description="generate the distribution" >
 		<!-- Create the distribution directory -->
@@ -57,7 +83,7 @@
 	  
 	<target name="run" depends="dist">
 		<!-- Run the jar file previously built in the dist target. -->
-		<java classname="cz.filipekt.jdcv.Visualizer" classpath="${dist}/${ant.project.name}.jar;${plugins}/*" fork="true" failonerror="true" />
+		<java classname="cz.filipekt.jdcv.Visualizer" classpath="${dist}/${ant.project.name}.jar;${plugins}/*" fork="true" failonerror="true"/>
 	</target>
 	  
 	<target name="run_and_clean" depends="run">

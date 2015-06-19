@@ -33,8 +33,8 @@ public class GlobalPrefs {
 	}
 
 	/**
-	 * Given a path to an image, each person will be represented by this
-	 * image in the visualization.
+	 * Given a path to an image and an array of person IDs, each of the persons will be 
+	 * represented by the image in the visualization.
 	 * @param path The image to use for visualizing people
 	 * @param selectedPeople People whose visualizations will be updated
 	 */
