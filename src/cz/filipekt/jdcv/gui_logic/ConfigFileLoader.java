@@ -10,6 +10,7 @@ import java.util.List;
 
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
 import cz.filipekt.jdcv.util.CharsetNames;
@@ -67,16 +68,35 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 	 * The field specifying the duration of the visualization
 	 */
 	private final TextField durationField;
+	
+	/**
+	 * The checkbox specifying if just the injected JDEECo agents shall be visualized
+	 */
+	private final CheckBox justAgentsBox;
+	
+	/**
+	 * The field specifying the where in the event log should the visualization begin
+	 */
+	private final TextField startAtField;
+	
+	/**
+	 * The field specifying the where in the event log should the visualization end
+	 */
+	private final TextField endAtField;
 
 	/**
 	 * @param configFileField The text field containing the config file path
 	 * @param configFileCharsets The combo-box for selecting the text encoding of the config file
 	 * @param fields The text fields where the paths to the input XML files will be filled in
 	 * @param charsetBoxes The combo-boxes for selecting the text encoding of the input XML files
-	 * @param durationBox The editable combo-box for specifying the duration of the visualization
+	 * @param durationField The editable combo-box for specifying the duration of the visualization
+	 * @param justAgentsBox The checkbox specifying if just the injected JDEECo agents shall be visualized
+	 * @param startAtField The field specifying the where in the event log should the visualization begin
+	 * @param endAtField The field specifying the where in the event log should the visualization end
 	 */
 	public ConfigFileLoader(TextField configFileField, ComboBox<String> configFileCharsets, 
-			List<TextField> fields, List<ComboBox<String>> charsetBoxes, TextField durationField) {
+			List<TextField> fields, List<ComboBox<String>> charsetBoxes, TextField durationField,
+			CheckBox justAgentsBox, TextField startAtField, TextField endAtField) {
 		this.configFileField = configFileField;
 		this.configFileCharsets = configFileCharsets;
 		this.durationField = durationField;
@@ -86,6 +106,9 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 		this.eventCharsets = charsetBoxes.get(1);
 		this.ensembleField = fields.get(2);
 		this.ensembleCharsets = charsetBoxes.get(2);
+		this.justAgentsBox = justAgentsBox;
+		this.startAtField = startAtField;
+		this.endAtField = endAtField;
 	}
 
 	/**
@@ -115,13 +138,25 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 	 * Contents of the first block of the line that specifies the visualization
 	 * duration, in the config file
 	 */
-	private final String timePreamble = "time";
+	private final String durationPreamble = "target_duration";
 	
 	/**
 	 * Contents of the first block of the line that specifies the "view only
 	 * JDEECo agents" mode in the config file
 	 */
-	private final String agentsPreamble = "onlyAgents";
+	private final String agentsPreamble = "just_agents";
+	
+	/**
+	 * First block of the line which specifies where in the event logs 
+	 * the visualization should start
+	 */
+	private final String startAtPreamble = "start_at";
+	
+	/**
+	 * First block of the line which specifies where in the event logs 
+	 * the visualization should end
+	 */
+	private final String endAtPreamble = "end_at";
 	
 	/**
 	 * Fired when user clicks the "load" button next to the config file text field.
@@ -164,6 +199,9 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 		eventField.setText("");
 		ensembleField.setText("");
 		durationField.setText("");
+		justAgentsBox.setSelected(false);
+		startAtField.setText("");
+		endAtField.setText("");
 	}
 	
 	/**
@@ -203,10 +241,17 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 							case ensemblePreamble:
 								processPathDef(blocks, ensembleField, ensembleCharsets, lineNo);
 								break;
-							case timePreamble:
-								processTimeDef(blocks, durationField, lineNo);
+							case durationPreamble:
+								processNumberDef(blocks, durationField, lineNo);
 								break;
 							case agentsPreamble:
+								processBoolean(blocks, justAgentsBox, lineNo);
+								break;
+							case startAtPreamble:
+								processNumberDef(blocks, startAtField, lineNo);
+								break;
+							case endAtPreamble:
+								processNumberDef(blocks, endAtField, lineNo);
 								break;
 							default:
 								break;
@@ -261,7 +306,7 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 	 * @param lineNo Number of the line, whose contents are given in the first parameter
 	 * @throws ConfigFileLoader.ConfigFileFormatException When the line does not have a valid structure
 	 */
-	private void processTimeDef(String[] blocks, TextField timeField, 
+	private void processNumberDef(String[] blocks, TextField timeField, 
 			int lineNo) throws ConfigFileLoader.ConfigFileFormatException{
 		if ((blocks != null) && (blocks.length == 2) && (timeField != null)){
 			try {
@@ -270,6 +315,27 @@ public class ConfigFileLoader implements EventHandler<ActionEvent> {
 			} catch (NumberFormatException ex){
 				throw new ConfigFileFormatException("[Line " + (lineNo+1) + "]: the duration definition " + 
 						"line must contain precisely two blocks delimeted by \"" + "\"");
+			}
+		}
+	}
+	
+	/**
+	 * Processes the lines of the config file that specify boolean input, such as the
+	 * "just agents" input.
+	 * @param blocks Line from the config file, parsed by the delimiter {@link ConfigFileLoader#delimiter}
+	 * @param booleanBox The checkbox where the "just agents" input is marked
+	 * @param lineNo Number of the line, whose contents are given in the first parameter
+	 * @throws ConfigFileLoader.ConfigFileFormatException When the line does not have a valid structure
+	 */
+	private void processBoolean(String[] blocks, CheckBox booleanBox, int lineNo) 
+			throws ConfigFileFormatException{
+		if ((blocks != null) && (blocks.length == 2) && (booleanBox != null)){
+			try {
+				Boolean value = Boolean.valueOf(blocks[1]);
+				booleanBox.setSelected(value);
+			} catch (NumberFormatException ex){
+				throw new ConfigFileFormatException("[Line " + (lineNo+1) + 
+						"]: the \"just agents\" definition ");
 			}
 		}
 	}

@@ -70,17 +70,6 @@ public class MembershipPrefs implements VisibilityChangeable{
 	 * Used for producing logs
 	 */
 	private final Writer logWriter;
-	
-	/**
-	 * For each {@link Line} representing a membership relation, this map holds
-	 * a corresponding {@link ChangeListener} that ensures the {@link Line} is not
-	 * shown in the visualization.
-	 * The {@link Line} objects can't be simply marked as invisible, because the
-	 * visible property is manipulated continuously by the visualization timeline. 
-	 * Thus, this listener-approach is used.
-	 */
-	private static final Map<Line,ChangeListenerWithMemory> visibilityListeners = new HashMap<>();
-	
 
 	/**
 	 * The geometric shape representing the membership relation
@@ -196,6 +185,23 @@ public class MembershipPrefs implements VisibilityChangeable{
 	}
 	
 	/**
+	 * For each {@link Line} representing a membership relation, this map holds
+	 * a corresponding {@link ChangeListener} that ensures the {@link Line} is not
+	 * shown in the visualization.
+	 * The {@link Line} objects can't be simply marked as invisible, because the
+	 * visible property is manipulated continuously by the visualization timeline. 
+	 * Thus, this listener-approach is used.
+	 */
+	private static final Map<Line,ChangeListenerWithMemory> visibilityListeners = new HashMap<>();
+	
+	/**
+	 * For each line it marks if it's in the "visible" or "invisible" mode.
+	 * If the value for the given line has not been initialized yet, it
+	 * should be interpreted as if a positive value is present. 
+	 */
+	private static final Map<Line,Boolean> visibility = new HashMap<>();
+	
+	/**
 	 * Specifies, whether the membership relation should be shown in the visualization
 	 * @param visible If false, the membership relation won't be shown in the visualization.
 	 */
@@ -209,12 +215,31 @@ public class MembershipPrefs implements VisibilityChangeable{
 				line.visibleProperty().addListener(listener);
 				line.setVisible(false);
 				listener.setLastValue(wasVisible);
+				visibility.put(line, false);
 			} else {
 				if (!line.isVisible()){
 					line.setVisible(listener.getLastValue());
 				}
+				visibility.put(line, true);
 			}
 			log("Visibility of the specified ensemble membership was set to " + visible);
+		}
+	}
+
+	/**
+	 * A check for visibility of this ensemble visualization
+	 */
+	@Override
+	public boolean isVisible() {
+		if (line == null){
+			return false;
+		} else {
+			Boolean val = visibility.get(line);
+			if (val == null){
+				return true;
+			} else {
+				return val;
+			}
 		}
 	}
 

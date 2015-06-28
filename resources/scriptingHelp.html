@@ -15,6 +15,14 @@
 	<div id="ex_01">
 	<span class="example_title">Example 1:</span> hide all ensemble memberships
 	<pre>
+	var it = memberships.iterator()
+	while (it.hasNext()){
+		var el = it.next()
+		el.setVisible(false)
+	}
+	</pre>
+	When using JRE 8, there is a simpler alternative for iterating the collection:
+	<pre>
 	for each (var el in memberships){
 		el.setVisible(false)
 	}
@@ -23,6 +31,18 @@
 	
 	<div id="ex_02">
 	<span class="example_title">Example 2:</span> show only ensemble memberships with coordinator V7
+	<pre>
+	var it = memberships.iterator()
+	while (it.hasNext()){
+		var el = it.next()
+		if (el.getCoordinator().equals("V7")){
+			el.setVisible(true)
+		} else {
+			el.setVisible(false)		
+		}
+	}
+	</pre>
+	And for JRE 8 we can use:
 	<pre>
 	for each (var el in memberships){
 		if (el.getCoordinator().equals("V7")){
@@ -38,12 +58,14 @@
 	<span class="example_title">Example 3:</span> print info about ensemble memberships
 	<pre>
 	var count = 0;
-	for each (var el in memberships){
-		print("Item " + count + ": ")
-		print("Ensemble name=" + el.getEnsembleName() + ", ")
-		print("Coordinator=" + el.getCoordinator() + ", ")
-		print("Member=" + el.getMember())
-		print()
+	var it = memberships.iterator()
+	while(it.hasNext()){
+		var el = it.next()
+		println("Item " + count + ": ")
+		println("Ensemble name=" + el.getEnsembleName() + ", ")
+		println("Coordinator=" + el.getCoordinator() + ", ")
+		println("Member=" + el.getMember())
+		println("")
 		count += 1
 	}
 	</pre>
@@ -66,10 +88,19 @@
 	<div id="ex_06">
 	<span class="example_title">Example 6:</span> set image representing persons V7, V11 - variant II
 	<pre>
-	var jsArr = ["V7","V11"]
-	var strArrType = Java.type("java.lang.String[]")
-	var javaArr = Java.to(jsArr, strArrType)
-	general.setPersonImage("C:/image.png", javaArr)
+	var ecmaArray = ["V7","V11"]
+	var javaArray = java.lang.reflect.Array.newInstance(java.lang.String, ecmaArray.length)
+	for(var i = 0; i&lt;ecmaArray.length; i++){
+		javaArray[i] = ecmaArray[i]
+	}
+	general.setPersonImage("C:/image.png", javaArray)
+	</pre>
+	And for JRE 8 we have
+	<pre>
+	var ecmaArray = ["V7","V11"]
+	var stringArrayType = Java.type("java.lang.String[]")
+	var javaArray = Java.to(ecmaArray, stringArrayType)
+	general.setPersonImage("C:/image.png", javaArray)
 	</pre>
 	</div>
 	
@@ -83,12 +114,25 @@
 	<div id="ex_08">
 	<span class="example_title">Example 8:</span> set color of the ensemble memberships with coordinator V7 to red, others to green
 	<pre>
-	for each (var el in memberships){
+	var it = memberships.iterator()
+	while(it.hasNext()){
+		var el = it.next()
 		if (el.getCoordinator().equals("V7")){
 			el.setColor(Color.RED)
 		} else {
 			el.setColor(Color.GREEN)
 		}
+	}
+	</pre>
+	</div>
+	
+	<div id="ex_09">
+	<span class="example_title">Example 9:</span> print the x-coordinates of all the nodes
+	<pre>
+	var it = nodes.keySet().iterator()
+	while(it.hasNext()){
+		var id = it.next()
+		println("id=" + id + ", X=" + nodes.get(id).getX())
 	}
 	</pre>
 	</div>

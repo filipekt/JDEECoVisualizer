@@ -2,8 +2,8 @@
 
 1) 	Make sure the following software is installed:
 	- JRE (Java Runtime), version 7 or later 
-	- JavaFX 2.2 or later (included in JRE8 and some of the later versions of 
-	JRE7 by default, for earlier JRE7 it must be installed separately)
+	- JavaFX 2.2 or later (included in the JRE since version 7 update 6 
+	by default, for earlier updates of JRE7 it must be installed separately)
 	
 2)	Make sure that you have the JavaFX library (jfxrt.jar) on the class path. 
 	In JRE8 it is done automatically, but in JRE7 it has to be done manually.
@@ -21,9 +21,9 @@ the changes to reflect in the application.
 
 1)	Make sure the following software is installed: 
 	- JDK (Java Development Kit), version 7 or later
-	- Apache Ant 1.9 or later
-	- JavaFX 2.2 or later (included in JRE8 and some of the later versions of 
-	JRE7 by default, for earlier JRE7 it must be installed separately)
+	- Apache Ant 1.8.2 or later
+	- JavaFX 2.2 or later (included in the JRE since version 7 update 6 
+	by default, for earlier updates of JRE7 it must be installed separately)
 	
 2)	Make sure that you have the JavaFX library (jfxrt.jar) on the class path. 
 	In JRE8 it is done automatically, but in JRE7 it has to be done manually.

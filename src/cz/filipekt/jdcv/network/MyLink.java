@@ -1,11 +1,13 @@
 package cz.filipekt.jdcv.network;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import cz.filipekt.jdcv.xml.Corridor;
 import javafx.geometry.Point2D;
 
 /**
@@ -58,15 +60,24 @@ public class MyLink {
 	private final Set<String> allowedModes = new HashSet<>();
 	
 	/**
-	 * Specification of the image which represents this link
+	 * The visual representation of this link
 	 */
-	private final MyLinkImg linkImage;
-	
+	private Corridor corridor;
+
 	/**
-	 * Points specifying the path along which the cars/persons move through the 
-	 * link visualization. Coordinates are taken from the image raster.
+	 * @return The visual representation of this link
 	 */
-	private final List<Point2D> pathPoints;
+	public Corridor getCorridor() {
+		return corridor;
+	}
+
+	/**
+	 * @param corridor The visual representation of this link
+	 * @see {@link MyLink#corridor}
+	 */
+	public void setCorridor(Corridor corridor) {
+		this.corridor = corridor;
+	}
 
 	/**
 	 * @param id A unique id of the link
@@ -77,13 +88,10 @@ public class MyLink {
 	 * @param freespeed The allowed maximum speed of the link
 	 * @param capacity The maximal capacity of this link for a given period 
 	 * @param numberOfLanes The number of lanes of this link
-	 * @param linkImage Specification of the image which represents this link
-	 * @param pathPoints Points specifying the path along which the cars/persons move through the 
-	 * link visualization. Coordinates are taken from the image raster.
 	 * @param modes List of transportation modes that are allowed on this link
 	 */
-	public MyLink(String id, MyNode from, MyNode to, BigDecimal length, double freespeed, double capacity, 
-			double numberOfLanes, MyLinkImg linkImage, List<Point2D> pathPoints, String... modes) {
+	public MyLink(String id, MyNode from, MyNode to, BigDecimal length, double freespeed, 
+			double capacity, double numberOfLanes, String... modes) {
 		super();
 		this.id = id;
 		this.from = from;
@@ -92,8 +100,6 @@ public class MyLink {
 		this.freespeed = freespeed;
 		this.capacity = capacity;
 		this.numberOfLanes = numberOfLanes;
-		this.linkImage = linkImage;
-		this.pathPoints = pathPoints;
 		if (modes != null){
 			Collections.addAll(allowedModes, modes);
 		}
@@ -190,18 +196,24 @@ public class MyLink {
 	
 	/**
 	 * @return Specification of the image which represents this link
-	 * @see {@link MyLink#linkImage}
 	 */
 	public MyLinkImg getLinkImage() {
-		return linkImage;
+		if (corridor == null){
+			return null;
+		} else {
+			return corridor.getLinkImage();
+		}
 	}
 	
 	/**
-	 * @return Points specifying the path along which the cars/persons move through the 
+	 * @return Points specifying the path along which the persons move through the 
 	 * link visualization. Coordinates are taken from the image raster.
-	 * @see {@link MyLink#pathPoints}
 	 */
 	public List<Point2D> getPathPoints() {
-		return pathPoints;
+		if (corridor == null){
+			return new ArrayList<>();
+		} else {
+			return corridor.getLinkPath();
+		}
 	}
 }

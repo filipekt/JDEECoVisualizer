@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import javafx.animation.Animation.Status;
 import javafx.application.Platform;
@@ -44,6 +45,7 @@ import cz.filipekt.jdcv.events.MatsimEvent;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.util.Dialog;
 import cz.filipekt.jdcv.util.Resources;
+import cz.filipekt.jdcv.xml.CorridorHandler;
 import cz.filipekt.jdcv.xml.EnsembleHandler;
 import cz.filipekt.jdcv.xml.LinkHandler;
 import cz.filipekt.jdcv.xml.MatsimEventHandler;
@@ -210,7 +212,24 @@ class SceneImportHandler implements EventHandler<javafx.event.Event>{
 				@Override
 				public void run() {
 					try {	
-						prepareNewScene(onlyAgents, startAt, endAt, duration);
+						Platform.runLater(new Runnable() {
+							
+							@Override
+							public void run() {								
+								openProgressIndicator();
+							}
+						});							
+						try {
+							prepareNewScene(onlyAgents, startAt, endAt, duration);
+						} finally {
+							Platform.runLater(new Runnable() {
+								
+								@Override
+								public void run() {
+									closeProgressIndiciator();
+								}
+							});
+						}
 					} catch (IOException ex){						
 						reportError("Could not read from one of the input files:", ex.getMessage());
 					} catch (ParserConfigurationException ex) {						
@@ -335,6 +354,34 @@ class SceneImportHandler implements EventHandler<javafx.event.Event>{
 	private boolean ensembleEventsPresent;
 	
 	/**
+	 * The ration by which the visualized scene is shrunken so that the scroll-pane
+	 * is not in the scrolling mode by default  
+	 */
+	private final double mapScrollMargin = 0.95;
+	
+	/**
+	 * Minimum time value shown at the application timeline. It is computed as the
+	 * maximum of values (minimal time in the event logs, "from time" input value)
+	 */
+	private double minTime;
+	
+	/**
+	 * Maximum time value shown at the application timeline. It is computed as the
+	 * minimum of values (maximal time in the event logs, "to time" input value)
+	 */
+	private double maxTime;
+	
+	/**
+	 * The partially parsed data from the event logs
+	 */
+	private CheckPointDatabase cdb;
+	
+	/**
+	 * Parsed event elements from the ensemble event log
+	 */
+	private List<EnsembleEvent> ensembleEvents;
+	
+	/**
 	 * Creates a {@link MapScene} representation of the data provided by the input
 	 * files. The instance is then given to the {@link Visualizer} instance which
 	 * takes care of the actual visualization.
@@ -353,86 +400,98 @@ class SceneImportHandler implements EventHandler<javafx.event.Event>{
 	private void prepareNewScene(boolean onlyAgents, Double startAt, Double endAt, int duration) 
 			throws ParserConfigurationException, SAXException, IOException, SelectionTooBigException, 
 			ElementTooLargeException {
+		TextField networkField = pathFields.get(0);
+		TextField eventField = pathFields.get(1);
+		TextField ensembleField = pathFields.get(2);	
+		Path networkFile = Paths.get(networkField.getText());
+		String networkFileEncoding = charsetBoxes.get(0).getSelectionModel().getSelectedItem();
+		NodeHandler nodeHandler = new NodeHandler();
+		XMLextractor.run(networkFile, networkFileEncoding, nodeHandler);
+		LinkHandler linkHandler = new LinkHandler(nodeHandler.getNodes());
+		XMLextractor.run(networkFile, networkFileEncoding, linkHandler);
+		CorridorHandler corridorHandler = new CorridorHandler(linkHandler.getLinks());
+		XMLextractor.run(networkFile, networkFileEncoding, corridorHandler);
+		retrieveEventsData(onlyAgents, startAt, endAt, eventField, ensembleField, linkHandler.getLinks());
+		ShapeProvider circleProvider = new CircleProvider(personCircleRadius, personCircleColor);
+		MapSceneBuilder sceneBuilder = new MapSceneBuilder();
+		sceneBuilder.setNodes(nodeHandler.getNodes());
+		sceneBuilder.setLinks(linkHandler.getLinks());
+		sceneBuilder.setMapWidth(visualizer.getMapWidth() * mapScrollMargin);
+		sceneBuilder.setMapHeight(visualizer.getMapHeight() * mapScrollMargin);
+		sceneBuilder.setTimeLineStatus(timeLineStatus);
+		sceneBuilder.setTimeLineRate(timeLineRate);
+		sceneBuilder.setMinTime(minTime);
+		sceneBuilder.setMaxTime(maxTime);
+		sceneBuilder.setDuration(duration);
+		sceneBuilder.setCheckpointDb(cdb);
+		sceneBuilder.setEnsembleEvents(ensembleEvents);
+		sceneBuilder.setControlsBar(visualizer.getControlsBar());
+		sceneBuilder.setMatsimEventsPresent(matsimEventsPresent);
+		sceneBuilder.setEnsembleEventsPresent(ensembleEventsPresent);
+		sceneBuilder.setPersonImageWidth(8 * personCircleRadius);
+		sceneBuilder.setCircleProvider(circleProvider);
+		final MapScene scene = sceneBuilder.build();
+		scene.update(circleProvider, false, null);
 		Platform.runLater(new Runnable() {
 			
 			@Override
-			public void run() {								
-				openProgressIndicator();
+			public void run() {					
+				visualizer.setScene(scene, matsimEventsPresent);										
 			}
 		});		
-		try {
-			TextField networkField = pathFields.get(0);
-			TextField eventField = pathFields.get(1);
-			TextField ensembleField = pathFields.get(2);	
-			Path networkFile = Paths.get(networkField.getText());
-			String networkFileEncoding = charsetBoxes.get(0).getSelectionModel().getSelectedItem();
-			NodeHandler nodeHandler = new NodeHandler();
-			XMLextractor.run(networkFile, networkFileEncoding, nodeHandler);
-			LinkHandler linkHandler = new LinkHandler(nodeHandler.getNodes());
-			XMLextractor.run(networkFile, networkFileEncoding, linkHandler);
-			double minTime, maxTime;
-			List<EnsembleEvent> events = null;
-			final CheckPointDatabase cdb;
-			if(matsimEventsPresent){
-				Path eventsFile = Paths.get(eventField.getText());
-				String eventsFileEncoding = charsetBoxes.get(1).getSelectionModel().getSelectedItem();
-				InputStream eventsStream = getEventLogStream(eventsFile, eventsFileEncoding, startAt, endAt);
-				MatsimEventHandler matsimEventHandler = new MatsimEventHandler(
-						linkHandler.getLinks(), onlyAgents, startAt, endAt);
-				XMLextractor.run(eventsStream, eventsFileEncoding, matsimEventHandler);
-				cdb = buildCheckPointDatabase(matsimEventHandler.getEvents());
-				minTime = startAt==null ? cdb.getMinTime() : (startAt * 1.0);
-				maxTime = endAt==null ? cdb.getMaxTime() : (endAt * 1.0);
-				if (ensembleEventsPresent){
-					Path ensembleFile = Paths.get(ensembleField.getText());
-					String ensembleFileEncoding = charsetBoxes.get(2).getSelectionModel().getSelectedItem();									
-					EnsembleHandler ensembleHandler = new EnsembleHandler(startAt, endAt);
-					XMLextractor.run(ensembleFile, ensembleFileEncoding, ensembleHandler);
-					events = ensembleHandler.getEvents();
-				}
+	}
+	
+	/**
+	 * Parses and retrieves the data from the Matsim and ensembles event logs
+	 * @param onlyAgents Value of the checkbox specifying whether only JDEECo agents should be shown
+	 * @param startAt Value of the field specifying the simulation time at which visualization should start
+	 * @param endAt Value of the field specifying the simulation time at which visualization should end
+	 * @param eventField The GUI input field for entering the Matsim event log file path
+	 * @param ensembleField The GUI input field for entering the ensemble event log file path
+	 * @param links The parsed link elements, indexed by their link IDs
+	 * @throws IOException If the source XML file, specified by a method parameter, 
+	 * does not exist or is inaccessible.
+	 * @throws SelectionTooBigException If the selected time interval is too large to handle 
+	 * @throws ElementTooLargeException If an event element in the Matsim event log is too large
+	 * @throws ParserConfigurationException Should never happen
+	 * @throws SAXException When there is any problem when parsing the XML document. 
+	 * It is generally used as a wrapper for other kinds of exceptions.
+	 */
+	private void retrieveEventsData(boolean onlyAgents, Double startAt, Double endAt, 
+			TextField eventField, TextField ensembleField, Map<String,MyLink> links) 
+					throws IOException, SelectionTooBigException, ElementTooLargeException, 
+					ParserConfigurationException, SAXException{
+		if(matsimEventsPresent){
+			Path eventsFile = Paths.get(eventField.getText());
+			String eventsFileEncoding = charsetBoxes.get(1).getSelectionModel().getSelectedItem();
+			InputStream eventsStream = getEventLogStream(eventsFile, eventsFileEncoding, startAt, endAt);
+			MatsimEventHandler matsimEventHandler = new MatsimEventHandler(
+					links, onlyAgents, startAt, endAt);
+			XMLextractor.run(eventsStream, eventsFileEncoding, matsimEventHandler);
+			cdb = buildCheckPointDatabase(matsimEventHandler.getEvents());
+			if (startAt == null){
+				minTime = cdb.getMinTime();
 			} else {
-				minTime = 0;
-				maxTime = 0;
-				cdb = null;
+				minTime = Math.max(startAt * 1.0, cdb.getMinTime());
 			}
-			ShapeProvider circleProvider = new CircleProvider(personCircleRadius, personCircleColor);
-			MapSceneBuilder sceneBuilder = new MapSceneBuilder();
-			sceneBuilder.setNodes(nodeHandler.getNodes());
-			sceneBuilder.setLinks(linkHandler.getLinks());
-			sceneBuilder.setMapWidth(visualizer.getMapWidth());
-			sceneBuilder.setMapHeight(visualizer.getMapHeight());
-			sceneBuilder.setTimeLineStatus(timeLineStatus);
-			sceneBuilder.setTimeLineRate(timeLineRate);
-			sceneBuilder.setMinTime(minTime);
-			sceneBuilder.setMaxTime(maxTime);
-			sceneBuilder.setDuration(duration);
-			sceneBuilder.setCheckpointDb(cdb);
-			sceneBuilder.setEnsembleEvents(events);
-			sceneBuilder.setControlsBar(visualizer.getControlsBar());
-			sceneBuilder.setMatsimEventsPresent(matsimEventsPresent);
-			sceneBuilder.setEnsembleEventsPresent(ensembleEventsPresent);
-			sceneBuilder.setPersonImageWidth(8 * personCircleRadius);
-			sceneBuilder.setCircleProvider(circleProvider);
-			final MapScene scene = sceneBuilder.build();
-			scene.update(circleProvider, false, null);
-			Platform.runLater(new Runnable() {
-				
-				@Override
-				public void run() {					
-					visualizer.setScene(scene, matsimEventsPresent);										
-				}
-			});		
-		} finally {
-			
-			Platform.runLater(new Runnable() {
-				
-				@Override
-				public void run() {
-					closeProgressIndiciator();
-				}
-			});
+			if (endAt == null){
+				maxTime = cdb.getMaxTime();
+			} else {
+				maxTime = Math.min(endAt * 1.0, cdb.getMaxTime());
+			}
+			if (ensembleEventsPresent){
+				Path ensembleFile = Paths.get(ensembleField.getText());
+				String ensembleFileEncoding = charsetBoxes.get(2).getSelectionModel().getSelectedItem();									
+				EnsembleHandler ensembleHandler = new EnsembleHandler(startAt, endAt);
+				XMLextractor.run(ensembleFile, ensembleFileEncoding, ensembleHandler);
+				ensembleEvents = ensembleHandler.getEvents();
+			}
+		} else {
+			ensembleEvents = null;
+			minTime = 0;
+			maxTime = 0;
+			cdb = null;
 		}
-				
 	}
 	
 	/**

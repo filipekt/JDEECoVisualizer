@@ -52,6 +52,7 @@ import cz.filipekt.jdcv.prefs.MembershipPrefs;
 import cz.filipekt.jdcv.prefs.NodePrefs;
 import cz.filipekt.jdcv.util.CharsetNames;
 import cz.filipekt.jdcv.util.Dialog;
+import cz.filipekt.jdcv.util.GUIUtils;
 import cz.filipekt.jdcv.util.Dialog.Type;
 import cz.filipekt.jdcv.util.Resources;
 
@@ -65,11 +66,6 @@ import cz.filipekt.jdcv.util.Resources;
  * 
  */
 public class Console {
-	
-	/**
-	 * Width (in pixels) of the buttons provided in the console window
-	 */
-	private final double buttonWidth = 130;
 	
 	/**
 	 * The amount of horizontal space between the buttons
@@ -218,6 +214,61 @@ public class Console {
 	}
 	
 	/**
+	 * Returns the maximal values from those given as parameters
+	 * @param values Values where the maximum will be sought 
+	 * @return Maximal value from those given as parameters
+	 */
+	private final double max(double... values){
+		double max = Double.MIN_VALUE;
+		for (double val : values){
+			if (val > max){
+				max = val;
+			}
+		}
+		return max;
+	}
+	
+	/**
+	 * The image placed inside the "import script" button
+	 */
+	private final ImageView importImage = Resources.getImageView("import.png", buttonIconSize);
+	
+	/**
+	 * The text inside the "import script" button
+	 */
+	private final String importText = "Import File";
+	
+	/**
+	 * The image placed inside the "run" button
+	 */
+	private final ImageView runImage = Resources.getImageView("run.png", buttonIconSize);
+	
+	/**
+	 * The text inside the "run" button
+	 */
+	private final String runText = "Run!";
+	
+	/**
+	 * The image placed inside the "clear" button
+	 */
+	private final ImageView clearImage = Resources.getImageView("clear.png", buttonIconSize);
+	
+	/**
+	 * The text inside the "clear" button
+	 */
+	private final String clearText = "Clear Input";
+	
+	/**
+	 * The image placed inside the "help" button
+	 */
+	private final ImageView helpImage = Resources.getImageView("help.png", buttonIconSize);
+	
+	/**
+	 * The text inside the "help" button
+	 */
+	private final String helpText = "Help";
+	
+	/**
 	 * Fills the "buttonsBox" with the buttons that provide options to import a script
 	 * file, run the script, delete the input/output area, view help file.
 	 * @param buttonsBox The box to be filled with buttons
@@ -228,7 +279,6 @@ public class Console {
 	 */
 	private void fillButtonsBox(HBox buttonsBox, TextArea inputArea, TextArea outputArea, 
 			Visualizer visualizer, Stage stage){
-		ImageView importImage = Resources.getImageView("import.png", buttonIconSize);
 		Set<MenuItem> importButtons = new HashSet<>();
 		for (String encoding : CharsetNames.get()){
 			MenuItem item = new MenuItem();
@@ -239,20 +289,26 @@ public class Console {
 		SplitMenuButton importButton = new SplitMenuButton();
 		importButton.getItems().addAll(importButtons);
 		importButton.setGraphic(importImage);
-		importButton.setText("Import File");
+		importButton.setText(importText);
 		importButton.setOnAction(new ImportButtonHandler(Charset.defaultCharset().name(), stage, inputArea));
-		ImageView runImage = Resources.getImageView("run.png", buttonIconSize);
-		Button runButton = new Button("Run!", runImage);
-		ImageView clearImage = Resources.getImageView("clear.png", buttonIconSize);
+		double importWidth = GUIUtils.getIdealWidth(importButton);
+		Button runButton = new Button();
+		runButton.setGraphic(runImage);
+		runButton.setText(runText);
+		double runWidth = GUIUtils.getIdealWidth(runButton);
 		MenuItem clearInputItem = new MenuItem("Clear Input");
 		MenuItem clearOutputItem = new MenuItem("Clear Output");
 		SplitMenuButton clearButton = new SplitMenuButton(clearInputItem, clearOutputItem);
 		clearButton.setGraphic(clearImage);
-		clearButton.setText("Clear Input");
-		ImageView helpImage = Resources.getImageView("help.png", buttonIconSize);
-		Button helpButton = new Button("Help", helpImage);
+		clearButton.setText(clearText);
+		double clearWidth = GUIUtils.getIdealWidth(clearButton);
+		Button helpButton = new Button();
+		helpButton.setGraphic(helpImage);
+		helpButton.setText(helpText);
 		helpButton.setOnAction(new HelpButtonHandler());
+		double helpWidth = GUIUtils.getIdealWidth(helpButton);
 		List<Control> buttons = Arrays.<Control>asList(importButton, runButton, clearButton, helpButton);
+		double buttonWidth = max(importWidth, runWidth, clearWidth, helpWidth);
 		for (Control button : buttons){
 			button.setPrefWidth(buttonWidth);
 		}
@@ -499,6 +555,7 @@ public class Console {
 				linkPrefs = scene.getPreferences().linkPrefs(Console.getInstance().getWriter());
 				membershipPrefs = scene.getPreferences().membershipPrefs(Console.getInstance().getWriter());
 			}
+			engine.put("out", System.out);
 			engine.put("nodes", nodePrefs);
 			engine.put("links", linkPrefs);
 			engine.put("memberships", membershipPrefs);

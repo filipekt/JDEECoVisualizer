@@ -14,7 +14,11 @@
 		<link id="2opp" from="center" to="bottom_right" />
 		<link id="3" from="bottom_left" to="center" />
 		<link id="3opp" from="center" to="bottom_left" />
-		<link id="4" from="top_right" to="center">
+		<link id="4" from="top_right" to="center" />
+		<link id="4opp" from="center" to="top_right" />
+	</links>
+	<corridors>
+		<corridor id="cor01" links="4,4opp">
 			<link_img source="resources/arrow.png" fromx="836" fromy="1280" tox="1" toy="250" />
 			<link_path>
 				<point x="836" y="653" />
@@ -22,15 +26,6 @@
 				<point x="695" y="305" />
 				<point x="483" y="251" />
 			</link_path>
-		</link>
-		<link id="4opp" from="center" to="top_right">
-		<link_img source="resources/arrow.png" fromx="836" fromy="1280" tox="1" toy="250" />
-			<link_path>
-				<point x="836" y="653" />
-				<point x="817" y="446" />
-				<point x="695" y="305" />
-				<point x="483" y="251" />
-			</link_path>
-		</link>
-	</links>
+		</corridor>
+	</corridors>
 </network>

@@ -1,12 +1,8 @@
 package cz.filipekt.jdcv.xml;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-
-import javafx.geometry.Point2D;
 
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
@@ -17,7 +13,6 @@ import cz.filipekt.jdcv.exceptions.InvalidAttributeValueException;
 import cz.filipekt.jdcv.exceptions.NodeNotFoundException;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyLinkBuilder;
-import cz.filipekt.jdcv.network.MyLinkImg;
 import cz.filipekt.jdcv.network.MyNode;
 
 /**
@@ -117,160 +112,7 @@ public class LinkHandler extends DefaultHandler {
 		if (qName.equals(linkName)){
 			processLink(attributes);
 		}
-		if (qName.equals(linkImgName)){
-			processLinkImg(attributes);
-		}
-		if (qName.equals(linkPathName)){
-			points = new ArrayList<>();
-		}
-		if (qName.equals(pointName)){
-			processPoint(attributes);
-		}
 	}
-	
-	/**
-	 * Called by the {@link XMLReader} during the SAX parsing, when an element is being left.
-	 * Makes sure that when the name of the element is "link", proper actions are taken.
-	 * @see {@link LinkHandler#processLink(Attributes)}
-	 */
-	@Override
-	public void endElement(String uri, String localName, String qName)
-			throws SAXException {
-		if (qName.equals(linkName)){
-			if (linkBuilder != null){
-				linkBuilder.setLinkImage(linkImage);
-				linkImage = null;
-				linkBuilder.setPathPoints(points);
-				points = null;
-				MyLink link = linkBuilder.build();
-				linkBuilder = null;
-				links.put(link.getId(), link);
-			}
-		}		
-	}
-	
-	/**
-	 * Points describing the path along which cars/people move. 
-	 * Taken from the last encountered link_path element 
-	 */
-	private List<Point2D> points;
-	
-	/**
-	 * Local name of the link_path element specifying the path through which
-	 * cars/persons go when traveling through the link
-	 */
-	private final String linkPathName = "link_path";
-	
-	/**
-	 * Local name of the point element specifying a point in the map,
-	 * for example inside a link_path element
-	 */
-	private final String pointName = "point";
-	
-	/**
-	 * Name of the attribute specifying the x-coordinate of a point
-	 */
-	private final String pointXName = "x";
-	
-	/**
-	 * Name of the attribute specifying the y-coordinate of a point
-	 */
-	private final String pointYName = "y";
-
-	/**
-	 * Local name of the link_img element
-	 */
-	private final String linkImgName = "link_img";
-	
-	/**
-	 * Name of the attribute specifying the path to the image that reperesents a link
-	 */
-	private final String linkImgSourceName = "source";
-	
-	/**
-	 * Name of the attribute specifying the x-coordinate of the point in the
-	 * link visualization where the link starts.
-	 */
-	private final String linkImgFromXName = "fromx";
-	
-	/**
-	 * Name of the attribute specifying the y-coordinate of the point in the
-	 * link visualization where the link starts.
-	 */
-	private final String linkImgFromYName = "fromy";
-	
-	/**
-	 * Name of the attribute specifying the x-coordinate of the point in the
-	 * link visualization where the link ends.
-	 */
-	private final String linkImgToXName = "tox";
-	
-	/**
-	 * Name of the attribute specifying the y-coordinate of the point in the
-	 * link visualization where the link ends.
-	 */
-	private final String linkImgToYName = "toy";
-	
-	/**
-	 * Called when a point element is encountered. It parses the element and
-	 * adds the parsed form to {@link LinkHandler#points} 
-	 * @param attributes Attributes of the point element.
-	 * @throws SAXException When a mandatory attribute is missing, empty or has an invalid value.
-	 */
-	private void processPoint(Attributes attributes) throws SAXException{
-		String xStr = attributes.getValue(pointXName);
-		Utils.ensureNonNullAndNonEmptyAttr(pointName, pointXName, xStr);
-		String yStr = attributes.getValue(pointYName);
-		Utils.ensureNonNullAndNonEmptyAttr(pointName, pointYName, yStr);
-		try {
-			int x = Integer.parseInt(xStr);
-			int y = Integer.parseInt(yStr);
-			Point2D point = new Point2D(x, y);
-			points.add(point);
-		} catch (NumberFormatException ex){
-			throw new SAXException(new InvalidAttributeValueException(
-					"Numeric attributes of the point element must be in the integer format."));
-		}
-	}
-	
-	/**
-	 * Called when a link_img element is encountered. It parses the element and
-	 * puts the parsed form into {@link LinkHandler#linkImage} 
-	 * @param attributes The attributes of the link_img element
-	 * @throws SAXException When a mandatory attribute is missing, empty or has an invalid value.
-	 */
-	private void processLinkImg(Attributes attributes) throws SAXException{
-		String source = attributes.getValue(linkImgSourceName);
-		Utils.ensureNonNullAndNonEmptyAttr(linkImgName, linkImgSourceName, source);
-		String fromx = attributes.getValue(linkImgFromXName);
-		Utils.ensureNonNullAndNonEmptyAttr(linkImgName, linkImgFromXName, fromx);
-		String fromy = attributes.getValue(linkImgFromYName);
-		Utils.ensureNonNullAndNonEmptyAttr(linkImgName, linkImgFromYName, fromy);
-		String tox = attributes.getValue(linkImgToXName);
-		Utils.ensureNonNullAndNonEmptyAttr(linkImgName, linkImgToXName, tox);
-		String toy = attributes.getValue(linkImgToYName);
-		Utils.ensureNonNullAndNonEmptyAttr(linkImgName, linkImgToYName, toy);
-		try {
-			int fromXNum = Integer.parseInt(fromx);
-			int fromYNum = Integer.parseInt(fromy);
-			int toXNum = Integer.parseInt(tox);
-			int toYNum = Integer.parseInt(toy);
-			linkImage = new MyLinkImg(source, fromXNum, fromYNum, toXNum, toYNum);
-		} catch (NumberFormatException ex){
-			throw new SAXException(new InvalidAttributeValueException(
-					"Numeric attributes of the link_img element must be in the integer format."));
-		}
-	}
-	
-	/**
-	 * Builder for {@link MyLink}
-	 */
-	private MyLinkBuilder linkBuilder;
-	
-	/**
-	 * Specification of the image which represents the last encountered link
-	 */
-	private MyLinkImg linkImage;
 	
 	/**
 	 * When a "link" element is encountered, this method creates a {@link MyLink} representation 
@@ -311,7 +153,7 @@ public class LinkHandler extends DefaultHandler {
 			throw new SAXException(new NodeNotFoundException());
 		}
 		try {
-			linkBuilder = new MyLinkBuilder();
+			MyLinkBuilder linkBuilder = new MyLinkBuilder();
 			linkBuilder.setId(id);
 			linkBuilder.setFrom(fromNode);
 			linkBuilder.setTo(toNode);
@@ -334,7 +176,9 @@ public class LinkHandler extends DefaultHandler {
 			if (modes != null){
 				String[] modesArray = modes.split(",");
 				linkBuilder.setAllowedModes(modesArray);
-			}																							
+			}	
+			MyLink link = linkBuilder.build();
+			links.put(link.getId(), link);
 		} catch (NumberFormatException ex){
 			throw new SAXException(new InvalidAttributeValueException(
 					"Numeric attributes of the link element must be in the \"double precision\" format."));

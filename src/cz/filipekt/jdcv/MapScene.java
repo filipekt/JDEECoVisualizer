@@ -1130,8 +1130,8 @@ public class MapScene {
 		this.originalMapWidth = mapWidth;
 		this.originalMapHeight = mapHeight;
 		this.controlsBar = controlsBar;
-		widthFactor = (mapWidth - constantMargin) / (maxx - minx);
-		heightFactor = (mapHeight - constantMargin) / (maxy - miny);
+		widthFactor = (mapWidth - (constantMargin)) / (maxx - minx);
+		heightFactor = (mapHeight - (constantMargin)) / (maxy - miny);
 		mapContainer.setPrefSize(mapWidth, mapHeight);
 		mapContainer.setId("mapContainer");
 		timeLine.statusProperty().addListener(timeLineStatus);

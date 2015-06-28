@@ -12,4 +12,9 @@ public interface VisibilityChangeable {
 	 * @param visible
 	 */
 	void setVisible(boolean visible);
+	
+	/**
+	 * @return True iff the object is currently visible
+	 */
+	boolean isVisible();
 }

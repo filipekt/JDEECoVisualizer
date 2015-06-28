@@ -4,8 +4,7 @@ import cz.filipekt.jdcv.Visualizer;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
-import javafx.scene.control.MenuItem;
-import javafx.scene.image.ImageView;
+import javafx.scene.control.CheckMenuItem;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
@@ -25,12 +24,7 @@ public class ControlsBarItemHandler implements EventHandler<ActionEvent> {
 	/**
 	 * The item in the "view" menu allowing for showing/hiding the controls bar
 	 */
-	private final MenuItem controlsBarItem;
-	
-	/**
-	 * The "checked" image shown next to the {@link ControlsBarItemHandler#controlsBarItem} when selected
-	 */
-	private final ImageView checkBoxImage;
+	private final CheckMenuItem controlsBarItem;
 	
 	/**
 	 * Context in which this handler is called
@@ -39,12 +33,10 @@ public class ControlsBarItemHandler implements EventHandler<ActionEvent> {
 
 	/**
 	 * @param controlsBarItem The item in the "view" menu allowing for showing/hiding the controls bar
-	 * @param checkBoxImage The "checked" image shown next to the {@link ControlsBarItemHandler#controlsBarItem} when selected
 	 * @param visualizer Context in which this handler is called
 	 */
-	public ControlsBarItemHandler(MenuItem controlsBarItem, ImageView checkBoxImage, Visualizer visualizer) {
+	public ControlsBarItemHandler(CheckMenuItem controlsBarItem, Visualizer visualizer) {
 		this.controlsBarItem = controlsBarItem;
-		this.checkBoxImage = checkBoxImage;
 		this.visualizer = visualizer;
 	}
 
@@ -60,13 +52,13 @@ public class ControlsBarItemHandler implements EventHandler<ActionEvent> {
 			if (vbox.getChildren().contains(controlsBar)){
 				vbox.getChildren().remove(controlsBar);
 				barIsShown = false;
-				controlsBarItem.setGraphic(null);
+				controlsBarItem.setSelected(false);
 			}
 		} else {
 			if (!vbox.getChildren().contains(controlsBar)){
 				vbox.getChildren().add(controlsBar);
 				barIsShown = true;
-				controlsBarItem.setGraphic(checkBoxImage);
+				controlsBarItem.setSelected(true);
 			}
 		}
 	}

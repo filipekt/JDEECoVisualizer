@@ -135,11 +135,26 @@ public class LinkPrefs implements VisibilityChangeable {
 		}
 	}
 
+	/**
+	 * Allows to set the visibility of the link
+	 */
 	@Override
 	public void setVisible(boolean visible) {
 		if (line != null){
 			line.setVisible(visible);
 			log("Visibility of link " + id + " set to " + visible);
+		}
+	}
+
+	/**
+	 * A check for visibility of the link 
+	 */
+	@Override
+	public boolean isVisible() {
+		if (line == null){
+			return false;
+		} else {
+			return line.isVisible();
 		}
 	}
 }

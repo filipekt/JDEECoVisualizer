@@ -65,7 +65,6 @@ public class NodePrefs implements VisibilityChangeable {
 	
 	/**
 	 * Sets the visibility of the visual representation of the node
-	 * @param visible
 	 */
 	@Override
 	public void setVisible(boolean visible){
@@ -76,6 +75,18 @@ public class NodePrefs implements VisibilityChangeable {
 	}
 	
 	/**
+	 * A check for visibility of the node
+	 */
+	@Override
+	public boolean isVisible() {
+		if (node == null){
+			return false;
+		} else {
+			return node.isVisible();
+		}
+	}
+
+	/**
 	 * If the visual representation of the node is a plain circle (default option),
 	 * then this method sets its color
 	 * @param color The new color
@@ -85,6 +96,19 @@ public class NodePrefs implements VisibilityChangeable {
 			Circle circle = (Circle)node;
 			circle.setFill(color);
 			log("Color of the node " + getId() + " set to " + color);
+		}
+	}
+	
+	/**
+	 * @return If the node is represnted by the (default) circle, this method returns
+	 * the color of the circle. Otherwise, null is returned. 
+	 */
+	public Paint getCircleColor(){
+		if ((node != null) && (node instanceof Circle)){	
+			Circle circle = (Circle)node;
+			return circle.getFill();
+		} else {
+			return null;
 		}
 	}
 

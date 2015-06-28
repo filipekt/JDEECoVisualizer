@@ -4,13 +4,12 @@ import cz.filipekt.jdcv.Visualizer;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
 import javafx.event.EventHandler;
-import javafx.scene.control.MenuItem;
-import javafx.scene.image.ImageView;
+import javafx.scene.control.CheckMenuItem;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 /**
- * Listener for the {@link Event} that user clicks the "show graphics panel" option in the menu.
+ * Listener for the event that user clicks the "show graphics panel" option in the menu.
  * Makes sure that the graphics panel is shown/hidden appropriately.
  * 
  * @author Tomas Filipek <tom.filipek@seznam.cz>
@@ -25,12 +24,7 @@ public class GraphicsPanelHandler implements EventHandler<ActionEvent> {
 	/**
 	 * The item in the "view" menu allowing for showing/hiding the graphics panel
 	 */
-	private final MenuItem graphicsPanel;
-	
-	/**
-	 * The "checked" image shown next to the {@link GraphicsPanelHandler#graphicsPanel} when selected
-	 */
-	private final ImageView checkBoxImage;
+	private final CheckMenuItem graphicsPanel;
 	
 	/**
 	 * Context in which this handler is called
@@ -39,12 +33,10 @@ public class GraphicsPanelHandler implements EventHandler<ActionEvent> {
 
 	/**
 	 * @param graphicsPanel The item in the "view" menu allowing for showing/hiding the graphics panel
-	 * @param checkBoxImage The "checked" image shown next to the {@link GraphicsPanelHandler#graphicsPanel} when selected
 	 * @param visualizer Context in which this handler is called
 	 */
-	public GraphicsPanelHandler(MenuItem graphicsPanel, ImageView checkBoxImage, Visualizer visualizer) {
+	public GraphicsPanelHandler(CheckMenuItem graphicsPanel, Visualizer visualizer) {
 		this.graphicsPanel = graphicsPanel;
-		this.checkBoxImage = checkBoxImage;
 		this.visualizer = visualizer;
 	}
 
@@ -60,13 +52,13 @@ public class GraphicsPanelHandler implements EventHandler<ActionEvent> {
 			if (middleRow.getChildren().contains(graphicsColumn)){
 				middleRow.getChildren().remove(graphicsColumn);
 				panelShown = false;
-				graphicsPanel.setGraphic(null);
+				graphicsPanel.setSelected(false);
 			}
 		} else {
 			if (!middleRow.getChildren().contains(graphicsColumn)){
 				middleRow.getChildren().add(0, graphicsColumn);
 				panelShown = true;
-				graphicsPanel.setGraphic(checkBoxImage);
+				graphicsPanel.setSelected(true);
 			}
 		}
 	}

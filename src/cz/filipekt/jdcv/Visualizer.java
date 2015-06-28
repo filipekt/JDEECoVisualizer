@@ -12,6 +12,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 
+import cz.filipekt.jdcv.gui_logic.CloseSceneHandler;
+import cz.filipekt.jdcv.gui_logic.ConfigFileLoader;
+import cz.filipekt.jdcv.gui_logic.ControlsBarItemHandler;
+import cz.filipekt.jdcv.gui_logic.FileChooserButton;
+import cz.filipekt.jdcv.gui_logic.GraphicsPanelHandler;
+import cz.filipekt.jdcv.gui_logic.ImportSceneHandler;
+import cz.filipekt.jdcv.gui_logic.PlayButtonHandler;
+import cz.filipekt.jdcv.gui_logic.PluginsPanelHandler;
+import cz.filipekt.jdcv.gui_logic.RecordingHandler;
+import cz.filipekt.jdcv.gui_logic.ScreenShotHandler;
+import cz.filipekt.jdcv.gui_logic.StopButtonAction;
+import cz.filipekt.jdcv.gui_logic.TimeLineRateChanged;
+import cz.filipekt.jdcv.gui_logic.TimeLineRateListener;
+import cz.filipekt.jdcv.gui_logic.TimeLineStatusHandler;
+import cz.filipekt.jdcv.gui_logic.ZoomingHandler;
+import cz.filipekt.jdcv.plugins.InfoPanel;
+import cz.filipekt.jdcv.plugins.Plugin;
+import cz.filipekt.jdcv.plugins.PluginWithPreferences;
+import cz.filipekt.jdcv.prefs.GlobalPrefs;
+import cz.filipekt.jdcv.util.CharsetNames;
+import cz.filipekt.jdcv.util.GUIUtils;
+import cz.filipekt.jdcv.util.Resources;
 import javafx.animation.Animation.Status;
 import javafx.animation.Timeline;
 import javafx.application.Application;
@@ -22,11 +44,11 @@ import javafx.event.EventHandler;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
@@ -49,30 +71,8 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import cz.filipekt.jdcv.gui_logic.CloseSceneHandler;
-import cz.filipekt.jdcv.gui_logic.ConfigFileLoader;
-import cz.filipekt.jdcv.gui_logic.ControlsBarItemHandler;
-import cz.filipekt.jdcv.gui_logic.FileChooserButton;
-import cz.filipekt.jdcv.gui_logic.GraphicsPanelHandler;
-import cz.filipekt.jdcv.gui_logic.ImportSceneHandler;
-import cz.filipekt.jdcv.gui_logic.PlayButtonHandler;
-import cz.filipekt.jdcv.gui_logic.RecordingHandler;
-import cz.filipekt.jdcv.gui_logic.ScreenShotHandler;
-import cz.filipekt.jdcv.gui_logic.StopButtonAction;
-import cz.filipekt.jdcv.gui_logic.TimeLineRateChanged;
-import cz.filipekt.jdcv.gui_logic.TimeLineRateListener;
-import cz.filipekt.jdcv.gui_logic.TimeLineStatusHandler;
-import cz.filipekt.jdcv.gui_logic.ZoomingHandler;
-import cz.filipekt.jdcv.plugins.InfoPanel;
-import cz.filipekt.jdcv.plugins.Plugin;
-import cz.filipekt.jdcv.plugins.PluginWithPreferences;
-import cz.filipekt.jdcv.prefs.GlobalPrefs;
-import cz.filipekt.jdcv.util.CharsetNames;
-import cz.filipekt.jdcv.util.Debug;
-import cz.filipekt.jdcv.util.Resources;
 
 /**
  * Main class of the application. Run it to show the visualized simulation data.
@@ -142,6 +142,8 @@ public class Visualizer extends Application {
 	 */
 	private void setNontrivialScene(final MapScene newScene, boolean matsimEventsPresent){
 		ScrollPane mapScrollPane = newScene.getMapPane();
+		mapScrollPane.setPrefHeight(mapHeight);
+		mapScrollPane.setPrefWidth(mapWidth);
 		mapPane.getChildren().clear();
 		mapPane.getChildren().add(mapScrollPane);											
 		graphicsColumn.setDisable(false);
@@ -218,7 +220,7 @@ public class Visualizer extends Application {
 	
 	/**
 	 * Makes sure that the changes in the value of the slider (in the main window) are
-	 * projected to the value of the curren time of the visualization timeline
+	 * projected to the value of the current time of the visualization timeline
 	 */
 	private ChangeListener<Number> sliderToTimelineListener;
 	
@@ -237,11 +239,6 @@ public class Visualizer extends Application {
 	public static void main(String[] args){
 		launch(args);
 	}
-	
-	/**
-	 * Width and height of the check mark shown next to the items in the View menu.
-	 */
-	private final int checkBoxSize = 18;
 	
 	/**
 	 * Width and height of the play/pause icon shown inside the corresponding button 
@@ -283,10 +280,8 @@ public class Visualizer extends Application {
 	/**
 	 * Constructs the main menu bar of the application.
 	 * @return The main menu bar of the application.
-	 * @throws IOException Unless the application source folder contents have been changed in 
-	 * any way by the user, this exception will never be thrown.
 	 */
-	private MenuBar createMenuBar() throws IOException {
+	private MenuBar createMenuBar() {
 		MenuBar menuBar = new MenuBar();
 		Menu fileMenu = new Menu("File");
 		MenuItem importSceneItem = new MenuItem("Import Scene"); 
@@ -301,15 +296,16 @@ public class Visualizer extends Application {
 		scriptingWindow.setOnAction(scriptingWindowButton);
 		optionsMenu.getItems().addAll(scriptingWindow);
 		Menu viewMenu = new Menu("View");
-		MenuItem controlsPanel = new MenuItem("Controls Panel");
-		ImageView checkBoxImage = Resources.getImageView("checkmark.png", checkBoxSize);
-		controlsPanel.setGraphic(checkBoxImage);	
-		controlsPanel.setOnAction(new ControlsBarItemHandler(controlsPanel, checkBoxImage, this));
-		final MenuItem graphicsPanel = new MenuItem("Graphics Panel");	
-		final ImageView checkBoxImage2 = Resources.getImageView("checkmark.png", checkBoxSize);
-		graphicsPanel.setGraphic(checkBoxImage2);
-		graphicsPanel.setOnAction(new GraphicsPanelHandler(graphicsPanel, checkBoxImage2, this));
-		viewMenu.getItems().addAll(controlsPanel, graphicsPanel);
+		CheckMenuItem controlsPanel = new CheckMenuItem("Controls Panel");
+		controlsPanel.setSelected(true);
+		controlsPanel.setOnAction(new ControlsBarItemHandler(controlsPanel, this));
+		CheckMenuItem graphicsPanel = new CheckMenuItem("Graphics Panel");	
+		graphicsPanel.setSelected(true);
+		graphicsPanel.setOnAction(new GraphicsPanelHandler(graphicsPanel, this));
+		CheckMenuItem pluginPanel = new CheckMenuItem("Plugins Panel");
+		pluginPanel.setSelected(true);
+		pluginPanel.setOnAction(new PluginsPanelHandler(pluginPanel, this));
+		viewMenu.getItems().addAll(controlsPanel, graphicsPanel, pluginPanel);
 		menuBar.getMenus().addAll(fileMenu, optionsMenu, viewMenu);
 		return menuBar;
 	}
@@ -399,34 +395,6 @@ public class Visualizer extends Application {
 	private final String preferredEncoding = "UTF-8";
 	
 	/**
-	 * Computes the width (in pixels) of default JavaFX view of the given text
-	 * @param text Text whose width is computed
-	 * @return Width of a default view of the given text
-	 */
-	private double computeTextLength(String text){
-		Text textView = new Text(text);
-	    new Scene(new Group(textView)); 
-	    textView.snapshot(null, null);
-	    return textView.getLayoutBounds().getWidth();
-	}
-	
-	/**
-	 * Determines which of the available charset names has the maximal length in default 
-	 * text view, and returns the length (in pixels). 
-	 * @return Length of the longest charset name, in pixels, using default view
-	 */
-	private double getEncodingNameMaxLength(){
-		double maxVal = 0.0;
-		for (String encodingName : CharsetNames.get()){
-			double length = computeTextLength(encodingName);
-			if (length > maxVal){
-				maxVal = length;
-			}
-		}
-		return maxVal;
-	}
-	
-	/**
 	 * The text inside of the buttons used for opening a file selection dialog
 	 */
 	private final String selectButtonText = "Select..";
@@ -441,14 +409,14 @@ public class Visualizer extends Application {
 	 */
 	private void createImportSceneGrid(){
 		//The preferred width of the combo-boxes for selecting the input file encoding
-		double encodingBoxWidth = getEncodingNameMaxLength() + 60.0;
+		double encodingBoxWidth = GUIUtils.getEncodingNameMaxLength() + 60.0;
 		//The preferred width of the buttons used for opening a file selection dialog
-		double selectButtonWidth = computeTextLength(selectButtonText) + 40.0;
+		double selectButtonWidth = GUIUtils.computeTextLength(selectButtonText) + 40.0;
 		//The preferred width of the load button, which loads and processes an input config file
-		double loadButtonWidth = computeTextLength(loadButtonText) + 40.0;
+		double loadButtonWidth = GUIUtils.computeTextLength(loadButtonText) + 40.0;
 		List<Label> labels = new ArrayList<>();
-		labels.add(new Label("Network definition XML:"));
-		labels.add(new Label("Event log:"));
+		labels.add(new Label("Map/network definition:"));
+		labels.add(new Label("Matsim event log:"));
 		labels.add(new Label("Ensemble event log:"));
 		final List<TextField> fields = new ArrayList<>();
 		List<ComboBox<String>> charsets = new ArrayList<>();
@@ -468,7 +436,8 @@ public class Visualizer extends Application {
 		GridPane.setHalignment(orLabel, HPos.CENTER);
 		row += 2;		
 		prepareConfigLoaderRow(importSceneGrid, row, fields, charsets, durationField, 
-				encodingBoxWidth, selectButtonWidth, loadButtonWidth);
+				encodingBoxWidth, selectButtonWidth, loadButtonWidth, onlyComponentsBox,
+				startAtField, endAtField);
 		row += 2;		
 		Button okButton = new Button("OK");
 		okButton.setOnMouseClicked(new SceneImportHandler(fields, okButton, onlyComponentsBox, 
@@ -574,10 +543,14 @@ public class Visualizer extends Application {
 	 * @param selectButtonWidth The preferred width of the buttons used for opening a file selection dialog
 	 * @param loadButtonWidth The preferred width of the load button, 
 	 * which loads and processes an input config file
+	 * @param onlyComponentsBox The checkbox specifying if just the injected JDEECo agents shall be visualized
+	 * @param startAtField The field specifying the where in the event log should the visualization begin
+	 * @param endAtField The field specifying the where in the event log should the visualization end
 	 */
 	private void prepareConfigLoaderRow(GridPane pane, int row, List<TextField> fields, 
 			List<ComboBox<String>> charsets, TextField durationField, double encodingBoxWidth,
-			double selectButtonWidth, double loadButtonWidth){
+			double selectButtonWidth, double loadButtonWidth, CheckBox onlyComponentsBox,
+			TextField startAtField, TextField endAtField){
 		Label configFileLabel = new Label("Specify Configuration File:");
 		TextField configFileField = new TextField();
 		configFileField.setPrefWidth(inputFieldsWidth);
@@ -593,16 +566,14 @@ public class Visualizer extends Application {
 		Button configFileLoad = new Button(loadButtonText);
 		configFileLoad.setPrefWidth(loadButtonWidth);
 		ConfigFileLoader configLoader = new ConfigFileLoader(
-				configFileField, configFileCharsets, fields, charsets, durationField); 
+				configFileField, configFileCharsets, fields, charsets, durationField, onlyComponentsBox,
+				startAtField, endAtField); 
 		configFileLoad.setOnAction(configLoader);
 		pane.add(configFileLabel, 0, row);
 		pane.add(configFileField, 1, row);
 		pane.add(configFileCharsets, 2, row);
 		pane.add(configFileSelect, 3, row);
 		pane.add(configFileLoad, 4, row);		
-		if (Debug.debugModeOn){
-			configFileField.setText("C:/diplomka/JDEECoVisualizer-master/example_data/config.txt");
-		}
 	}
 	
 	/**
@@ -855,11 +826,19 @@ public class Visualizer extends Application {
 	}
 	
 	/**
-	 * The panel on the right side of the window, allowing various sub-panels to be viewed.
+	 * The panel on the right side of the window, allowing various plugins to be viewed.
 	 * The panel which has been selected by clicking the corresponding button is viewed.
 	 */
-	private final Node switchablePanel;
+	private final Region switchablePanel;
 	
+	/**
+	 * @return The panel on the right side of the window, allowing various plugins to be viewed.
+	 * The panel which has been selected by clicking the corresponding button is viewed.
+	 */
+	public Region getSwitchablePanel() {
+		return switchablePanel;
+	}
+
 	/**
 	 * Preferred width of the side panel
 	 */
@@ -881,7 +860,7 @@ public class Visualizer extends Application {
 	 * Initializes the {@link Visualizer#switchablePanel}. 
 	 * @return Newly constructed switchable side-panel
 	 */
-	private Node createSwitchablePanel(){	
+	private Region createSwitchablePanel(){	
 		loadPlugins();
 		final Pane mainPanel = new StackPane();
 		ToolBar toolBar = new ToolBar();
@@ -975,6 +954,8 @@ public class Visualizer extends Application {
 		importSceneGrid.setPrefSize(mapWidth, mapHeight);
 		controlsBar.setDisable(true);
 		switchablePanel.setDisable(true);
+		switchablePanel.setMinWidth(sidePanelWidth);
+		switchablePanel.setMinWidth(sidePanelWidth);
 		GridPane helpLabelWrapper = new GridPane();
 		helpLabelWrapper.setPadding(new Insets(10, 10, 10, 10));
 		Label helpLabel = new Label("To import new simulation data, click File -> Import Scene");
@@ -983,8 +964,6 @@ public class Visualizer extends Application {
 		mapPane.getChildren().add(noMapNode);
 		graphicsColumn.setPrefWidth(graphicsColumnWidth);
 		graphicsColumn.setMinWidth(graphicsColumnWidth);
-		middleRow.setFillHeight(true);
-		middleRow.getChildren().addAll(graphicsColumn, mapPane, switchablePanel);
 		VBox.setVgrow(menuBar, Priority.NEVER);
 		VBox.setVgrow(middleRow, Priority.ALWAYS);
 		VBox.setVgrow(sliderWrapper, Priority.NEVER);
@@ -992,33 +971,12 @@ public class Visualizer extends Application {
 		HBox.setHgrow(graphicsColumn, Priority.NEVER);
 		HBox.setHgrow(mapPane, Priority.ALWAYS);
 		HBox.setHgrow(switchablePanel, Priority.NEVER);
+		middleRow.setFillHeight(true);
+		middleRow.getChildren().addAll(graphicsColumn, mapPane, switchablePanel);
+		rootPane.setSpacing(10);
 		rootPane.getChildren().clear();
 		rootPane.getChildren().addAll(menuBar, middleRow, sliderWrapper, controlsBar);
 		Scene fxScene = new Scene(rootPane, Color.WHITE);
-		mapPane.heightProperty().addListener(new ChangeListener<Number>() {
-
-			@Override
-			public void changed(ObservableValue<? extends Number> arg0,
-					Number arg1, Number arg2) {								
-				Node child = mapPane.getChildren().get(0);
-				if (child instanceof Region){
-					Region reg = (Region)child;
-					reg.setPrefHeight(arg2.doubleValue());
-				} 
-			}
-		});			
-		mapPane.widthProperty().addListener(new ChangeListener<Number>() {
-
-			@Override
-			public void changed(ObservableValue<? extends Number> arg0,
-					Number arg1, Number arg2) {
-				Node child = mapPane.getChildren().get(0);
-				if (child instanceof Region){
-					Region reg = (Region)child;
-					reg.setPrefWidth(arg2.doubleValue());
-				}
-			}
-		});
 	    stage.setScene(fxScene);
 	    stage.setTitle("JDEECo Visualizer");
 	    InputStream iconStream = Resources.getResourceInputStream("cup.png");

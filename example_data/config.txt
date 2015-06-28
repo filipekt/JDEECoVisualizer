@@ -1,4 +1,6 @@
 network;example_data/network.xml;UTF-8
 events;example_data/events.xml
 ensembles;example_data/ensembles.xml;US-ASCII
-time;56
+target_duration;56
+just_agents;true
+start_at;25000

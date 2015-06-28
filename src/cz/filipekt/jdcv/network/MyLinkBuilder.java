@@ -1,9 +1,6 @@
 package cz.filipekt.jdcv.network;
 
 import java.math.BigDecimal;
-import java.util.List;
-
-import javafx.geometry.Point2D;
 
 /**
  * Builder for {@link MyLink}.
@@ -53,17 +50,6 @@ public class MyLinkBuilder {
 	 * List of transportation modes that are allowed on this link
 	 */
 	private String[] allowedModes;
-	
-	/**
-	 * Specification of the image which represents this link
-	 */
-	private MyLinkImg linkImage;
-	
-	/**
-	 * Points specifying the path along which the cars/persons move through the 
-	 * link visualization. Coordinates are taken from the image raster.
-	 */
-	private List<Point2D> pathPoints;
 	
 	/**
 	 * Setter for {@link MyLinkBuilder#id}
@@ -122,25 +108,11 @@ public class MyLinkBuilder {
 	}
 	
 	/**
-	 * Setter for {@link MyLinkBuilder#linkImage}
-	 */
-	public void setLinkImage(MyLinkImg linkImage) {
-		this.linkImage = linkImage;
-	}
-	
-	/**
-	 * Setter for {@link MyLinkBuilder#pathPoints}
-	 */
-	public void setPathPoints(List<Point2D> pathPoints) {
-		this.pathPoints = pathPoints;
-	}
-	
-	/**
 	 * @return A new instance of {@link MyLink} using the previously collected 
 	 * initialization parameters.
 	 */
 	public MyLink build(){
-		return new MyLink(id, from, to, length, freespeed, capacity, numberOfLanes, 
-				linkImage, pathPoints, allowedModes);
+		return new MyLink(id, from, to, length, freespeed, capacity, 
+				numberOfLanes, allowedModes);
 	}
 }
