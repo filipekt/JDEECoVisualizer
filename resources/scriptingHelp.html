@@ -13,7 +13,8 @@
 	<h3>Example Usage of the Scripting Console</h3>
 	
 	<div id="ex_01">
-	<span class="example_title">Example 1:</span> hide all ensemble memberships
+	<span class="example_title">Example 1:</span> hide all ensemble memberships<br>
+	For JRE7, use:
 	<pre>
 	var it = memberships.iterator()
 	while (it.hasNext()){
@@ -21,7 +22,7 @@
 		el.setVisible(false)
 	}
 	</pre>
-	When using JRE 8, there is a simpler alternative for iterating the collection:
+	When using JRE 8, there is a simpler alternative for iterating the collection:<br>
 	<pre>
 	for each (var el in memberships){
 		el.setVisible(false)
@@ -30,7 +31,8 @@
 	</div>
 	
 	<div id="ex_02">
-	<span class="example_title">Example 2:</span> show only ensemble memberships with coordinator V7
+	<span class="example_title">Example 2:</span> show only ensemble memberships with coordinator V7<br>
+	For JRE7, use:
 	<pre>
 	var it = memberships.iterator()
 	while (it.hasNext()){
@@ -42,7 +44,7 @@
 		}
 	}
 	</pre>
-	And for JRE 8 we can use:
+	And for JRE 8 we can use:<br>
 	<pre>
 	for each (var el in memberships){
 		if (el.getCoordinator().equals("V7")){
@@ -55,7 +57,8 @@
 	</div>
 	
 	<div id="ex_03">
-	<span class="example_title">Example 3:</span> print info about ensemble memberships
+	<span class="example_title">Example 3:</span> print info about ensemble memberships.<br>
+	For JRE7, use:
 	<pre>
 	var count = 0;
 	var it = memberships.iterator()
@@ -69,24 +72,36 @@
 		count += 1
 	}
 	</pre>
+	For JRE8, use:<br>
+	<pre>
+	var count = 0;
+	for each(var el in memberships){
+		print("Item " + count + ": ")
+		print("Ensemble name=" + el.getEnsembleName() + ", ")
+		print("Coordinator=" + el.getCoordinator() + ", ")
+		print("Member=" + el.getMember())
+		print()
+		count += 1
+	}
+	</pre>
 	</div>
 	
 	<div id="ex_04">
-	<span class="example_title">Example 4:</span> set image representing all people
+	<span class="example_title">Example 4:</span> set image representing all people<br>
 	<pre>
 	general.setPersonImage("C:/image.png")
 	</pre>
 	</div>
 	
 	<div id="ex_05">
-	<span class="example_title">Example 5:</span> set image representing persons V7, V11
+	<span class="example_title">Example 5:</span> set image representing persons V7, V11<br>
 	<pre>
 	general.setPersonImage("C:/image.png", "V7", "V11")
 	</pre>
 	</div>
 	
 	<div id="ex_06">
-	<span class="example_title">Example 6:</span> set image representing persons V7, V11 - variant II
+	<span class="example_title">Example 6:</span> set image representing persons V7, V11 - variant II<br>
 	<pre>
 	var ecmaArray = ["V7","V11"]
 	var javaArray = java.lang.reflect.Array.newInstance(java.lang.String, ecmaArray.length)
@@ -95,7 +110,7 @@
 	}
 	general.setPersonImage("C:/image.png", javaArray)
 	</pre>
-	And for JRE 8 we have
+	And for JRE 8 we have<br>
 	<pre>
 	var ecmaArray = ["V7","V11"]
 	var stringArrayType = Java.type("java.lang.String[]")
@@ -105,14 +120,15 @@
 	</div>
 	
 	<div id="ex_07">
-	<span class="example_title">Example 7:</span> set image representing persons V7,V11 back to the original circles
+	<span class="example_title">Example 7:</span> set image representing persons V7,V11 back to the original circles<br>
 	<pre>
 	general.setPersonImage(null, "V7", "V11")
 	</pre>
 	</div>
 	
 	<div id="ex_08">
-	<span class="example_title">Example 8:</span> set color of the ensemble memberships with coordinator V7 to red, others to green
+	<span class="example_title">Example 8:</span> set color of the ensemble memberships with coordinator V7 to red, others to green<br>
+	For JRE7, use:
 	<pre>
 	var it = memberships.iterator()
 	while(it.hasNext()){
@@ -124,15 +140,32 @@
 		}
 	}
 	</pre>
+	For JRE8, use:<br>
+	<pre>
+	for each (var el in memberships){
+		if (el.getCoordinator().equals("V7")){
+			el.setColor(Color.RED)
+		} else {
+			el.setColor(Color.GREEN)
+		}
+	}
+	</pre>
 	</div>
 	
 	<div id="ex_09">
-	<span class="example_title">Example 9:</span> print the x-coordinates of all the nodes
+	<span class="example_title">Example 9:</span> print the x-coordinates of all the nodes<br>
+	For JRE7, use:
 	<pre>
 	var it = nodes.keySet().iterator()
 	while(it.hasNext()){
 		var id = it.next()
 		println("id=" + id + ", X=" + nodes.get(id).getX())
+	}
+	</pre>
+	For JRE8, use:<br>
+	<pre>
+	for each (var id in nodes.keySet()){
+		print("id=" + id + ", X=" + nodes.get(id).getX())
 	}
 	</pre>
 	</div>
