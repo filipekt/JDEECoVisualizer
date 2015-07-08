@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <events>
 <event type="ensemble" coordinator="V20" member="V6" membership="true" ensemble="example3.CapacityExchangeEnsemble" time="25871" />
 <event type="ensemble" coordinator="V6" member="V20" membership="true" ensemble="example3.CapacityExchangeEnsemble" time="25871" />

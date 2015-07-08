@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 
+import cz.filipekt.jdcv.gui_logic.BackgroundColorHandler;
 import cz.filipekt.jdcv.gui_logic.CloseSceneHandler;
 import cz.filipekt.jdcv.gui_logic.ConfigFileLoader;
 import cz.filipekt.jdcv.gui_logic.ControlsBarItemHandler;
@@ -22,6 +23,7 @@ import cz.filipekt.jdcv.gui_logic.PlayButtonHandler;
 import cz.filipekt.jdcv.gui_logic.PluginsPanelHandler;
 import cz.filipekt.jdcv.gui_logic.RecordingHandler;
 import cz.filipekt.jdcv.gui_logic.ScreenShotHandler;
+import cz.filipekt.jdcv.gui_logic.ShowNodesHandler;
 import cz.filipekt.jdcv.gui_logic.StopButtonAction;
 import cz.filipekt.jdcv.gui_logic.TimeLineRateChanged;
 import cz.filipekt.jdcv.gui_logic.TimeLineRateListener;
@@ -49,6 +51,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.CheckMenuItem;
+import javafx.scene.control.ColorPicker;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
@@ -144,6 +147,8 @@ public class Visualizer extends Application {
 		ScrollPane mapScrollPane = newScene.getMapPane();
 		mapScrollPane.setPrefHeight(mapHeight);
 		mapScrollPane.setPrefWidth(mapWidth);
+		String style = backColorCSSField + ": " + defaultBackround + ";";
+		mapScrollPane.setStyle(style);
 		mapPane.getChildren().clear();
 		mapPane.getChildren().add(mapScrollPane);											
 		graphicsColumn.setDisable(false);
@@ -283,7 +288,7 @@ public class Visualizer extends Application {
 	 */
 	private MenuBar createMenuBar() {
 		MenuBar menuBar = new MenuBar();
-		Menu fileMenu = new Menu("File");
+		Menu fileMenu = new Menu("Scenes");
 		MenuItem importSceneItem = new MenuItem("Import Scene"); 
 		importSceneItem.setDisable(false);
 		MenuItem closeThisSceneItem = new MenuItem("Close This Scene");
@@ -703,6 +708,23 @@ public class Visualizer extends Application {
 	}
 	
 	/**
+	 * The default color of the map background
+	 */
+	private final String defaultBackround = "#f2f2f2";
+	
+	/**
+	 * The CSS field which sets the background color of a JavaFX Node
+	 */
+	private final String backColorCSSField = "-fx-background";
+	
+	/**
+	 * @return The CSS field which sets the background color of a JavaFX Node
+	 */
+	public String getBackColorCSSField() {
+		return backColorCSSField;
+	}
+
+	/**
 	 * @return Builds and returns the column, shown next to the map on the left side, containing various graphics options.
 	 * @throws IOException Unless the application source folder contents have been changed in 
 	 * any way by the user, this exception will never be thrown. 
@@ -713,15 +735,7 @@ public class Visualizer extends Application {
 		panel.setAlignment(Pos.TOP_LEFT);
 		final CheckBox showNodesBox = new CheckBox("Show nodes");
 		showNodesBox.setSelected(true);
-		showNodesBox.setOnAction(new EventHandler<ActionEvent>() {
-
-			@Override
-			public void handle(ActionEvent arg0) {
-				if (scene != null){
-					scene.setNodesVisible(showNodesBox.isSelected());
-				}
-			}
-		});
+		showNodesBox.setOnAction(new ShowNodesHandler(this, showNodesBox));
 		panel.getChildren().add(showNodesBox);
 		final CheckBox showLinksBox = new CheckBox("Show links");
 		showLinksBox.setSelected(true);
@@ -735,6 +749,11 @@ public class Visualizer extends Application {
 			}
 		});
 		panel.getChildren().add(showLinksBox);
+		Label backColorLabel = new Label("Background color:");
+		panel.getChildren().add(backColorLabel);
+		ColorPicker backColor = new ColorPicker(Color.web(defaultBackround));
+		backColor.setOnAction(new BackgroundColorHandler(this, backColor));
+		panel.getChildren().add(backColor);
 		ImageView snapShotImage = Resources.getImageView("screenshot.png", playIconSize);
 		Button screenShotButton = new Button("Snapshot", snapShotImage);
 		screenShotButton.setOnMouseClicked(new ScreenShotHandler(this));
@@ -746,8 +765,11 @@ public class Visualizer extends Application {
 		recordButton.setOnMouseClicked(recordingHandler);
 		panel.getChildren().add(recordButton);
 		for (Node node : panel.getChildren()){
-			VBox.setMargin(node, new Insets(graphicsItemsMargin, 0, graphicsItemsMargin, 2 * graphicsItemsMargin));
+			VBox.setMargin(node, new Insets(graphicsItemsMargin, 0, graphicsItemsMargin, 
+					2 * graphicsItemsMargin));
 		}
+		VBox.setMargin(backColorLabel, new Insets(graphicsItemsMargin, 0, 0, 2 * graphicsItemsMargin));
+		VBox.setMargin(backColor, new Insets(0, 0, graphicsItemsMargin, 2 * graphicsItemsMargin));
 		graphicsColumnDefaults = new Runnable() {
 			
 			@Override
@@ -822,6 +844,7 @@ public class Visualizer extends Application {
 		res.getChildren().addAll(timelineSlider);
 		HBox.setHgrow(timelineSlider, Priority.ALWAYS);
 		HBox.setMargin(timelineSlider, new Insets(0, 50, 0, 50));
+		res.setPrefHeight(50);
 		return res;
 	}
 	
@@ -973,7 +996,7 @@ public class Visualizer extends Application {
 		HBox.setHgrow(switchablePanel, Priority.NEVER);
 		middleRow.setFillHeight(true);
 		middleRow.getChildren().addAll(graphicsColumn, mapPane, switchablePanel);
-		rootPane.setSpacing(10);
+//		rootPane.setSpacing(10);
 		rootPane.getChildren().clear();
 		rootPane.getChildren().addAll(menuBar, middleRow, sliderWrapper, controlsBar);
 		Scene fxScene = new Scene(rootPane, Color.WHITE);

@@ -53,15 +53,20 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.FileImageOutputStream;
 
-import cz.filipekt.jdcv.CheckPoint.Type;
 import cz.filipekt.jdcv.SceneImportHandler.ImageProvider;
 import cz.filipekt.jdcv.SceneImportHandler.ShapeProvider;
+import cz.filipekt.jdcv.checkpoints.CheckPoint;
+import cz.filipekt.jdcv.checkpoints.CheckPointDatabase;
+import cz.filipekt.jdcv.checkpoints.CheckPoint.Type;
+import cz.filipekt.jdcv.corridors.CorridorLoader;
+import cz.filipekt.jdcv.corridors.LinkCorridor;
 import cz.filipekt.jdcv.ensembles.CoordinatorRelation;
 import cz.filipekt.jdcv.ensembles.EnsembleDatabase;
 import cz.filipekt.jdcv.ensembles.MembershipRelation;
 import cz.filipekt.jdcv.events.EnsembleEvent;
 import cz.filipekt.jdcv.geometry.CoordinateTransformer;
 import cz.filipekt.jdcv.geometry.MatsimToVisualCoordinates;
+import cz.filipekt.jdcv.gui_logic.InfoPanelSetter;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;
 import cz.filipekt.jdcv.plugins.InfoPanel;
@@ -142,7 +147,7 @@ public class MapScene {
 	 * @return Scrollable container for the network(map) components such as nodes and links.
 	 * @see {@link MapScene#mapPane}
 	 */
-	ScrollPane getMapPane() {
+	public ScrollPane getMapPane() {
 		return mapPane;
 	}	
 	
@@ -615,7 +620,7 @@ public class MapScene {
 	 * @param visible If true, it makes the {@link Shape} instances representing the map nodes visible.
 	 * Otherwise it makes them invisible.
 	 */
-	void setNodesVisible(boolean visible){
+	public void setNodesVisible(boolean visible){
 		for (Node node : circles.keySet()){
 			node.setVisible(visible);
 		}

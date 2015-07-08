@@ -256,7 +256,7 @@ public class Console {
 	/**
 	 * The text inside the "clear" button
 	 */
-	private final String clearText = "Clear Input";
+	private final String clearText = "Clear";
 	
 	/**
 	 * The image placed inside the "help" button
@@ -301,6 +301,7 @@ public class Console {
 		SplitMenuButton clearButton = new SplitMenuButton(clearInputItem, clearOutputItem);
 		clearButton.setGraphic(clearImage);
 		clearButton.setText(clearText);
+		clearButton.setAlignment(Pos.CENTER);
 		double clearWidth = GUIUtils.getIdealWidth(clearButton);
 		Button helpButton = new Button();
 		helpButton.setGraphic(helpImage);
@@ -316,7 +317,7 @@ public class Console {
 		buttonsBox.setAlignment(Pos.TOP_CENTER);
 		buttonsBox.setSpacing(buttonsSpacing);
 		runButton.setOnMouseClicked(new RunButtonHandler(visualizer, inputArea, outputArea));
-		clearButton.setOnAction(new ClearButtonHandler(inputArea));
+		clearButton.setOnAction(new ClearButtonHandler(outputArea));
 		clearInputItem.setOnAction(new ClearButtonHandler(inputArea));
 		clearOutputItem.setOnAction(new ClearButtonHandler(outputArea));	
 	}

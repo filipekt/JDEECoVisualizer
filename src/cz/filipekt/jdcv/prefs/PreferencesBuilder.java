@@ -10,7 +10,7 @@ import java.util.Set;
 import javafx.scene.Node;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Shape;
-import cz.filipekt.jdcv.LinkCorridor;
+import cz.filipekt.jdcv.corridors.LinkCorridor;
 import cz.filipekt.jdcv.ensembles.MembershipRelation;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;

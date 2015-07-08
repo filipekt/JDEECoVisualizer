@@ -1,4 +1,4 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.gui_logic;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -6,6 +6,8 @@ import java.util.Map;
 
 import javafx.event.EventHandler;
 import javafx.scene.input.MouseEvent;
+import cz.filipekt.jdcv.checkpoints.CheckPoint;
+import cz.filipekt.jdcv.checkpoints.CheckPointDatabase;
 import cz.filipekt.jdcv.plugins.InfoPanel;
 
 /**

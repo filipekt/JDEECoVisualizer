@@ -1,4 +1,4 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.checkpoints;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,7 +14,7 @@ import java.util.Set;
  * 
  * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
-class CheckPointDatabase {
+public class CheckPointDatabase {
 	
 	/**
 	 * To each person ID there is a list of checkpoints (i.e. where & when & etc.) assigned.

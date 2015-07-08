@@ -34,17 +34,20 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
 
-import cz.filipekt.jdcv.BigFilesSearch.ElementTooLargeException;
-import cz.filipekt.jdcv.BigFilesSearch.SelectionTooBigException;
-import cz.filipekt.jdcv.CheckPoint.Type;
+import cz.filipekt.jdcv.checkpoints.CheckPoint;
+import cz.filipekt.jdcv.checkpoints.CheckPointDatabase;
+import cz.filipekt.jdcv.checkpoints.CheckPoint.Type;
 import cz.filipekt.jdcv.events.EnsembleEvent;
 import cz.filipekt.jdcv.events.EnteredOrLeftLink;
 import cz.filipekt.jdcv.events.EntersOrLeavesVehicle;
 import cz.filipekt.jdcv.events.EventType;
 import cz.filipekt.jdcv.events.MatsimEvent;
 import cz.filipekt.jdcv.network.MyLink;
+import cz.filipekt.jdcv.util.BigFilesSearch;
 import cz.filipekt.jdcv.util.Dialog;
 import cz.filipekt.jdcv.util.Resources;
+import cz.filipekt.jdcv.util.BigFilesSearch.ElementTooLargeException;
+import cz.filipekt.jdcv.util.BigFilesSearch.SelectionTooBigException;
 import cz.filipekt.jdcv.xml.CorridorHandler;
 import cz.filipekt.jdcv.xml.EnsembleHandler;
 import cz.filipekt.jdcv.xml.LinkHandler;
@@ -240,7 +243,8 @@ class SceneImportHandler implements EventHandler<javafx.event.Event>{
 						if (ex.getException() == null){
 							message = ex.getMessage();
 						} else {
-							if ((ex.getException().getMessage() != null) && (!ex.getException().getMessage().isEmpty())){
+							if ((ex.getException().getMessage() != null) && 
+									(!ex.getException().getMessage().isEmpty())){
 								message = ex.getException().getMessage();
 							} else {
 								message = ex.getException().toString();
@@ -290,31 +294,31 @@ class SceneImportHandler implements EventHandler<javafx.event.Event>{
 		boolean onlyAgents = onlyAgentsBox.isSelected();
 		List<String> problems = new ArrayList<>();
 		String startAtText = startAtField.getText();
-		Double startAtVal = null;
+		Double startAt = null;
 		try {
 			if ((startAtText != null) && (!startAtText.isEmpty())){
-				startAtVal = Double.valueOf(startAtText);
+				startAt = Double.valueOf(startAtText);
 			}
 
 		} catch (NumberFormatException ex){
 			problems.add("The \"Start at\" field may only contain an integer number or nothing.");
 		}
-		Double startAt = startAtVal;
 		String endAtText = endAtField.getText();
-		Double endAtVal = null;
+		Double endAt = null;
 		try {
 			if ((endAtText != null) && (!endAtText.isEmpty())){
-				endAtVal = Double.valueOf(endAtText);
+				endAt = Double.valueOf(endAtText);
 			}
 		} catch (NumberFormatException ex) {
 			problems.add("The \"End at\" field may only contain an integer number or nothing.");
 		}
-		Double endAt = endAtVal;
 		String durationText = durationField.getText();
-		int duration = -1;
+		int duration = 60;
 		if (matsimEventsPresent){
 			try {
-				duration = Integer.parseInt(durationText);
+				if ((durationText != null) && (!durationText.isEmpty())){
+					duration = Integer.parseInt(durationText);
+				}
 			} catch (NumberFormatException ex){
 				problems.add("The \"Target duration\" field must contain an integer number.");
 			}

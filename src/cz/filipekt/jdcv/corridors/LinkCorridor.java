@@ -1,4 +1,4 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.corridors;
 
 import java.util.List;
 

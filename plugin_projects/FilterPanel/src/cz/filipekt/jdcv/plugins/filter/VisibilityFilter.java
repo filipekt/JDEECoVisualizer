@@ -30,20 +30,14 @@ public abstract class VisibilityFilter implements Filter {
 	public abstract String toString();
 	
 	/**
-	 * Just initializes the {@link VisibilityFilter#affectedNodes} using 
-	 * {@link VisibilityFilter#initializeSelection()}
-	 */
-	public VisibilityFilter(){
-		initializeSelection();
-	}
-	
-	/**
 	 * Reverts the application of this filter
 	 */
 	@Override
 	public void unapply() {
 		for (VisibilityChangeable prefs : affectedNodes){
-			prefs.setVisible(true);
+			if (!prefs.isVisible()){
+				prefs.setVisible(true);
+			}
 		}
 	}
 	
@@ -52,8 +46,11 @@ public abstract class VisibilityFilter implements Filter {
 	 */
 	@Override
 	public void apply() {
+		initializeSelection();
 		for (VisibilityChangeable prefs : affectedNodes){
-			prefs.setVisible(false);
+			if (prefs.isVisible()){
+				prefs.setVisible(false);
+			}
 		}
 	}
 			

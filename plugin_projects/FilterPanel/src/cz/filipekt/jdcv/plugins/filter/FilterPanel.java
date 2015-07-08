@@ -2,13 +2,28 @@ package cz.filipekt.jdcv.plugins.filter;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import cz.filipekt.jdcv.plugins.PluginWithPreferences;
+import cz.filipekt.jdcv.plugins.filter.filters.EnsembleCoordFilter;
+import cz.filipekt.jdcv.plugins.filter.filters.EnsembleMemberFilter;
+import cz.filipekt.jdcv.plugins.filter.filters.EnsembleNameFilter;
+import cz.filipekt.jdcv.plugins.filter.filters.LinkFromFilter;
+import cz.filipekt.jdcv.plugins.filter.filters.LinkIDFilter;
+import cz.filipekt.jdcv.plugins.filter.filters.LinkToFilter;
+import cz.filipekt.jdcv.plugins.filter.filters.NodeIDFilter;
+import cz.filipekt.jdcv.plugins.filter.filters.NodeXFilter;
+import cz.filipekt.jdcv.plugins.filter.filters.NodeYFilter;
+import cz.filipekt.jdcv.prefs.LinkPrefs;
+import cz.filipekt.jdcv.prefs.MembershipPrefs;
+import cz.filipekt.jdcv.prefs.NodePrefs;
+import cz.filipekt.jdcv.prefs.PreferencesBuilder;
+import cz.filipekt.jdcv.util.Resources;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
@@ -29,12 +44,6 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
-import cz.filipekt.jdcv.plugins.PluginWithPreferences;
-import cz.filipekt.jdcv.prefs.LinkPrefs;
-import cz.filipekt.jdcv.prefs.MembershipPrefs;
-import cz.filipekt.jdcv.prefs.NodePrefs;
-import cz.filipekt.jdcv.prefs.PreferencesBuilder;
-import cz.filipekt.jdcv.util.Resources;
 
 /**
  * The side panel allowing the user to filter out some of the visualization 
@@ -188,7 +197,7 @@ public class FilterPanel extends PluginWithPreferences {
 		stage.setScene(scene);
 		int row = 0;
 		Label elementLabel = new Label("Element Type:");
-		final ComboBox<String> elementBox = new ComboBox<>();
+		ComboBox<String> elementBox = new ComboBox<>();
 		elementBox.getItems().addAll(elementNames);
 		pane.add(elementLabel, 0, row);
 		pane.add(elementBox, 1, row);
@@ -208,35 +217,12 @@ public class FilterPanel extends PluginWithPreferences {
 		pane.add(attributeBox, 1, row);
 		row += 1;
 		Label valueLabel = new Label("Value:");
-		final TextField valueField = new TextField();
+		TextField valueField = new TextField();
 		pane.add(valueLabel, 0, row);
 		pane.add(valueField, 1, row);
 		row += 1;
 		Button okButton = new Button("OK");
-		okButton.setOnAction(new EventHandler<ActionEvent>() {
-			
-			@Override
-			public void handle(ActionEvent arg0) {
-				String selected = elementBox.getSelectionModel().getSelectedItem();
-				String attribute = attributeBox.getSelectionModel().getSelectedItem();
-				switch(selected){
-					case nodeElementName:
-						processNodeRequest(attribute, valueField.getText());
-						break;
-					case linkElementName:
-						processLinkRequest(attribute, valueField.getText());
-						break;
-					case personElementName:
-						break;
-					case ensembleElementName:
-						processEnsembleRequest(attribute, valueField.getText());
-						break;
-					default:
-						break;
-				}
-				stage.close();
-			}
-		});
+		okButton.setOnAction(new OkButtonHandler(elementBox, attributeBox, valueField, stage));
 		Button cancelButton = new Button("Cancel");
 		cancelButton.setOnAction(new EventHandler<ActionEvent>() {
 			
@@ -252,6 +238,84 @@ public class FilterPanel extends PluginWithPreferences {
 		row += 1;		
 		decorateCreateFilterWindow(stage);
 		stage.show();
+	}
+	
+	/**
+	 * Handler for the event that the OK button in the "add new filter" window is
+	 * clicked. Delegates further actions to specialized methods, according to
+	 * the filter type.
+	 * 
+	 * @author Tomas Filipek <tom.filipek@seznam.cz>
+	 */
+	private class OkButtonHandler implements EventHandler<ActionEvent>{
+		
+		/**
+		 * The combo-box which contains the output element types, such
+		 * as "Node", "Link", "Ensemble"
+		 */
+		private final ComboBox<String> elementBox;
+		
+		/**
+		 * The combo-box which contains the attributes for the elements selected 
+		 * above. For example, when the "Node" element is selected, this box
+		 * contains "ID", "x-coord", "y-coord"
+		 */
+		private final ComboBox<String> attributeBox;
+		
+		/**
+		 * Holds the attribute value according to which we will filter
+		 */
+		private final TextField valueField;
+		
+		/**
+		 * The main stage in which the application runs
+		 */
+		private final Stage stage;
+
+		/**
+		 * @param elementBox The combo-box which contains the output element types, such
+		 * as "Node", "Link", "Ensemble"
+		 * @param attributeBox The combo-box which contains the attributes for the elements 
+		 * selected above. For example, when the "Node" element is selected, this box 
+		 * contains "ID", "x-coord", "y-coord"
+		 * @param valueField Holds the attribute value according to which we will filter
+		 * @param stage The main stage in which the application runs
+		 */
+		public OkButtonHandler(ComboBox<String> elementBox, ComboBox<String> attributeBox, TextField valueField,
+				Stage stage) {
+			this.elementBox = elementBox;
+			this.attributeBox = attributeBox;
+			this.valueField = valueField;
+			this.stage = stage;
+		}
+
+		/**
+		 * Run when the "OK" button in the "add new filter" window is clicked.
+		 * Delegates the action to the respective methods, according to the
+		 * filter type.
+		 */
+		@Override
+		public void handle(ActionEvent event) {
+			String selected = elementBox.getSelectionModel().getSelectedItem();
+			String attribute = attributeBox.getSelectionModel().getSelectedItem();
+			switch(selected){
+				case nodeElementName:
+					processNodeRequest(attribute, valueField.getText());
+					break;
+				case linkElementName:
+					processLinkRequest(attribute, valueField.getText());
+					break;
+				case personElementName:
+					break;
+				case ensembleElementName:
+					processEnsembleRequest(attribute, valueField.getText());
+					break;
+				default:
+					break;
+			}
+			stage.close();
+		}
+		
 	}
 	
 	/**
@@ -278,78 +342,27 @@ public class FilterPanel extends PluginWithPreferences {
 	 * @param attribute Name of a node attribute, such as "x-coordinate"
 	 * @param value Value of the specified attribute
 	 */
-	private void processNodeRequest(String attribute, final String value){
+	private void processNodeRequest(String attribute, String value){
 		if ((attribute != null) && (value != null)){
 			PreferencesBuilder prefs = getPreferences();
 			if (prefs != null){
-				final Map<String,NodePrefs> nodePrefs = prefs.nodePrefs(null);
+				Map<String,NodePrefs> nodePrefs = prefs.nodePrefs(null);
 				if (nodePrefs != null){
 					Filter filter = null;
 					switch(attribute){
 						case "ID":							
-							filter = new VisibilityFilter(){
-
-								@Override
-								public void initializeSelection() {
-									for (String nodeID : nodePrefs.keySet()){
-										if (!nodeID.equals(value)){
-											NodePrefs prefs = nodePrefs.get(nodeID);
-											affectedNodes.add(prefs);
-										}
-									}
-								}
-								
-								@Override
-								public String toString(){
-									return "Nodes with ID equal to " + value;
-								}
-								
-							};							
+							filter = new NodeIDFilter(value, nodePrefs);
 							break;
 						case "x-coordinate":
 							try {
-								final double xCoord = Double.parseDouble(value);
-								filter = new VisibilityFilter() {
-									
-									@Override
-									public void initializeSelection() {
-										for (String nodeID : nodePrefs.keySet()){
-											NodePrefs prefs = nodePrefs.get(nodeID);												
-											if (prefs.getX() != xCoord){
-												affectedNodes.add(prefs);
-											}
-										}
-									}
-
-									@Override
-									public String toString() {
-										return "Nodes with x-coord equal to " + xCoord; 
-									}								
-									
-								};
+								double xCoord = Double.parseDouble(value);
+								filter = new NodeXFilter(xCoord, nodePrefs);
 							} catch (NumberFormatException ex) {}							
 							break;
 						case "y-coordinate":
 							try {
-								final double yCoord = Double.parseDouble(value);
-								filter = new VisibilityFilter() {
-									
-									@Override
-									public void initializeSelection() {
-										for (String nodeID : nodePrefs.keySet()){
-											NodePrefs prefs = nodePrefs.get(nodeID);												
-											if (prefs.getY() != yCoord){
-												affectedNodes.add(prefs);
-											}
-										}
-									}
-
-									@Override
-									public String toString() {
-										return "Nodes with x-coord equal to " + yCoord; 
-									}								
-									
-								};
+								double yCoord = Double.parseDouble(value);
+								filter = new NodeYFilter(yCoord, nodePrefs);
 							} catch (NumberFormatException ex) {}	
 							break;
 						default:
@@ -370,70 +383,22 @@ public class FilterPanel extends PluginWithPreferences {
 	 * @param attribute Name of a link attribute, such as "From node"
 	 * @param value Value of the specified attribute
 	 */
-	private void processLinkRequest(String attribute, final String value){
+	private void processLinkRequest(String attribute, String value){
 		if ((attribute != null) && (value != null)){
 			PreferencesBuilder prefs = getPreferences();
 			if (prefs != null){
-				final Map<String,LinkPrefs> linkPrefs = prefs.linkPrefs(null);
+				Map<String,LinkPrefs> linkPrefs = prefs.linkPrefs(null);
 				if (linkPrefs != null){
 					Filter filter = null;
 					switch(attribute){
 						case "ID":
-							filter = new VisibilityFilter() {
-								
-								@Override
-								public void initializeSelection() {
-									for (String linkID : linkPrefs.keySet()){
-										if (!linkID.equals(value)){
-											LinkPrefs prefs = linkPrefs.get(linkID);
-											affectedNodes.add(prefs);
-										}
-									}
-								}
-
-								@Override
-								public String toString() {
-									return "Links with ID equal to " + value;
-								}
-							};
+							filter = new LinkIDFilter(value, linkPrefs);
 							break;
 						case "From ID":
-							filter = new VisibilityFilter() {
-								
-								@Override
-								public String toString() {
-									return "Links from node " + value;
-								}
-								
-								@Override
-								public void initializeSelection() {
-									for (String linkID : linkPrefs.keySet()){
-										LinkPrefs prefs = linkPrefs.get(linkID);
-										if (!prefs.getFromNode().equals(value)){
-											affectedNodes.add(prefs);
-										}
-									}
-								}
-							};
+							filter = new LinkFromFilter(value, linkPrefs);
 							break;
 						case "To ID":
-							filter = new VisibilityFilter() {
-								
-								@Override
-								public String toString() {
-									return "Links to node " + value;
-								}
-								
-								@Override
-								public void initializeSelection() {
-									for (String linkID : linkPrefs.keySet()){
-										LinkPrefs prefs = linkPrefs.get(linkID);
-										if (!prefs.getToNode().equals(value)){
-											affectedNodes.add(prefs);
-										}
-									}
-								}
-							};
+							filter = new LinkToFilter(value, linkPrefs);
 							break;
 						default:
 							break;
@@ -453,67 +418,22 @@ public class FilterPanel extends PluginWithPreferences {
 	 * @param attribute Name of an ensemble membership attribute, such as "Coordinator"
 	 * @param value Value of the specified attribute
 	 */
-	private void processEnsembleRequest(String attribute, final String value){
+	private void processEnsembleRequest(String attribute, String value){
 		if ((attribute != null) && (value != null)){
 			PreferencesBuilder prefs = getPreferences();
 			if (prefs != null){
-				final Set<MembershipPrefs> ensemblePrefs = prefs.membershipPrefs(null);
+				Set<MembershipPrefs> ensemblePrefs = prefs.membershipPrefs(null);
 				if (ensemblePrefs != null){
 					Filter filter = null;
 					switch(attribute){
 						case "Ensemble Name":
-							filter = new VisibilityFilter() {
-								
-								@Override
-								public String toString() {
-									return "Ensembles with name " + value;
-								}
-								
-								@Override
-								public void initializeSelection() {
-									for (MembershipPrefs prefs : ensemblePrefs){
-										if (!prefs.getEnsembleName().equals(value)){
-											affectedNodes.add(prefs);
-										}
-									}
-								}
-							};
+							filter = new EnsembleNameFilter(value, ensemblePrefs);
 							break;
 						case "Coordinator ID":
-							filter = new VisibilityFilter() {
-								
-								@Override
-								public String toString() {
-									return "Ensembles with coordinator " + value;
-								}
-								
-								@Override
-								public void initializeSelection() {
-									for (MembershipPrefs prefs : ensemblePrefs){
-										if (!prefs.getCoordinator().equals(value)){
-											affectedNodes.add(prefs);
-										}
-									}
-								}
-							};
+							filter = new EnsembleCoordFilter(value, ensemblePrefs);
 							break;
 						case "Member ID":
-							filter = new VisibilityFilter() {
-								
-								@Override
-								public String toString() {
-									return "Ensembles with member " + value;
-								}
-								
-								@Override
-								public void initializeSelection() {
-									for (MembershipPrefs prefs : ensemblePrefs){
-										if (!prefs.getMember().equals(value)){
-											affectedNodes.add(prefs);
-										}
-									}
-								}
-							};
+							filter = new EnsembleMemberFilter(value, ensemblePrefs);
 							break;
 						default:
 							break;
@@ -531,11 +451,14 @@ public class FilterPanel extends PluginWithPreferences {
 	 * Un-applies the filters selected by the user and removes them from the filter list.
 	 */
 	private void deleteSelectedFilters(){
-		Collection<Filter> selected = filters.getSelectionModel().getSelectedItems();
-		for (Filter filter : selected){
+		for (Filter filter : filters.getItems()){
 			filter.unapply();
 		}
+		List<Filter> selected = new ArrayList<>(filters.getSelectionModel().getSelectedItems());
 		filters.getItems().removeAll(selected);
+		for (Filter filter : filters.getItems()){
+			filter.apply();
+		}
 	}
 	
 	/**

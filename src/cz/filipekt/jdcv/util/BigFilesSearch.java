@@ -1,4 +1,4 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.util;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;

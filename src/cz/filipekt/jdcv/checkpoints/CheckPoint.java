@@ -1,4 +1,4 @@
-package cz.filipekt.jdcv;
+package cz.filipekt.jdcv.checkpoints;
 
 /**
  * Marks a relevant event on the timeline. Can hold three types of information -
@@ -7,7 +7,7 @@ package cz.filipekt.jdcv;
  * 
  * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
-class CheckPoint {	
+public class CheckPoint {	
 	
 	/**
 	 * A {@link CheckPoint} can bear various types of information - the types

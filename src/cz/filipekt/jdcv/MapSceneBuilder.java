@@ -7,6 +7,7 @@ import javafx.animation.Animation.Status;
 import javafx.beans.value.ChangeListener;
 import javafx.scene.layout.HBox;
 import cz.filipekt.jdcv.SceneImportHandler.ShapeProvider;
+import cz.filipekt.jdcv.checkpoints.CheckPointDatabase;
 import cz.filipekt.jdcv.events.EnsembleEvent;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;
