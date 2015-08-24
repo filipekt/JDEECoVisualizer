@@ -40,7 +40,7 @@ public class Resources {
 		 * @return URI pointing to the resource given by its name in the method parameter.
 		 * @throws IllegalArgumentException If the given resource name is null or in an invalid format 
 		 */
-		private static URI getResourceAsURI(String resourceName) throws IllegalArgumentException {
+		public static URI getResourceAsURI(String resourceName) throws IllegalArgumentException {
 			if (resourceName == null){
 				throw new IllegalArgumentException();
 			}

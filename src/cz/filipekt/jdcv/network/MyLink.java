@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import cz.filipekt.jdcv.xml.Corridor;
+import cz.filipekt.jdcv.corridors.Corridor;
 import javafx.geometry.Point2D;
 
 /**
@@ -215,5 +215,13 @@ public class MyLink {
 		} else {
 			return corridor.getLinkPath();
 		}
+	}
+	
+	/**
+	 * @return True if the points in the link path are 
+	 * given in coordinates of the visualization output
+	 */
+	public boolean isPathAbsolute(){
+		return (corridor != null) && (corridor.isAbsolutePath());
 	}
 }

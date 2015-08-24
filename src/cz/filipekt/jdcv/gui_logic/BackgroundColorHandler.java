@@ -45,7 +45,7 @@ public class BackgroundColorHandler implements EventHandler<ActionEvent>{
 		if (scene != null){
 			Node map = scene.getMapPane();
 			Color color = backColor.getValue();
-			String style = visualizer.getBackColorCSSField() + ": rgb(" + 
+			String style = Visualizer.getBackColorCSSField() + ": rgb(" + 
 					Math.round(color.getRed() * 256) + "," + 
 					Math.round(color.getGreen() * 256) + "," + 
 					Math.round(color.getBlue() * 256) + ");";

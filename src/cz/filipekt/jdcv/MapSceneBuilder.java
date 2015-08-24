@@ -5,9 +5,11 @@ import java.util.Map;
 
 import javafx.animation.Animation.Status;
 import javafx.beans.value.ChangeListener;
+import javafx.scene.Node;
 import javafx.scene.layout.HBox;
 import cz.filipekt.jdcv.SceneImportHandler.ShapeProvider;
 import cz.filipekt.jdcv.checkpoints.CheckPointDatabase;
+import cz.filipekt.jdcv.corridors.Background;
 import cz.filipekt.jdcv.events.EnsembleEvent;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyNode;
@@ -236,11 +238,38 @@ class MapSceneBuilder {
 	}
 	
 	/**
+	 * The background of the map 
+	 */
+	private Background background;
+	
+	/**
+	 * @param background The background of the map
+	 * @see {@link MapSceneBuilder#background}
+	 */
+	public void setBackground(Background background) {
+		this.background = background;
+	}
+	
+	/**
+	 * The color-picker used to select the background color of the visual output
+	 */
+	private Node backgroundColorPicker;
+
+	/**
+	 * @param backgroundColorPicker The color-picker used to select the background 
+	 * color of the visual output
+	 * @see {@link MapSceneBuilder#backgroundColorPicker}
+	 */
+	public void setBackgroundColorPicker(Node backgroundColorPicker) {
+		this.backgroundColorPicker = backgroundColorPicker;
+	}
+
+	/**
 	 * Builds and returns a {@link MapScene} instance using the parameter values collected by this class. 
 	 */
 	public MapScene build(){
 		return new MapScene(nodes, links, mapWidth, mapHeight, timeLineStatus, timeLineRate, minTime, 
 				maxTime, duration, checkpointDb, ensembleEvents, controlsBar, matsimEventsPresent, 
-				ensembleEventsPresent, personImageWidth, circleProvider);
+				ensembleEventsPresent, personImageWidth, circleProvider, background, backgroundColorPicker);
 	}
 }

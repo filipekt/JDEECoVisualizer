@@ -15,6 +15,29 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.FileImageOutputStream;
+
+import cz.filipekt.jdcv.SceneImportHandler.ImageProvider;
+import cz.filipekt.jdcv.SceneImportHandler.ShapeProvider;
+import cz.filipekt.jdcv.checkpoints.CheckPoint;
+import cz.filipekt.jdcv.checkpoints.CheckPoint.Type;
+import cz.filipekt.jdcv.checkpoints.CheckPointDatabase;
+import cz.filipekt.jdcv.corridors.Background;
+import cz.filipekt.jdcv.corridors.CorridorLoader;
+import cz.filipekt.jdcv.corridors.LinkCorridor;
+import cz.filipekt.jdcv.ensembles.CoordinatorRelation;
+import cz.filipekt.jdcv.ensembles.EnsembleDatabase;
+import cz.filipekt.jdcv.ensembles.MembershipRelation;
+import cz.filipekt.jdcv.events.EnsembleEvent;
+import cz.filipekt.jdcv.geometry.MatsimToVisualCoordinates;
+import cz.filipekt.jdcv.geometry.PointTransformer;
+import cz.filipekt.jdcv.gui_logic.InfoPanelSetter;
+import cz.filipekt.jdcv.network.MyLink;
+import cz.filipekt.jdcv.network.MyNode;
+import cz.filipekt.jdcv.plugins.InfoPanel;
+import cz.filipekt.jdcv.prefs.PreferencesBuilder;
 import javafx.animation.Animation.Status;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
@@ -49,29 +72,6 @@ import javafx.stage.StageStyle;
 import javafx.stage.WindowEvent;
 import javafx.util.Duration;
 
-import javax.imageio.ImageIO;
-import javax.imageio.ImageWriter;
-import javax.imageio.stream.FileImageOutputStream;
-
-import cz.filipekt.jdcv.SceneImportHandler.ImageProvider;
-import cz.filipekt.jdcv.SceneImportHandler.ShapeProvider;
-import cz.filipekt.jdcv.checkpoints.CheckPoint;
-import cz.filipekt.jdcv.checkpoints.CheckPointDatabase;
-import cz.filipekt.jdcv.checkpoints.CheckPoint.Type;
-import cz.filipekt.jdcv.corridors.CorridorLoader;
-import cz.filipekt.jdcv.corridors.LinkCorridor;
-import cz.filipekt.jdcv.ensembles.CoordinatorRelation;
-import cz.filipekt.jdcv.ensembles.EnsembleDatabase;
-import cz.filipekt.jdcv.ensembles.MembershipRelation;
-import cz.filipekt.jdcv.events.EnsembleEvent;
-import cz.filipekt.jdcv.geometry.CoordinateTransformer;
-import cz.filipekt.jdcv.geometry.MatsimToVisualCoordinates;
-import cz.filipekt.jdcv.gui_logic.InfoPanelSetter;
-import cz.filipekt.jdcv.network.MyLink;
-import cz.filipekt.jdcv.network.MyNode;
-import cz.filipekt.jdcv.plugins.InfoPanel;
-import cz.filipekt.jdcv.prefs.PreferencesBuilder;
-
 /**
  * The scene that the {@link Visualizer} makes a graphic view of. 
  * It contains the map, view parameters, event log etc.
@@ -94,26 +94,6 @@ public class MapScene {
 	 * Maps visual representations of nodes to the corresponding parsed node XML elements.
 	 */
 	private final Map<Node,MyNode> circles = new HashMap<>();
-	
-	/**
-	 * Minimal value of the x-coordinate among all the nodes in the MATSIM map
-	 */
-	private final double minx;
-	
-	/**
-	 * Minimal value of the y-coordinate among all the nodes in the MATSIM map
-	 */
-	private final double miny;
-	
-	/**
-	 * Maximal value of the x-coordinate among all the nodes in the MATSIM map
-	 */
-	private final double maxx;
-	
-	/**
-	 * Maximal value of the y-coordinate among all the nodes in the MATSIM map
-	 */
-	private final double maxy;
 	
 	/**
 	 * Factor by which the x-coordinate scale (from MATSIM map) must be multiplied so 
@@ -485,7 +465,7 @@ public class MapScene {
 					matsimToVisual.transformY(link.getFrom().getY()));
 			Point2D toPoint = new Point2D(matsimToVisual.transformX(link.getTo().getX()), 
 					matsimToVisual.transformY(link.getTo().getY()));
-			CorridorLoader cl = new CorridorLoader(link, fromPoint, toPoint);
+			CorridorLoader cl = new CorridorLoader(link, fromPoint, toPoint, matsimToVisual);
 			LinkCorridor corridor = cl.build();
 			connectLinkWithInfoPanel(link, corridor.getVisualization());
 			res.put(link.getId(), corridor);
@@ -502,7 +482,7 @@ public class MapScene {
 	 * Converter from the coordinates used in the MATSIM simulation map to the coordinates
 	 * used in the visualization, i.e. as used on the screen
 	 */
-	private final CoordinateTransformer matsimToVisual;
+	private final PointTransformer matsimToVisual;
 	
 	/**
 	 * The simulation time at which we start the visualization
@@ -607,11 +587,73 @@ public class MapScene {
 		}
 		produceShapes(shapeProvider, selectedPeople);
 		addRecordingFrames();
+		setBackground();
 		mapContainer.getChildren().addAll(circles.keySet());
 		mapContainer.getChildren().addAll(personShapes.values());
 		mapContainer.getChildren().addAll(ensembleShapes.values());
-	    moveShapesToFront();	  
-	    
+		moveShapesToFront();
+	}
+	
+	/**
+	 * Sets the map background using the parsed "background" XML element
+	 */
+	private void setBackground(){
+		if (background == null){
+			String style = Visualizer.getBackColorCSSField() + ": " + 
+					Visualizer.getDefaultbackround() + ";";
+			mapPane.setStyle(style);
+		} else {
+			if (background.getImage() == null){
+				Color color = background.getColor();
+				if (color != null){
+					StringBuilder style = new StringBuilder();
+					style.append(Visualizer.getBackColorCSSField());
+					style.append(": ");
+					style.append("rgb(");
+					String red = Long.toString(Math.round(color.getRed() * 255));
+					style.append(red);
+					style.append(",");
+					String green = Long.toString(Math.round(color.getGreen() * 255));
+					style.append(green);
+					style.append(",");
+					String blue = Long.toString(Math.round(color.getBlue() * 255));
+					style.append(blue);
+					style.append(");");
+					mapPane.setStyle(style.toString());
+				}
+			} else {
+				String imagePath = background.getImage();
+				Point2D leftTopMatsim = new Point2D(background.getLeftTopX(), background.getLeftTopY());
+				Point2D leftTop = matsimToVisual.transform(leftTopMatsim);
+				Point2D rightBottomMatsim = new Point2D(background.getRightBottomX(), 
+						background.getRightBottomY());
+				Point2D rightBottom = matsimToVisual.transform(rightBottomMatsim);
+				long ltx = Math.round(leftTop.getX());
+				long lty = Math.round(leftTop.getY());
+				long rbx = Math.round(rightBottom.getX());
+				long rby = Math.round(rightBottom.getY());
+				StringBuilder style = new StringBuilder();
+				style.append("-fx-background-image: url(\"");
+				style.append(imagePath);
+				style.append("\");");
+				style.append("-fx-background-position: ");
+				style.append(ltx);
+				style.append(" ");
+				style.append(lty);
+				style.append(";");
+				style.append("-fx-background-repeat: stretch;");
+				style.append("-fx-background-size: ");
+				style.append(rbx-ltx);
+				style.append(" ");
+				style.append(rby-lty);
+				style.append(";");
+				mapPane.setStyle(style.toString());	
+				if (backgroundColorPicker != null){
+					backgroundColorPicker.setDisable(true);
+				}
+			}
+		}
+		
 	}
 	
 	/**
@@ -1092,6 +1134,16 @@ public class MapScene {
 	private final ShapeProvider circleProvider;
 	
 	/**
+	 * The background of the map
+	 */
+	private final Background background;
+	
+	/**
+	 * The color-picker used to select the background color of the visual output
+	 */
+	private final Node backgroundColorPicker;
+	
+	/**
 	 * @param nodes The network nodes. Keys = node IDs, values = {@link MyNode} node representations.
 	 * @param links The network links. Keys = link IDs, values = {@link MyLink} link representations.
 	 * @param mapWidth Preferred width of the map view, in pixels
@@ -1113,12 +1165,14 @@ public class MapScene {
 	 * @param personImageWidth Both width and height of the image that represents a person/car in 
 	 * the visualization
 	 * @param circleProvider Generates the plain circles for cars/people representation
+	 * @param background The background of the map
 	 */
 	MapScene(Map<String,MyNode> nodes, Map<String,MyLink> links, double mapWidth, double mapHeight,  
 			ChangeListener<? super Status> timeLineStatus, ChangeListener<? super Number> timeLineRate,
 			double minTime, double maxTime, int duration, CheckPointDatabase checkpointDb, 
 			List<EnsembleEvent> ensembleEvents, HBox controlsBar, boolean matsimEventsPresent,
-			boolean ensembleEventsPresent, int personImageWidth, ShapeProvider circleProvider) {		
+			boolean ensembleEventsPresent, int personImageWidth, ShapeProvider circleProvider,
+			Background background, Node backgroundColorPicker) {		
 		mapPane.setContent(mapContainer);
 		this.checkpointDb = checkpointDb;
 		this.ensembleEvents = ensembleEvents;
@@ -1128,10 +1182,18 @@ public class MapScene {
 		this.nodes = nodes;
 		this.links.putAll(links);
 		double[] borders = getMapBorders();
-		this.minx = borders[0];
-		this.miny = borders[1];
-		this.maxx = borders[2];
-		this.maxy = borders[3];
+		double minx,miny,maxx,maxy;
+		if ((background == null) || (background.getImage() == null)){
+			minx = borders[0];
+			miny = borders[1];
+			maxx = borders[2];
+			maxy = borders[3];
+		} else {
+			minx = Math.min(borders[0], background.getLeftTopX());
+			miny = Math.min(borders[1], background.getLeftTopY());
+			maxx = Math.max(borders[2], background.getRightBottomX());
+			maxy = Math.max(borders[3], background.getRightBottomY());
+		}
 		this.originalMapWidth = mapWidth;
 		this.originalMapHeight = mapHeight;
 		this.controlsBar = controlsBar;
@@ -1146,6 +1208,8 @@ public class MapScene {
 		this.ensembleEventsPresent = ensembleEventsPresent;
 		this.personImageWidth = personImageWidth;
 		this.circleProvider = circleProvider;
+		this.background = background;
+		this.backgroundColorPicker = backgroundColorPicker;
 	}
 
 }

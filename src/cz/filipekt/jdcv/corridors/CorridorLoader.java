@@ -7,6 +7,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import cz.filipekt.jdcv.geometry.PointTransformer;
+import cz.filipekt.jdcv.geometry.PointUtils;
+import cz.filipekt.jdcv.network.MyLink;
+import cz.filipekt.jdcv.network.MyLinkImg;
 import javafx.event.EventHandler;
 import javafx.geometry.Point2D;
 import javafx.scene.Node;
@@ -16,12 +20,11 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Line;
+import javafx.scene.shape.Polyline;
+import javafx.scene.shape.Shape;
 import javafx.scene.transform.Rotate;
 import javafx.scene.transform.Scale;
 import javafx.scene.transform.Translate;
-import cz.filipekt.jdcv.geometry.PointUtils;
-import cz.filipekt.jdcv.network.MyLink;
-import cz.filipekt.jdcv.network.MyLinkImg;
 
 /**
  * Given a link element, this class provides means to construct a corresponding
@@ -91,20 +94,53 @@ public class CorridorLoader {
 	private final double linkWidth = 2.0;
 	
 	/**
+	 * If true, the points in {@link CorridorLoader#path} are given in 
+	 * coordinates of the visualization output
+	 */
+	private final boolean absolutePath;
+	
+	/**
+	 * Converter from the coordinates used in the MATSIM simulation map to the coordinates
+	 * used in the visualization, i.e. as used on the screen
+	 */
+	private final PointTransformer matsimToVisual;
+	
+	/**
 	 * @param link The link to be visualized
 	 * @param fromPoint Location of the link start, in the visualized map coordinates
 	 * @param toPoint Location of the link end, in the visualized map coordinates
+	 * @param matsimToVisual Converter from the coordinates used in the MATSIM simulation 
+	 * map to the coordinates used in the visualization, i.e. as used on the screen
 	 */
-	public CorridorLoader(MyLink link, Point2D fromPoint, Point2D toPoint) {
+	public CorridorLoader(MyLink link, Point2D fromPoint, Point2D toPoint, 
+			PointTransformer matsimToVisual) {
+		this.matsimToVisual = matsimToVisual;
 		this.linkImage = link.getLinkImage();
 		this.path = link.getPathPoints();
+		this.absolutePath = link.isPathAbsolute();
 		this.fromPoint = fromPoint;
 		this.toPoint = toPoint;
-		if (linkImage == null){
+		if (absolutePath){
 			fromPointImage = null;
 			toPointImage = null;
 			angle = 0;
 			shrinkRatio = 1;
+		} else if (linkImage == null){
+			if ((path != null) && !path.isEmpty()){
+				fromPointImage = PointUtils.ZERO;
+				toPointImage = PointUtils.ONE;
+				Point2D unitInImage = PointUtils.subtract(toPointImage, fromPointImage);
+				Point2D unitInVisual = PointUtils.subtract(toPoint, fromPoint);
+				angle = angle(unitInImage, unitInVisual);
+				double distanceInImage = fromPointImage.distance(toPointImage);
+				double distanceInVisual = fromPoint.distance(toPoint);
+				shrinkRatio = distanceInVisual / distanceInImage;
+			} else {
+				fromPointImage = null;
+				toPointImage = null;
+				angle = 0;
+				shrinkRatio = 1;
+			}
 		} else {
 			fromPointImage = new Point2D(linkImage.getFromX(), linkImage.getFromY());
 			toPointImage = new Point2D(linkImage.getToX(), linkImage.getToY());
@@ -125,6 +161,17 @@ public class CorridorLoader {
 	 */
 	private Node getSimpleLineCorridor(){
 		final Line line = new Line(fromPoint.getX(), fromPoint.getY(), toPoint.getX(), toPoint.getY());
+		decorateLinkLine(line);
+		return line;
+	}
+	
+	/**
+	 * Given a (polygonal) line representation of the link, this method
+	 * makes sure that is it decorated well. It sets the proper stroke,
+	 * and behavior on mouse enter/exit.
+	 * @param line The line which will be decorated
+	 */
+	private void decorateLinkLine(final Shape line){
 		line.setStroke(linkDefaultColor);
 		line.setStrokeWidth(linkWidth);
 		line.setOnMouseEntered(new EventHandler<MouseEvent>() {
@@ -141,7 +188,22 @@ public class CorridorLoader {
 				line.setStrokeWidth(linkWidth);
 			}
 		});
-		return line;
+	}
+	
+	/**
+	 * If no image is provided for link visualization, but a path is specified, this
+	 * method is used to generate a simple polygonal line link visualization.
+	 * @return A polygonal line representing the link
+	 */
+	private Node getPolygonalLineCorridor(){
+		List<Point2D> convertedPath = getConvertedPath();
+		Polyline polyLine = new Polyline();
+		for (Point2D point : convertedPath){
+			polyLine.getPoints().add(point.getX());
+			polyLine.getPoints().add(point.getY());
+		}
+		decorateLinkLine(polyLine);
+		return polyLine;
 	}
 	
 	/**
@@ -201,7 +263,11 @@ public class CorridorLoader {
 	 */
 	private Node getVisualCorridor(){
 		if (linkImage == null){
-			return getSimpleLineCorridor();
+			if ((path != null) && !path.isEmpty()){
+				return getPolygonalLineCorridor();
+			} else {
+				return getSimpleLineCorridor();
+			}
 		} else {
 			try (InputStream imageStream = Files.newInputStream(Paths.get(linkImage.getSource()))){
 				Image image = new Image(imageStream);
@@ -224,20 +290,27 @@ public class CorridorLoader {
 		List<Point2D> res = new ArrayList<>();
 		res.add(fromPoint);
 		if (path != null){
-			for (Point2D point : path){
-				point = PointUtils.subtract(point, fromPointImage);
-				point = PointUtils.multiply(point, shrinkRatio);
-				double angle1 = Math.toDegrees(Math.acos(point.getX() / point.distance(0, 0)));
-				if (point.getY() < 0){
-					angle1 *= -1;
+			if (absolutePath){
+				for (Point2D point : path){
+					Point2D newPoint = matsimToVisual.transform(point);
+					res.add(newPoint);
 				}
-				angle1 += angle;				
-				double newX = Math.cos(Math.toRadians(angle1)) * point.distance(0, 0);
-				double newY = Math.sin(Math.toRadians(angle1)) * point.distance(0, 0);
-				point = new Point2D(newX, newY);
-				point = PointUtils.add(point, fromPoint);
-				res.add(point);
-			}
+			} else {
+				for (Point2D point : path){
+					point = PointUtils.subtract(point, fromPointImage);
+					point = PointUtils.multiply(point, shrinkRatio);
+					double angle1 = Math.toDegrees(Math.acos(point.getX() / point.distance(0, 0)));
+					if (point.getY() < 0){
+						angle1 *= -1;
+					}
+					angle1 += angle;				
+					double newX = Math.cos(Math.toRadians(angle1)) * point.distance(0, 0);
+					double newY = Math.sin(Math.toRadians(angle1)) * point.distance(0, 0);
+					point = new Point2D(newX, newY);
+					point = PointUtils.add(point, fromPoint);
+					res.add(point);
+				}
+			}			
 		}
 		res.add(toPoint);
 		return res;

@@ -15,6 +15,7 @@ import java.util.Map;
 import javafx.animation.Animation.Status;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
+import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
@@ -48,6 +49,7 @@ import cz.filipekt.jdcv.util.Dialog;
 import cz.filipekt.jdcv.util.Resources;
 import cz.filipekt.jdcv.util.BigFilesSearch.ElementTooLargeException;
 import cz.filipekt.jdcv.util.BigFilesSearch.SelectionTooBigException;
+import cz.filipekt.jdcv.xml.BackgroundHandler;
 import cz.filipekt.jdcv.xml.CorridorHandler;
 import cz.filipekt.jdcv.xml.EnsembleHandler;
 import cz.filipekt.jdcv.xml.LinkHandler;
@@ -62,7 +64,7 @@ import cz.filipekt.jdcv.xml.XMLextractor;
  * 
  * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
-class SceneImportHandler implements EventHandler<javafx.event.Event>{
+class SceneImportHandler implements EventHandler<ActionEvent>{
 	
 	/**
 	 * The three fields containing the paths to the source XML files.
@@ -178,7 +180,6 @@ class SceneImportHandler implements EventHandler<javafx.event.Event>{
 		int column = GridPane.getColumnIndex(okButton);
 		int row = GridPane.getRowIndex(okButton);				
 		pane.add(progIndicator, column, row);	
-		
 	}
 	
 	/**
@@ -232,6 +233,13 @@ class SceneImportHandler implements EventHandler<javafx.event.Event>{
 									closeProgressIndiciator();
 								}
 							});
+							Platform.runLater(new Runnable() {
+								
+								@Override
+								public void run() {
+									visualizer.setEnded();
+								}
+							});
 						}
 					} catch (IOException ex){						
 						reportError("Could not read from one of the input files:", ex.getMessage());
@@ -239,19 +247,27 @@ class SceneImportHandler implements EventHandler<javafx.event.Event>{
 						reportError("A problem with XML parser configuration has been encountered:",
 								ex.getMessage());
 					} catch (SAXException ex) {
-						String message;
 						if (ex.getException() == null){
-							message = ex.getMessage();
+							String message = ex.getMessage();
+							reportError("A problem in syntax of one of the XML input files has been encountered:", 
+									message);
 						} else {
 							if ((ex.getException().getMessage() != null) && 
 									(!ex.getException().getMessage().isEmpty())){
-								message = ex.getException().getMessage();
+								String message = ex.getException().getMessage();
+								String[] messages = message.split("\n");
+								String[] messages2 = new String[messages.length+1];
+								messages2[0] = "A problem in syntax of one of the XML input files has been encountered:";
+								for (int i = 0; i < messages.length; i++){
+									messages2[i+1] = messages[i];
+								}
+								reportError(messages2);
 							} else {
-								message = ex.getException().toString();
+								String message = ex.getException().toString();
+								reportError("A problem in syntax of one of the XML input files has been encountered:", 
+										message);
 							}
 						}
-						reportError("A problem in syntax of one of the XML input files has been encountered:", 
-								message);
 					} catch (SelectionTooBigException e) {
 						reportError("The selected time interval is too large to handle.");
 					} catch (ElementTooLargeException e) {
@@ -283,7 +299,8 @@ class SceneImportHandler implements EventHandler<javafx.event.Event>{
 	 * contain data. Further processing is delegated to {@link SceneImportHandler#reportProblemsForScene}
 	 */
 	@Override
-	public void handle(javafx.event.Event event) {
+	public void handle(ActionEvent event) {
+		Visualizer.getInstance().setStarted();
 		TextField networkField = pathFields.get(0);
 		if ((networkField == null) || (networkField.getText() == null) || (networkField.getText().isEmpty())){
 			Dialog.show(cz.filipekt.jdcv.util.Dialog.Type.INFO, 
@@ -415,6 +432,8 @@ class SceneImportHandler implements EventHandler<javafx.event.Event>{
 		XMLextractor.run(networkFile, networkFileEncoding, linkHandler);
 		CorridorHandler corridorHandler = new CorridorHandler(linkHandler.getLinks());
 		XMLextractor.run(networkFile, networkFileEncoding, corridorHandler);
+		BackgroundHandler backgroundHandler = new BackgroundHandler();
+		XMLextractor.run(networkFile, networkFileEncoding, backgroundHandler);
 		retrieveEventsData(onlyAgents, startAt, endAt, eventField, ensembleField, linkHandler.getLinks());
 		ShapeProvider circleProvider = new CircleProvider(personCircleRadius, personCircleColor);
 		MapSceneBuilder sceneBuilder = new MapSceneBuilder();
@@ -434,13 +453,15 @@ class SceneImportHandler implements EventHandler<javafx.event.Event>{
 		sceneBuilder.setEnsembleEventsPresent(ensembleEventsPresent);
 		sceneBuilder.setPersonImageWidth(8 * personCircleRadius);
 		sceneBuilder.setCircleProvider(circleProvider);
+		sceneBuilder.setBackground(backgroundHandler.getResult());
+		sceneBuilder.setBackgroundColorPicker(visualizer.getBackgroundColorPicker());
 		final MapScene scene = sceneBuilder.build();
 		scene.update(circleProvider, false, null);
 		Platform.runLater(new Runnable() {
 			
 			@Override
 			public void run() {					
-				visualizer.setScene(scene, matsimEventsPresent);										
+				visualizer.setScene(scene, matsimEventsPresent);					
 			}
 		});		
 	}
@@ -535,7 +556,7 @@ class SceneImportHandler implements EventHandler<javafx.event.Event>{
 	 * @throws SelectionTooBigException If the specified time interval is too large
 	 */
 	private InputStream getEventLogStream(Path eventLog, String encoding, Double fromTime, Double toTime) 
-			throws IOException, SelectionTooBigException, ElementTooLargeException{
+			throws IOException, SelectionTooBigException, ElementTooLargeException{	
 		if (Files.exists(eventLog)){
 			if (Files.size(eventLog) <= eventLogFileThreashold){
 				return Files.newInputStream(eventLog);

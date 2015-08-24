@@ -51,6 +51,9 @@ public class CloseSceneHandler implements EventHandler<ActionEvent>{
 		visualizer.setGraphicsColumnDefaults();
 		closeThisSceneItem.setDisable(true);
 		importSceneItem.setDisable(false);	
+		if (visualizer.getBackgroundColorPicker() != null){
+			visualizer.getBackgroundColorPicker().setDisable(false);
+		}
 	}
 	
 }

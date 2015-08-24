@@ -2,7 +2,6 @@ package cz.filipekt.jdcv.gui_logic;
 
 import cz.filipekt.jdcv.Visualizer;
 import javafx.event.ActionEvent;
-import javafx.event.Event;
 import javafx.event.EventHandler;
 import javafx.scene.control.CheckMenuItem;
 import javafx.scene.layout.HBox;

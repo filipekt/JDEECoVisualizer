@@ -16,6 +16,7 @@ import cz.filipekt.jdcv.events.MatsimEvent;
 import cz.filipekt.jdcv.events.EventType;
 import cz.filipekt.jdcv.exceptions.InvalidAttributeValueException;
 import cz.filipekt.jdcv.exceptions.LinkNotFoundException;
+import cz.filipekt.jdcv.exceptions.TooManyEvents;
 import cz.filipekt.jdcv.network.MyLink;
 
 /**
@@ -156,6 +157,16 @@ public class MatsimEventHandler extends DefaultHandler {
 	private boolean isInjectedComponent(String personID){
 		return personID.startsWith("V");
 	}
+	
+	/**
+	 * Number of event elements encountered
+	 */
+	private long count = 0;
+	
+	/**
+	 * Maximal allowed number of event elements in the selection
+	 */
+	private final long countLimit = 600_000L;
 
 	/**
 	 * Makes sure that when an event element is encountered, correct parsing is carried out.
@@ -164,6 +175,13 @@ public class MatsimEventHandler extends DefaultHandler {
 	@Override
 	public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
 		if (qName.equals(eventName)){
+			count += 1;
+			if (count > countLimit){
+				String message = "The selection contains too many <event> elements. \n" + 
+						"Please specify a selection of the log file which contains at most " +
+						countLimit + " elements.";
+				throw new SAXException(new TooManyEvents(message));
+			}
 			String timeVal = attributes.getValue(timeName);
 			Utils.ensureNonNullAndNonEmptyAttr(eventName, timeName, timeVal);
 			double time;

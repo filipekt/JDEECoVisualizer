@@ -1,3 +1,4 @@
 network;example_data/network2.xml;UTF-8
 events;example_data/events2.xml;UTF-8
+ensembles;example_data/ensembles2.xml;UTF-8
 target_duration;10

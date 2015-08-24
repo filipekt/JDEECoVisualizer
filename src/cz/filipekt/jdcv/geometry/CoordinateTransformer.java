@@ -18,4 +18,5 @@ public interface CoordinateTransformer {
 	 * @return y-coordinate value in system B
 	 */
 	double transformY(double y);
+		
 }

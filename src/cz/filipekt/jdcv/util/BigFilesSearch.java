@@ -127,7 +127,7 @@ public class BigFilesSearch {
 			afterTo = Files.size(path);
 		} else {
 			long precTo = getPrecedingLocation(toTime);
-			afterTo = precTo + step;
+			afterTo = precTo + step + sampleSize;
 		}
 		try (RandomAccessFile raf = new RandomAccessFile(path.toFile(), "r")){
 			raf.seek(precFrom);
@@ -171,6 +171,7 @@ public class BigFilesSearch {
 	 * offset configuration the sample text contains the {@link BigFilesSearch#eventElementStart}
 	 */
 	private String getWithCorrectOffset(byte[] data, int count) throws ElementTooLargeException{
+		count = Math.max(0, count-4);
 		for (int offset = 0; offset < 4; offset++){
 			String text = new String(data, offset, count, charset);
 			if (text.contains(eventElementStart)){
@@ -213,13 +214,12 @@ public class BigFilesSearch {
 	 * @throws IOException If it is impossible to read from the event log file
 	 * @throws ElementTooLargeException If some of the event elements is too large
 	 */
-	private long getPrecedingLocation(double targetTime) throws IOException, ElementTooLargeException {
-		long fileSize = Files.size(path);
+	public long getPrecedingLocation(double targetTime) throws IOException, ElementTooLargeException {
 		long lowerBound = 0;
-		long upperBound = fileSize;
+		long upperBound = Files.size(path);
 		long midPoint;
 		try (RandomAccessFile raf = new RandomAccessFile(path.toFile(), "r")){			
-			while ((upperBound - lowerBound) > (step / 2)){
+			while ((upperBound - lowerBound) >= step){
 				midPoint = (lowerBound + upperBound) / 2L;
 				boolean midPointBefore = isBefore(raf, midPoint, targetTime);
 				if (midPointBefore){
@@ -234,7 +234,7 @@ public class BigFilesSearch {
 	
 	/**
 	 * Determines, whether the first event element starting after the given position in the
-	 * given file has its time attribute value smaller than the given value.
+	 * file has its time attribute value smaller than the given value.
 	 * @param file File in which the event element will be examined
 	 * @param positionInFile A position in the given file from which we will start searching 
 	 * for an event element 

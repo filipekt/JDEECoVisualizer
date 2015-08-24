@@ -6,7 +6,7 @@ package cz.filipekt.jdcv.geometry;
  * 
  * @author Tomas Filipek <tom.filipek@seznam.cz>
  */
-public class MatsimToVisualCoordinates implements CoordinateTransformer {
+public class MatsimToVisualCoordinates extends PointTransformer {
 	
 	/**
 	 * Minimal value of the x-coordinate among all the nodes in the MATSIM map

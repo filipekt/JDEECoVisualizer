@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.concurrent.CountDownLatch;
 
 import cz.filipekt.jdcv.gui_logic.BackgroundColorHandler;
 import cz.filipekt.jdcv.gui_logic.CloseSceneHandler;
@@ -29,6 +30,7 @@ import cz.filipekt.jdcv.gui_logic.TimeLineRateChanged;
 import cz.filipekt.jdcv.gui_logic.TimeLineRateListener;
 import cz.filipekt.jdcv.gui_logic.TimeLineStatusHandler;
 import cz.filipekt.jdcv.gui_logic.ZoomingHandler;
+import cz.filipekt.jdcv.measuring.MeasureInputProcessing;
 import cz.filipekt.jdcv.plugins.InfoPanel;
 import cz.filipekt.jdcv.plugins.Plugin;
 import cz.filipekt.jdcv.plugins.PluginWithPreferences;
@@ -147,8 +149,6 @@ public class Visualizer extends Application {
 		ScrollPane mapScrollPane = newScene.getMapPane();
 		mapScrollPane.setPrefHeight(mapHeight);
 		mapScrollPane.setPrefWidth(mapWidth);
-		String style = backColorCSSField + ": " + defaultBackround + ";";
-		mapScrollPane.setStyle(style);
 		mapPane.getChildren().clear();
 		mapPane.getChildren().add(mapScrollPane);											
 		graphicsColumn.setDisable(false);
@@ -281,17 +281,23 @@ public class Visualizer extends Application {
 			Console.getInstance().showScriptingConsole(Visualizer.this);
 		}
 	};
+	
+	/**
+	 * An item in the "Scenes" menu; when clicked, shows the "import scene" page
+	 */
+	private final MenuItem importSceneItem = new MenuItem("Import Scene");
+	
+	/**
+	 * An item in the "Scenes" menu; when clicked, closes the current scene
+	 */
+	private final MenuItem closeThisSceneItem = new MenuItem("Close This Scene");
 
 	/**
 	 * Constructs the main menu bar of the application.
-	 * @return The main menu bar of the application.
 	 */
-	private MenuBar createMenuBar() {
-		MenuBar menuBar = new MenuBar();
+	private void createMenuBar() {
 		Menu fileMenu = new Menu("Scenes");
-		MenuItem importSceneItem = new MenuItem("Import Scene"); 
 		importSceneItem.setDisable(false);
-		MenuItem closeThisSceneItem = new MenuItem("Close This Scene");
 		closeThisSceneItem.setDisable(true);
 		importSceneItem.setOnAction(new ImportSceneHandler(importSceneItem, closeThisSceneItem, this));
 		closeThisSceneItem.setOnAction(new CloseSceneHandler(importSceneItem, closeThisSceneItem, this));
@@ -312,7 +318,6 @@ public class Visualizer extends Application {
 		pluginPanel.setOnAction(new PluginsPanelHandler(pluginPanel, this));
 		viewMenu.getItems().addAll(controlsPanel, graphicsPanel, pluginPanel);
 		menuBar.getMenus().addAll(fileMenu, optionsMenu, viewMenu);
-		return menuBar;
 	}
 	
 	/**
@@ -408,6 +413,47 @@ public class Visualizer extends Application {
 	 * Text inside the load button, which loads and processes an input config file
 	 */
 	private final String loadButtonText = "Load!";
+	
+	/**
+	 * The input text fields for entering the paths to the input files.
+	 * Located in the "import scene" page.
+	 */
+	private final List<TextField> fields = new ArrayList<>();
+	
+	/**
+	 * All the combo-boxes used for selecting the text encoding for the input files.
+	 * Located in the "import scene" page.
+	 */
+	private final List<ComboBox<String>> charsets = new ArrayList<>();
+	
+	/**
+	 * Input field specifying at which simulation time should the visualization start.
+	 * Located in the "import scene" page.
+	 */
+	private final TextField startAtField = new TextField();
+	
+	/**
+	 * Input field specifying at which simulation time should the visualization end
+	 * Located in the "import scene" page.
+	 */
+	private final TextField endAtField = new TextField();
+	
+	/**
+	 * The OK button located in the "import scene" page. When fired, the input files
+	 * are processed and the visual output is opened.
+	 */
+	private final Button okButton = new Button("OK");
+	
+	/**
+	 * The input field for specifying the desired duration of the visualization
+	 */
+	private final TextField durationField = new TextField();
+	
+	/**
+	 * The checkbox for specifying whether only the injected JDEECo
+	 * components should be visualized
+	 */
+	private final CheckBox onlyComponentsBox = new CheckBox();
 
 	/**
 	 * Prepares and initializes the contents of @link Visualizer#importSceneGrid}.
@@ -423,15 +469,9 @@ public class Visualizer extends Application {
 		labels.add(new Label("Map/network definition:"));
 		labels.add(new Label("Matsim event log:"));
 		labels.add(new Label("Ensemble event log:"));
-		final List<TextField> fields = new ArrayList<>();
-		List<ComboBox<String>> charsets = new ArrayList<>();
 		List<Button> chooserButtons = new ArrayList<>();				
 		int row = prepareInputFilesControls(importSceneGrid, fields, labels, charsets, 
 				chooserButtons, encodingBoxWidth, selectButtonWidth);	
-		TextField durationField = new TextField();
-		CheckBox onlyComponentsBox = new CheckBox();
-		TextField startAtField = new TextField();
-		TextField endAtField = new TextField();
 		row = prepareOtherControls(importSceneGrid, row, durationField, onlyComponentsBox, 
 				startAtField, endAtField);
 		row += 1;
@@ -444,8 +484,7 @@ public class Visualizer extends Application {
 				encodingBoxWidth, selectButtonWidth, loadButtonWidth, onlyComponentsBox,
 				startAtField, endAtField);
 		row += 2;		
-		Button okButton = new Button("OK");
-		okButton.setOnMouseClicked(new SceneImportHandler(fields, okButton, onlyComponentsBox, 
+		okButton.setOnAction(new SceneImportHandler(fields, okButton, onlyComponentsBox, 
 				importSceneGrid, Visualizer.this, durationField, timeLineStatus, timeLineRate, 
 				startAtField, endAtField, charsets));
 		importSceneGrid.add(okButton, 1, row);
@@ -624,11 +663,8 @@ public class Visualizer extends Application {
 	/**
 	 * Constructs the tool bar for zooming, pausing, forwarding etc. the simulation visualization.
 	 * It is shown at the bottom of the main window.
-	 * @return The tool bar containing the various zooming, pausing, forwarding etc. options
-	 * @throws IOException Unless the application source folder contents have been changed in 
-	 * any way by the user, this exception will never be thrown.
 	 */
-	private HBox createControlsBar() throws IOException{
+	private void createControlsBar() {
 		ImageView pauseImage = Resources.getImageView("video-pause.png", playIconSize);
 		ImageView playImage = Resources.getImageView("video-play.png", playIconSize);
 		Button playButton = new Button();
@@ -654,12 +690,10 @@ public class Visualizer extends Application {
 		stopButton.setDisable(true);
 		stopButton.setGraphic(stopImage);
 		stopButton.setOnMouseClicked(new StopButtonAction(Visualizer.this, stopButton, recordingHandler));
-		HBox hbox = new HBox();
-		hbox.getChildren().addAll(speedLabel, rwButton, playButton, stopButton, ffdButton, 
+		controlsBar.getChildren().addAll(speedLabel, rwButton, playButton, stopButton, ffdButton, 
 				zoomInButton, zoomOutButton);
-		hbox.setSpacing(10);
-		hbox.setAlignment(Pos.CENTER_RIGHT);
-		return hbox;
+		controlsBar.setSpacing(10);
+		controlsBar.setAlignment(Pos.CENTER_RIGHT);
 	}
 	
 	/**
@@ -710,33 +744,51 @@ public class Visualizer extends Application {
 	/**
 	 * The default color of the map background
 	 */
-	private final String defaultBackround = "#f2f2f2";
+	private static final String defaultBackround = "#f2f2f2";
 	
+	/**
+	 * @return The default color of the map background
+	 */
+	public static String getDefaultbackround() {
+		return defaultBackround;
+	}
+
 	/**
 	 * The CSS field which sets the background color of a JavaFX Node
 	 */
-	private final String backColorCSSField = "-fx-background";
+	private static final String backColorCSSField = "-fx-background";
 	
 	/**
 	 * @return The CSS field which sets the background color of a JavaFX Node
 	 */
-	public String getBackColorCSSField() {
+	public static String getBackColorCSSField() {
 		return backColorCSSField;
+	}
+	
+	/**
+	 * The color-picker used to select the background color of the visual output
+	 */
+	private Node backgroundColorPicker;
+
+	/**
+	 * @return The color-picker used to select the background color of 
+	 * the visual output
+	 */
+	public Node getBackgroundColorPicker() {
+		return backgroundColorPicker;
 	}
 
 	/**
-	 * @return Builds and returns the column, shown next to the map on the left side, containing various graphics options.
-	 * @throws IOException Unless the application source folder contents have been changed in 
-	 * any way by the user, this exception will never be thrown. 
+	 * Constructs the graphics column, shown on the left side of the map, 
+	 * containing various graphics options
 	 */
-	private VBox createGraphicsColumn() throws IOException{
-		VBox panel = new VBox();
-		panel.setDisable(true);
-		panel.setAlignment(Pos.TOP_LEFT);
+	private void createGraphicsColumn() {
+		graphicsColumn.setDisable(true);
+		graphicsColumn.setAlignment(Pos.TOP_LEFT);
 		final CheckBox showNodesBox = new CheckBox("Show nodes");
 		showNodesBox.setSelected(true);
 		showNodesBox.setOnAction(new ShowNodesHandler(this, showNodesBox));
-		panel.getChildren().add(showNodesBox);
+		graphicsColumn.getChildren().add(showNodesBox);
 		final CheckBox showLinksBox = new CheckBox("Show links");
 		showLinksBox.setSelected(true);
 		showLinksBox.setOnAction(new EventHandler<ActionEvent>() {
@@ -748,23 +800,24 @@ public class Visualizer extends Application {
 				}
 			}
 		});
-		panel.getChildren().add(showLinksBox);
+		graphicsColumn.getChildren().add(showLinksBox);
 		Label backColorLabel = new Label("Background color:");
-		panel.getChildren().add(backColorLabel);
+		graphicsColumn.getChildren().add(backColorLabel);
 		ColorPicker backColor = new ColorPicker(Color.web(defaultBackround));
 		backColor.setOnAction(new BackgroundColorHandler(this, backColor));
-		panel.getChildren().add(backColor);
+		graphicsColumn.getChildren().add(backColor);
+		backgroundColorPicker = backColor;
 		ImageView snapShotImage = Resources.getImageView("screenshot.png", playIconSize);
 		Button screenShotButton = new Button("Snapshot", snapShotImage);
 		screenShotButton.setOnMouseClicked(new ScreenShotHandler(this));
-		panel.getChildren().add(screenShotButton);		
+		graphicsColumn.getChildren().add(screenShotButton);		
 		ImageView recordStartImage = Resources.getImageView("record.png", playIconSize);
 		ImageView recordStopImage = Resources.getImageView("stop.png", playIconSize);
 		Button recordButton = new Button("Record", recordStartImage);
 		recordingHandler = new RecordingHandler(recordButton, recordStartImage, recordStopImage, this); 
 		recordButton.setOnMouseClicked(recordingHandler);
-		panel.getChildren().add(recordButton);
-		for (Node node : panel.getChildren()){
+		graphicsColumn.getChildren().add(recordButton);
+		for (Node node : graphicsColumn.getChildren()){
 			VBox.setMargin(node, new Insets(graphicsItemsMargin, 0, graphicsItemsMargin, 
 					2 * graphicsItemsMargin));
 		}
@@ -778,7 +831,6 @@ public class Visualizer extends Application {
 				showLinksBox.setSelected(true);
 			}
 		};
-		return panel;
 	}
 	
 	/**
@@ -835,24 +887,20 @@ public class Visualizer extends Application {
 	private final Pane sliderWrapper;
 	
 	/**
-	 * Initializer for {@link Visualizer#sliderWrapper}.
-	 * @return A {@link Pane} holding the {@link Visualizer#sliderWrapper} and, 
-	 * possibly, some belonging controls 
+	 * Constructs the slider wrapper, the parent container for {@link Visualizer#timelineSlider}
 	 */
-	private Pane createSliderWrapper(){
-		HBox res =  new HBox();
-		res.getChildren().addAll(timelineSlider);
+	private void createSliderWrapper(){
+		sliderWrapper.getChildren().addAll(timelineSlider);
 		HBox.setHgrow(timelineSlider, Priority.ALWAYS);
 		HBox.setMargin(timelineSlider, new Insets(0, 50, 0, 50));
-		res.setPrefHeight(50);
-		return res;
+		sliderWrapper.setPrefHeight(50);
 	}
 	
 	/**
 	 * The panel on the right side of the window, allowing various plugins to be viewed.
 	 * The panel which has been selected by clicking the corresponding button is viewed.
 	 */
-	private final Region switchablePanel;
+	private final VBox switchablePanel;
 	
 	/**
 	 * @return The panel on the right side of the window, allowing various plugins to be viewed.
@@ -880,20 +928,19 @@ public class Visualizer extends Application {
 	}
 	
 	/**
-	 * Initializes the {@link Visualizer#switchablePanel}. 
-	 * @return Newly constructed switchable side-panel
+	 * Constructs the panel on the right side of the window, 
+	 * allowing various plugins to be viewed. 
 	 */
-	private Region createSwitchablePanel(){	
+	private void createSwitchablePanel(){	
 		loadPlugins();
 		final Pane mainPanel = new StackPane();
 		ToolBar toolBar = new ToolBar();
 		toolBar.setPrefWidth(sidePanelWidth);
 		mainPanel.setPrefWidth(sidePanelWidth);
-		VBox pane = new VBox();
-		pane.getChildren().addAll(toolBar, mainPanel);
+		switchablePanel.getChildren().addAll(toolBar, mainPanel);
 		VBox.setVgrow(toolBar, Priority.NEVER);
 		VBox.setVgrow(mainPanel, Priority.ALWAYS);
-		pane.setFillWidth(true);
+		switchablePanel.setFillWidth(true);
 		plugins2.clear();
 		for (Plugin plugin : plugins){
 			Button button = createPluginButton(plugin);
@@ -915,7 +962,6 @@ public class Visualizer extends Application {
 			});			
 			toolBar.getItems().add(button);
 		}
-		return pane;
 	}
 	
 	/**
@@ -996,7 +1042,6 @@ public class Visualizer extends Application {
 		HBox.setHgrow(switchablePanel, Priority.NEVER);
 		middleRow.setFillHeight(true);
 		middleRow.getChildren().addAll(graphicsColumn, mapPane, switchablePanel);
-//		rootPane.setSpacing(10);
 		rootPane.getChildren().clear();
 		rootPane.getChildren().addAll(menuBar, middleRow, sliderWrapper, controlsBar);
 		Scene fxScene = new Scene(rootPane, Color.WHITE);
@@ -1007,20 +1052,161 @@ public class Visualizer extends Application {
 	    	Image icon = new Image(iconStream);
 	    	stage.getIcons().add(icon);
 	    }
+	    String styleURL = Resources.getResourceAsURI("style.css").toURL().toExternalForm();
+	    fxScene.getStylesheets().add(styleURL);
 	    stage.show();
+	    MeasureInputProcessing.getInstance().register();
 	}
 
 	/**
-	 * Initializes some of the panels and tool bars.
-	 * @throws IOException Unless the application source folder contents have been changed in 
-	 * any way by the user, this exception will never be thrown.
+	 * Initializes some of the panels and tool bars
 	 */
-	public Visualizer() throws IOException {		
-		menuBar = createMenuBar();	
-		controlsBar = createControlsBar();
-		graphicsColumn = createGraphicsColumn();
-		sliderWrapper = createSliderWrapper();
-		switchablePanel = createSwitchablePanel();
-	}			
+	public Visualizer() {
+		menuBar = new MenuBar();
+		controlsBar = new HBox();
+		graphicsColumn = new VBox();
+		sliderWrapper = new HBox();
+		switchablePanel = new VBox();
+		setInstance(this);
+	}
+
+	/**
+	 * Make sure that the various panels and toolbars contain the required
+	 * contents, such as button, controls and fields.
+	 */
+	@Override
+	public void init() throws Exception {
+		createMenuBar();
+		createControlsBar();
+		createGraphicsColumn();
+		createSliderWrapper();
+		createSwitchablePanel();
+	}	
 	
+	/**
+	 * An instance of this class. Although in theory there may be multiple
+	 * instances of {@link Visualizer} out there, under normal circumstances
+	 * this class exists in a single instance, which is saved here
+	 */
+	private static Visualizer instance = null;
+
+	/**
+	 * Setter for {@link Visualizer#instance}.
+	 */
+	private void setInstance(Visualizer visualizer){
+		Visualizer.instance = visualizer;
+	}
+	
+	/**
+	 * @return An instance of this class. Although in theory there may be multiple
+	 * instances of {@link Visualizer} out there, under normal circumstances
+	 * this class exists in a single instance, which is saved here
+	 */
+	public static Visualizer getInstance(){
+		return instance;
+	}
+	
+	/**
+	 * The parameters for this application. They are used only when the application
+	 * is run for performance measuring. 
+	 */
+	private cz.filipekt.jdcv.measuring.Parameters params;
+	
+	/**
+	 * Sets the parameters for this application. They are used only when the application
+	 * is run for performance measuring.
+	 */
+	public void setParams(cz.filipekt.jdcv.measuring.Parameters params){
+		this.params = params;
+	}
+	
+	/**
+	 * This method is used only when the application is run for performance
+	 * measuring purposes. It obtains the parameters from {@link Visualizer#params},
+	 * applies them and starts the processing of the input.
+	 */
+	public void processParameters(){
+		try {
+			importSceneItem.fire();
+			fields.get(0).setText(params.getMapPath());
+			charsets.get(0).getSelectionModel().select(params.getMapEncoding());
+			fields.get(1).setText(params.getEventPath());
+			charsets.get(1).getSelectionModel().select(params.getEventEncoding());
+			fields.get(2).setText(params.getEnsemblePath());
+			charsets.get(2).getSelectionModel().select(params.getEnsembleEncoding());
+			startAtField.setText(params.getStartAt());
+			endAtField.setText(params.getEndAt());
+			onlyComponentsBox.setSelected(params.isJustAgents());
+			durationField.setText(params.getDuration());
+			okButton.fire();
+		} catch (Exception ex){
+			ex.printStackTrace();
+		}
+	}
+	
+	/**
+	 * A synchronization primitive used to inform the performance measuring
+	 * class that the input processing has finished
+	 */
+	private CountDownLatch latch;
+	
+	/**
+	 * Contains the time at which the last executed input processing started
+	 */
+	private long timeStarted;
+	
+	/**
+	 * Contains the time at which the last executed input processing ended
+	 */
+	private long timeEnded;
+	
+	/**
+	 * Resets the {@link Visualizer#latch} so that it is again at its initial value.
+	 * It is then used by the subseqent runs of performance measuring.
+	 */
+	public void renewLatch(){
+		latch = new CountDownLatch(1);
+	}
+	
+	/**
+	 * Called when the input processing is starting. It saves the current
+	 * time so that we can later compute the elapsed time.
+	 */
+	public void setStarted(){
+		timeStarted = System.currentTimeMillis();
+	}
+	
+	/**
+	 * Called when the input processing just ended. It saves the current
+	 * time so that we can compute the elapsed time. It also counts down
+	 * the latch which is how we inform the measuring class that the results
+	 * are ready.
+	 */
+	public void setEnded(){
+		timeEnded = System.currentTimeMillis();
+		if (latch != null){
+			latch.countDown();
+		}
+	}
+	
+	/**
+	 * Usually called by the external performance measuring class.
+	 * This method blocks until the measuring results are ready, and
+	 * then returns the elapsed time.
+	 */
+	public long getMeasuredTime() throws InterruptedException{
+		if (latch != null){
+			latch.await();
+			return timeEnded - timeStarted;
+		} else {
+			return -1;
+		}
+	}
+	
+	/**
+	 * Equivalent to the event that the user clicks the "close current scene" button
+	 */
+	public void clickCloseScene(){
+		closeThisSceneItem.fire();
+	}
 }

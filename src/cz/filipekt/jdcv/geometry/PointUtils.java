@@ -17,6 +17,11 @@ public class PointUtils {
 	public static final Point2D ZERO = new Point2D(0, 0);
 	
 	/**
+	 * The point with all coordinates being 1.
+	 */
+	public static final Point2D ONE = new Point2D(1, 1);
+	
+	/**
 	 * Subtracts the point b from the point a - the result is
 	 * returned as a new instance of {@link Point2D}, as the class
 	 * is immutable.

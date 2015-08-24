@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<events>
+	<event type="ensemble" coordinator="V1" member="V2" membership="true" ensemble="ens01" time="5" />
+	<event type="ensemble" coordinator="V1" member="V2" membership="false" ensemble="ens01" time="10" />
+	<event type="ensemble" coordinator="V1" member="V2" membership="true" ensemble="ens01" time="15" />
+	<event type="ensemble" coordinator="V1" member="V2" membership="false" ensemble="ens01" time="20" />
+	<event type="ensemble" coordinator="V1" member="V2" membership="true" ensemble="ens01" time="25" />
+	<event type="ensemble" coordinator="V1" member="V2" membership="false" ensemble="ens01" time="30" />
+	<event type="ensemble" coordinator="V1" member="V2" membership="true" ensemble="ens01" time="35" />
+</events>

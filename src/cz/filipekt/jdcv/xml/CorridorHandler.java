@@ -11,13 +11,14 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import cz.filipekt.jdcv.corridors.Corridor;
 import cz.filipekt.jdcv.exceptions.InvalidAttributeValueException;
 import cz.filipekt.jdcv.network.MyLink;
 import cz.filipekt.jdcv.network.MyLinkImg;
 import javafx.geometry.Point2D;
 
 /**
- * SAX handler used to parse the XML file containing the map definition
+ * SAX handler used to parse the XML file containing the map definition.
  * Collects the corridor elements. 
  * Can only be used after the "link" elements have been collected, as these
  * are required upon construction of this handler instance.
@@ -52,7 +53,24 @@ public class CorridorHandler extends DefaultHandler {
 	private final String linkImgName = "link_img";
 	
 	/**
-	 * Name of the attribute specifying the path to the image that reperesents a link
+	 * Local name of the link_path element
+	 */
+	private final String linkPathName = "link_path";
+	
+	/**
+	 * Name of the link_path attribute specifying whether the points in the 
+	 * link_path are given in coordinates of the visualization output
+	 */
+	private final String linkPathAbsoluteName = "absolute";
+	
+	/**
+	 * The positive value of the {@link CorridorHandler#linkPathAbsoluteName} 
+	 * attribute. Checking is done in a case-insensitive manner.
+	 */
+	private final String linkPathAbsoluteTrue = "true";
+	
+	/**
+	 * Name of the attribute specifying the path to the image that represents a link
 	 */
 	private final String linkImgSourceName = "source";
 	
@@ -96,6 +114,12 @@ public class CorridorHandler extends DefaultHandler {
 	private String currentCorridorId;
 	
 	/**
+	 * Marks, whether the points in the current link path are given in 
+	 * coordinates of the visualization output
+	 */
+	private boolean currentPathAbsolute;
+	
+	/**
 	 * Link IDs given in the "links" attribute of the last encountered corridor element
 	 */
 	private final Collection<String> currentCorridorLinks = new HashSet<>();
@@ -136,7 +160,7 @@ public class CorridorHandler extends DefaultHandler {
 	public void endElement(String uri, String localName, String qName) throws SAXException {
 		if (qName.equals(corridorName)){
 			Corridor newCorridor = new Corridor(currentCorridorId, currentCorridorLinks, 
-					currentLinkImg, currentLinkPath);
+					currentLinkImg, currentLinkPath, currentPathAbsolute);
 			Collection<MyLink> parsedLinks = getParsedLinksFor(currentCorridorLinks);
 			for (MyLink link : parsedLinks){
 				link.setCorridor(newCorridor);
@@ -178,8 +202,21 @@ public class CorridorHandler extends DefaultHandler {
 				processLinkImg(attributes);
 			} else if (qName.equals(pointName)){
 				processPoint(attributes);
+			} else if (qName.equals(linkPathName)){
+				processLinkPath(attributes);
 			}
 		}
+	}
+	
+	/**
+	 * Called when a link_path element is encountered. Collects the "absolute"
+	 * attribute and saves its value.
+	 * @param attributes The attributes of the link_path element
+	 */
+	private void processLinkPath(Attributes attributes){
+		String absolute = attributes.getValue(linkPathAbsoluteName);
+		currentPathAbsolute = Utils.checkNonNullAndNonEmpty(absolute) && 
+				absolute.equalsIgnoreCase(linkPathAbsoluteTrue);
 	}
 	
 	/**
@@ -246,13 +283,13 @@ public class CorridorHandler extends DefaultHandler {
 		String yStr = attributes.getValue(pointYName);
 		Utils.ensureNonNullAndNonEmptyAttr(pointName, pointYName, yStr);
 		try {
-			int x = Integer.parseInt(xStr);
-			int y = Integer.parseInt(yStr);
+			double x = Double.parseDouble(xStr);
+			double y = Double.parseDouble(yStr);
 			Point2D point = new Point2D(x, y);
 			currentLinkPath.add(point);
 		} catch (NumberFormatException ex){
 			throw new SAXException(new InvalidAttributeValueException(
-					"Numeric attributes of the point element must be in the integer format."));
+					"Numeric attributes of the point element must be in the double precision format."));
 		}
 	}
 }

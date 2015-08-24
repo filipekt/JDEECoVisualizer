@@ -1,4 +1,4 @@
-package cz.filipekt.jdcv.xml;
+package cz.filipekt.jdcv.corridors;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -39,17 +39,27 @@ public class Corridor {
 	private final List<Point2D> linkPath = new ArrayList<>();
 	
 	/**
+	 * If true, the points in {@link Corridor#linkPath} are given in 
+	 * coordinates of the visualization output
+	 */
+	private final boolean absolutePath;
+	
+	/**
 	 * @param id Unique identification of the corridor
 	 * @param links The links which use this corridor as their visual representation.
 	 * @param linkImage Specification of the image which represents this link
 	 * @param linkPath Points specifying the path along which the persons move through the 
 	 * link visualization. Coordinates are taken from the image raster.
+	 * @param absolutePath If true, the points in {@link Corridor#linkPath} are given in 
+	 * coordinates of the visualization output
 	 */
-	public Corridor(String id, Collection<String> links, MyLinkImg linkImage, List<Point2D> linkPath) {
+	public Corridor(String id, Collection<String> links, MyLinkImg linkImage, 
+			List<Point2D> linkPath,  boolean absolutePath) {
 		this.id = id;
 		this.links.addAll(links);
 		this.linkImage = linkImage;
 		this.linkPath.addAll(linkPath);
+		this.absolutePath = absolutePath;
 	}
 	
 	/**
@@ -79,5 +89,13 @@ public class Corridor {
 	 */
 	public List<Point2D> getLinkPath() {
 		return linkPath;
+	}
+
+	/**
+	 * @return If true, the points in {@link Corridor#linkPath} are given in 
+	 * coordinates of the visualization output
+	 */
+	public boolean isAbsolutePath() {
+		return absolutePath;
 	}
 }
