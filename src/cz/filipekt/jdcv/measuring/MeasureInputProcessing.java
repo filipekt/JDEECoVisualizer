@@ -68,46 +68,16 @@ public class MeasureInputProcessing {
 	private final List<Parameters> params = new ArrayList<>();
 	
 	/**
-	 * Determines how many times will a single input tested, 
+	 * Determines how many times will a single input be measured, 
 	 * with the warm-up already finished
 	 */
-	private final int individualLimit = 10;
+	private final int measurementsCount = 3;
 	
 	/**
-	 * After the total time spent during a warm-up grows over this value,
-	 * the warm-up is terminated
+	 * Determines how many times will the measured routine run as 
+	 * part of the warm-up procedure. 
 	 */
-	private final long warmupLimit = 10_000L;
-	
-	/**
-	 * Warms-up the JVM on the input specified by the "par" parameter
-	 */
-	private void warmup(final Visualizer visualizer, final Parameters par) throws InterruptedException{
-		long totalTime = 0L;
-		while(true){
-			visualizer.renewLatch();
-			Platform.runLater(new Runnable() {
-				
-				@Override
-				public void run() {
-					visualizer.setParams(par);
-					visualizer.processParameters();
-				}
-			});
-			totalTime += visualizer.getMeasuredTime();
-			Platform.runLater(new Runnable() {
-				
-				@Override
-				public void run() {
-					visualizer.clickCloseScene();
-				}
-			});
-			if (totalTime > warmupLimit){
-				break;
-			}
-		}
-		System.out.println("Warmed up");
-	}
+	private final int warmupCount = 12;
 	
 	/**
 	 * Carries out the performance testing of the input file processing
@@ -125,38 +95,27 @@ public class MeasureInputProcessing {
 		}).start();
 		latch.await();
 		final Visualizer visualizer = Visualizer.getInstance();
-		System.gc();
+		MeasuredProcedure procedure = new MeasuredProcedure();
 		int count = 1;
 		for (final Parameters par : params){
 			if (par == null){
 				System.out.println("Input #" + count++ + " error");
 			} else {
-				warmup(visualizer, par);
-				List<Long> results = new ArrayList<>();
-				for (int i = 0; i<individualLimit; i++){
-					System.gc();
-					visualizer.renewLatch();
-					Platform.runLater(new Runnable() {
-						
-						@Override
-						public void run() {
-							visualizer.setParams(par);
-							visualizer.processParameters();
-						}
-					});
-					results.add(visualizer.getMeasuredTime());
-					Platform.runLater(new Runnable() {
-						
-						@Override
-						public void run() {
-							visualizer.clickCloseScene();
-						}
-					});
-					
+//				WARMUP:
+				for (int i = 0; i<warmupCount; i++){
+					procedure.run(visualizer, par);
 				}
-				Collections.sort(results);
+				procedure.resetTotalTime();
+				System.gc();
+				
+//				MEASUREMENT:
+				for (int i = 0; i<measurementsCount; i++){
+					procedure.run(visualizer, par);	
+				}
+				
 				System.out.println("Input #" + count++ + " elapsed: " + 
-						results.get(results.size()/2) + "ms (" + individualLimit + " iterations)");
+						Math.round(procedure.getTotalTime() / measurementsCount) + 
+						"ms (" + measurementsCount + " iterations)");
 			}
 		}
 		Platform.exit();

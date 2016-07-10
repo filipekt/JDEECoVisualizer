@@ -200,46 +200,53 @@ public class MeasureFileSearch {
 	 */
 	private void measure(FileCharacter character, File file) 
 			throws IOException, SelectionTooBigException, ElementTooLargeException{
-		BigFilesSearch bfs = new BigFilesSearch(file.toPath(), character.getEncoding());
-		warmup(bfs);
-		System.gc();
-		double[] points = generatePoints(character.getElementCount());
-		List<Long> results = new ArrayList<>(); 
-		for (double point : points){
-			for (int i = 0; i<individualCount; i++){
-				long before = System.nanoTime();
-				bfs.getPrecedingLocation(point);
-				long after = System.nanoTime();
-				results.add(after-before);
+		final BigFilesSearch bfs = new BigFilesSearch(file.toPath(), character.getEncoding());
+		final double[] points = generatePoints(character.getElementCount());
+		Runnable procedure = new Runnable() {
+			
+			@Override
+			public void run() {
+				for (double point : points){
+					try {
+						bfs.getPrecedingLocation(point);
+					} catch (IOException | ElementTooLargeException e) {
+						e.printStackTrace();
+					}
+				}
 			}
+		};
+		
+//		WARMUP:
+		for (int i = 0; i<warmupCount; i++){
+			procedure.run();
 		}
-		long median = getMedian(results);
+		System.out.println("Finished warm-up");
+		System.gc();
+
+//		MEASUREMENT:
+		long before = System.nanoTime();
+		for (int i = 0; i<measureCount; i++){
+			procedure.run();
+		}
+		long after = System.nanoTime();
+		
+		double mean = (after - before) / (points.length * measureCount);
 		System.out.println("Count:" + character.getElementCount() + 
 				", size: " + character.getElementSize() + 
 				", encoding: " + character.getEncoding());
-		System.out.println(median);
+		System.out.println(Math.round(mean / 1000) + " μs");
 	}
 	
 	/**
-	 * Determines how many times a single measurement is repeated before
-	 * moving on to other measurements
+	 * Determines how many times the measured procedure is run during 
+	 * the measurement phase.
 	 */
-	private final int individualCount = 100;
+	private final int measureCount = 50;
 	
 	/**
-	 * Given a list of "long" numbers, this method returns 
-	 * the median of the values 
-	 * @param numbers The input number sequence
-	 * @return Median of the input sequence
+	 * Determines how many times the measured procedure is run during the warm-up phase.
 	 */
-	private long getMedian(List<Long> numbers){
-		if ((numbers == null) || (numbers.isEmpty())){
-			return 0;
-		} else {
-			Collections.sort(numbers);
-			return numbers.get(numbers.size() / 2);
-		}
-	}
+	private final int warmupCount = 5000;
 	
 	/**
 	 * Given the maximal time value of any event element inside the input
@@ -255,17 +262,5 @@ public class MeasureFileSearch {
 		}
 		return res;
 	}
-	
-	/**
-	 * Warms up the JVM before the measuring can be started
-	 * @param bfs Used to access the big input file
-	 */
-	private void warmup(BigFilesSearch bfs) throws IOException, ElementTooLargeException{
-		double pointTest = 111_111L;
-		long testCount = 20_000L;
-		for (long L = 1; L<testCount+1; L++){
-			bfs.getPrecedingLocation(pointTest);
-		}
-		System.out.println("Finished warmup");
-	}
+
 }
