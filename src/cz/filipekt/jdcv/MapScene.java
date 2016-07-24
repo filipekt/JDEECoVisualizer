@@ -2,7 +2,9 @@ package cz.filipekt.jdcv;
 
 import java.awt.image.RenderedImage;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -57,6 +59,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.effect.BoxBlur;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
@@ -574,6 +578,7 @@ public class MapScene {
 		timeLine.stop();
 		timeLine.getKeyFrames().clear();
 		mapContainer.getChildren().clear();
+		setBackground();
 		if (!justMovables){
 			Map<Shape,MyNode> newCircles = generateCircles();
 			circles.clear();
@@ -587,7 +592,6 @@ public class MapScene {
 		}
 		produceShapes(shapeProvider, selectedPeople);
 		addRecordingFrames();
-		setBackground();
 		mapContainer.getChildren().addAll(circles.keySet());
 		mapContainer.getChildren().addAll(personShapes.values());
 		mapContainer.getChildren().addAll(ensembleShapes.values());
@@ -595,13 +599,21 @@ public class MapScene {
 	}
 	
 	/**
+	 * The scene background image. If no image is specified, this has null value.
+	 */
+	private Node backgroundImage;
+	
+	/**
 	 * Sets the map background using the parsed "background" XML element
 	 */
 	private void setBackground(){
+		if (backgroundImage != null) {
+			mapContainer.getChildren().remove(backgroundImage);
+		}
 		if (background == null){
 			String style = Visualizer.getBackColorCSSField() + ": " + 
 					Visualizer.getDefaultbackround() + ";";
-			mapPane.setStyle(style);
+			mapPane.setStyle(style);			
 		} else {
 			if (background.getImage() == null){
 				Color color = background.getColor();
@@ -619,7 +631,7 @@ public class MapScene {
 					String blue = Long.toString(Math.round(color.getBlue() * 255));
 					style.append(blue);
 					style.append(");");
-					mapPane.setStyle(style.toString());
+					mapPane.setStyle(style.toString());					
 				}
 			} else {
 				String imagePath = background.getImage();
@@ -632,25 +644,17 @@ public class MapScene {
 				long lty = Math.round(leftTop.getY());
 				long rbx = Math.round(rightBottom.getX());
 				long rby = Math.round(rightBottom.getY());
-				StringBuilder style = new StringBuilder();
-				style.append("-fx-background-image: url(\"");
-				style.append(imagePath);
-				style.append("\");");
-				style.append("-fx-background-position: ");
-				style.append(ltx);
-				style.append(" ");
-				style.append(lty);
-				style.append(";");
-				style.append("-fx-background-repeat: stretch;");
-				style.append("-fx-background-size: ");
-				style.append(rbx-ltx);
-				style.append(" ");
-				style.append(rby-lty);
-				style.append(";");
-				mapPane.setStyle(style.toString());	
 				if (backgroundColorPicker != null){
 					backgroundColorPicker.setDisable(true);
 				}
+				try (InputStream is = new FileInputStream(imagePath)){					
+					Image img = new Image(is, rbx-ltx, lty-rby, true, true);
+					ImageView iw = new ImageView(img);
+					iw.setX(ltx);
+					iw.setY(lty);
+					mapContainer.getChildren().add(iw);
+					backgroundImage = iw;
+				} catch (IOException ex) {}
 			}
 		}
 		
